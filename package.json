@@ -1,20 +1,24 @@
 {
   "name": "lambda",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server/config/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/scrsby/LAMbda-PRODUCTION.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/scrsby/LAMbda-PRODUCTION/issues"
+  },
+  "homepage": "https://github.com/scrsby/LAMbda-PRODUCTION#readme",
   "description": "",
   "dependencies": {
-    "cors": "^2.8.5",
-    "datatables.net-dt": "^2.3.2",
-    "express": "^4.21.2",
-    "express-session": "^1.18.1",
-    "mysql2": "^3.13.0",
-    "node": "^24.2.0"
+    "dotenv": "^17.2.3",
+    "pg": "^8.17.2"
   }
 }
