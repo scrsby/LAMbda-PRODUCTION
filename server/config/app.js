@@ -19,7 +19,7 @@ const cors = require('cors');
 const session = require('express-session');
 
 // Initialize database connections (the require statement itself can trigger the connection attempt in db.js)
-require('db.js');
+require('./db.js');
 
 // Import route modules
 // const itemRoutes = require('../routes/itemRoutes.js');
@@ -41,8 +41,21 @@ app.use(express.json()); // To parse JSON request bodies
 // Basic error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).send('Something broke!');
+  res.status(500).send('Error');
 });
+
+// Session Setup
+app.use(
+  session({
+    secret: 'testtest', // Replace with a strong secret in production
+    saveUninitialized: false, // Don't create session until a login occurs
+    resave: false, // Don't save session if unmodified
+    cookie: {
+      secure: false, // Set to true if using HTTPS
+      maxAge: 48 * 60 * 60 * 1000 // 2 days in milliseconds
+    },
+  })
+);
 
 // Start the server
 const port = process.env.PORT || 3000;
