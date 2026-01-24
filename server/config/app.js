@@ -14,6 +14,7 @@
  Last Edited: 24 January 2026
 */
 
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
@@ -32,7 +33,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: 'http://3.145.49.58', // <-- Replace with your actual frontend origin!
+  origin: 'localhost', // <-- Replace with your actual frontend origin!
   credentials: true
 }));
 
@@ -56,6 +57,11 @@ app.use(
     },
   })
 );
+
+// Add the client folder path
+app.use('/', express.static(path.join(__dirname, '..', '..', 'client', 'src', 'pages'), {
+    extensions: ['html']
+}));
 
 // Start the server
 const port = process.env.PORT || 3000;
