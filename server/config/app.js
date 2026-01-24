@@ -11,38 +11,41 @@
  Required by: 
  Description: This is the main file for the LAMbda server application, setting up configurations and middleware. It is run on server start.
  Functions: 
- Last Edited: 22 January 2026
+ Last Edited: 24 January 2026
 */
 
-const path = require('path');
-require('dotenv').config({ 
-    override: true,
-    path: path.join(__dirname, '../../.env') 
+const express = require('express');
+const cors = require('cors');
+const session = require('express-session');
+
+// Initialize database connections (the require statement itself can trigger the connection attempt in db.js)
+require('db.js');
+
+// Import route modules
+// const itemRoutes = require('../routes/itemRoutes.js');
+
+// Mount routers
+//app.use('/api', itemRoutes); // All routes in itemRoutes will be prefixed with /api
+
+// Initialize Express app
+const app = express();
+
+// Middleware
+app.use(cors({
+  origin: 'http://3.145.49.58', // <-- Replace with your actual frontend origin!
+  credentials: true
+}));
+
+app.use(express.json()); // To parse JSON request bodies
+
+// Basic error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
 });
 
-const {Pool, Client} = require('pg');
-
-const pool = new Pool({
-    user: process.env.USER,
-    host: process.env.HOST,
-    database: process.env.DATABASE,
-    password: process.env.PASSWORD,
-    port: process.env.DB_PORT,
-    ssl: {
-        rejectUnauthorized: false
-    }
+// Start the server
+const port = process.env.PORT || 3000;
+app.listen(port, '0.0.0.0', () => { // 0.0.0.0 is important for AWS to listen on all available network interfaces
+  console.log(`Server is running on http://localhost:${port} and accessible externally`);
 });
-
-
-(async () => {
-    const client = await pool.connect();
-    try {
-        const {rows} = await client.query('SELECT current_user');
-        const currentUser = rows[0]['current_user'];
-        console.log(currentUser);
-    } catch (err) {
-        console.error(err);
-    } finally {
-        client.release();
-    }
-})();

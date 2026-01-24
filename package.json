@@ -18,7 +18,10 @@
   "homepage": "https://github.com/scrsby/LAMbda-PRODUCTION#readme",
   "description": "",
   "dependencies": {
+    "cors": "^2.8.6",
     "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "lru-cache": "^11.2.4",
     "pg": "^8.17.2"
   }
 }
