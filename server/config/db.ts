@@ -40,7 +40,7 @@ const pool = new Pool({
 module.exports = pool;
 
 // Startup message and initial test
-pool.query('SELECT NOW()', (err, res) => {
+pool.query('SELECT NOW()', (err: Error | null, res: any) => {
     if (err) console.error('Database connection error:', err);
     else console.log('Database connected successfully at:', res.rows[0].now);
 });

@@ -14,13 +14,13 @@
  Last Edited: 24 January 2026
 */
 
-const path = require('path');
-const express = require('express');
-const cors = require('cors');
-const session = require('express-session');
+import path from 'path';
+import express from 'express';
+import cors from 'cors';
+import session from 'express-session';
 
 // Initialize database connections (the require statement itself can trigger the connection attempt in db.js)
-require('./db.js');
+import './db.js';
 
 // Import route modules
 // const itemRoutes = require('../routes/itemRoutes.js');
@@ -40,7 +40,7 @@ app.use(cors({
 app.use(express.json()); // To parse JSON request bodies
 
 // Basic error handler
-app.use((err, req, res, next) => {
+app.use((err: { stack: any; }, _req: any, res: { status: (arg0: number) => { (): any; new(): any; send: { (arg0: string): void; new(): any; }; }; }) => {
   console.error(err.stack);
   res.status(500).send('Error');
 });
@@ -68,3 +68,5 @@ const port = process.env.PORT || 3000;
 app.listen(port, '0.0.0.0', () => { // 0.0.0.0 is important for AWS to listen on all available network interfaces
   console.log(`Server is running on http://localhost:${port} and accessible externally`);
 });
+
+export default app;

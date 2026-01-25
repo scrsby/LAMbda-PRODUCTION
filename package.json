@@ -4,7 +4,7 @@
   "main": "server/config/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server/config/app.js"
+    "start": "npx tsx server/config/app.ts"
   },
   "repository": {
     "type": "git",
@@ -19,6 +19,9 @@
   "homepage": "https://github.com/scrsby/LAMbda-PRODUCTION#readme",
   "description": "",
   "dependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/express-session": "^1.18.2",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
@@ -26,5 +29,9 @@
     "lru-cache": "^11.2.4",
     "pg": "^8.17.2",
     "session": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.10",
+    "tsx": "^4.21.0"
   }
 }
