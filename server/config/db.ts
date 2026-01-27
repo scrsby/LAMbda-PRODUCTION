@@ -10,23 +10,28 @@
  File: db.js
  Required by: app.js
  Description: Creates a pool to connect to the Postgres database
- Last Edited: 24 January 2026
+ Last Edited: 27 January 2026
 */
 
-const path = require('path');
-require('dotenv').config({ 
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import { Pool } from 'pg';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ 
     override: true,
     path: path.join(__dirname, '../../.env') 
 });
-
-const {Pool, Client} = require('pg');
 
 const pool = new Pool({
     user: process.env.USER,
     host: process.env.HOST,
     database: process.env.DATABASE,
     password: process.env.PASSWORD,
-    port: process.env.DB_PORT,
+    port: Number(process.env.DB_PORT) || 5432,
     ssl: {
         rejectUnauthorized: false
     },
@@ -37,10 +42,10 @@ const pool = new Pool({
 
 });
 
-module.exports = pool;
+export default pool;
 
 // Startup message and initial test
-pool.query('SELECT NOW()', (err: Error | null, res: any) => {
+pool.query('SELECT NOW()', (err: any, res: any) => {
     if (err) console.error('Database connection error:', err);
     else console.log('Database connected successfully at:', res.rows[0].now);
 });

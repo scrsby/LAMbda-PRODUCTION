@@ -20,7 +20,7 @@ import cors from 'cors';
 import session from 'express-session';
 
 // Initialize database connections (the require statement itself can trigger the connection attempt in db.js)
-import './db.js';
+import './db';
 
 // Import route modules
 // const itemRoutes = require('../routes/itemRoutes.js');
@@ -33,7 +33,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: 'localhost', // <-- Replace with your actual frontend origin!
+  origin: 'http://localhost:3000', // PRODUCTION - Replace with real host
   credentials: true
 }));
 
