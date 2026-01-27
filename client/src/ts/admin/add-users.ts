@@ -9,9 +9,16 @@
  Name: Add Users
  File: add-users.ts
  Description: Handles user creation and the initial access code email
- Last Edited: 24 January 2026
+ Last Edited: 26 January 2026
 */
 
-function formSubmit() {
-    
+import { apiAxios } from '../../utilities/api';
+
+function formSumbit() {
+  const email = (document.getElementById('email-field') as HTMLInputElement)?.value;
+
+  apiAxios('/auth/createNewUser', {
+    method: 'POST',
+    body: { email }
+  })
 };

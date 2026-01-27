@@ -15,7 +15,7 @@
 */
 
 import path from 'path';
-import express from 'express';
+import express, { ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import session from 'express-session';
 
@@ -26,7 +26,7 @@ import './db.js';
 // const itemRoutes = require('../routes/itemRoutes.js');
 
 // Mount routers
-//app.use('/api', itemRoutes); // All routes in itemRoutes will be prefixed with /api
+// app.use('/api', itemRoutes); // All routes in itemRoutes will be prefixed with /api
 
 // Initialize Express app
 const app = express();
@@ -38,12 +38,6 @@ app.use(cors({
 }));
 
 app.use(express.json()); // To parse JSON request bodies
-
-// Basic error handler
-app.use((err: { stack: any; }, _req: any, res: { status: (arg0: number) => { (): any; new(): any; send: { (arg0: string): void; new(): any; }; }; }) => {
-  console.error(err.stack);
-  res.status(500).send('Error');
-});
 
 // Session Setup
 app.use(
@@ -63,10 +57,15 @@ app.use('/', express.static(path.join(__dirname, '..', '..', 'client', 'src', 'p
     extensions: ['html']
 }));
 
+// Basic error handler (must be after all routes)
+const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  console.error(err.stack);
+  res.status(500).send('Error');
+};
+app.use(errorHandler);
+
 // Start the server
-const port = process.env.PORT || 3000;
+const port = Number(process.env.PORT) || 3000;
 app.listen(port, '0.0.0.0', () => { // 0.0.0.0 is important for AWS to listen on all available network interfaces
   console.log(`Server is running on http://localhost:${port} and accessible externally`);
 });
-
-export default app;
