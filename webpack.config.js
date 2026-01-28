@@ -1,9 +1,9 @@
-import { resolve as _resolve, join } from 'path';
+import { resolve as _resolve, join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = join(__filename, '..');
-
+const __dirname = dirname(__filename);
+ 
 export default {
     entry: {
         'admin/add-users': './client/src/ts/admin/add-users.ts',
@@ -18,7 +18,12 @@ export default {
         rules: [
             {
                 test: /\.ts$/,
-                use: 'ts-loader',
+                use: {
+                    loader: 'ts-loader',
+                    options: {
+                        configFile: 'tsconfig.webpack.json'
+                    }
+                },
                 exclude: /node_modules/
             }
         ]
