@@ -14,7 +14,8 @@
  Last Edited: 25 January 2026
 */
 
-const mail_service = require('../config/nodemailer-config');
+
+import nodemailer from 'nodemailer';
 
 /*
 const mailOptions = {
@@ -25,6 +26,16 @@ const mailOptions = {
     html: `HTML-Based Email body`,
   };
 */
+
+const transporter = nodemailer.createTransport({
+    host: "email-smtp.us-east-1.amazonaws.com",
+    port: 587,
+    secure: false, // Use true for port 465, false for port 587
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+    },
+});
 
 const sendEmail = async (mailOptions: Object) => {
   try {

@@ -6,13 +6,13 @@
  | |____ / ____ \| |  | | |_) | (_| | (_| |
  |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
  
- Name: Add Users
- File: add-users.ts
- Description: Handles user creation and the initial access code email
+ Name: API Send Utility
+ File: api.ts
+ Description: Handles interaction with the backend with Axios
  Last Edited: 26 January 2026
 */
 
-const axios = require('../node_modules/axios/dist/browser/axios.cjs'); 
+import axios from 'axios'; 
 const SERVER_LOCATION: String = "localhost:5432"
 
 export async function apiAxios(endpoint: string, options: any = {}) {
@@ -21,7 +21,6 @@ export async function apiAxios(endpoint: string, options: any = {}) {
     try {
         const response = await axios({
             url,
-            method: options.method || 'GET', // Defaults to GET
             data: options.body,              
             withCredentials: true,           
             ...options

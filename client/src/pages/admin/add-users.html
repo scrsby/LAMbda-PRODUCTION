@@ -8,9 +8,11 @@
 </head>
 <body>
     <h2>Enter Emails</h2>
-        <input type="text" id="email-field" placeholder="Email"required>
-        <button id="submit">Enter</button>
-        <div class="error-message" id="error-message-access"></div>
+    <form id="add-user-form">
+        <textarea id="email-field" placeholder="Enter one email per line" rows="10" cols="30" required></textarea>
+        <button type="submit">Enter</button> 
+    </form>
+    <div class="error-message" id="error-message-access"></div>
 
     <h2>User Status</h2>
        <table>
@@ -21,4 +23,4 @@
        </table>
 </body>
 </html>
-<script type="module" src="./js/pages/add-users.js"></script>
+<script src="/dist/admin/add-users.bundle.js"></script>

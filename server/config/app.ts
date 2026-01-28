@@ -14,13 +14,17 @@
  Last Edited: 24 January 2026
 */
 
-import path from 'path';
-import express, { ErrorRequestHandler } from 'express';
+import path, { join } from 'path';
+import express, { type ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import session from 'express-session';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = join(__filename, '..');
 
 // Initialize database connections (the require statement itself can trigger the connection attempt in db.js)
-import './db';
+import db from './db.js';
 
 // Import route modules
 // const itemRoutes = require('../routes/itemRoutes.js');
@@ -56,6 +60,9 @@ app.use(
 app.use('/', express.static(path.join(__dirname, '..', '..', 'client', 'src', 'pages'), {
     extensions: ['html']
 }));
+
+// Serve bundled JavaScript files
+app.use('/dist', express.static(path.join(__dirname, '..', '..', 'client', 'dist')));
 
 // Basic error handler (must be after all routes)
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
