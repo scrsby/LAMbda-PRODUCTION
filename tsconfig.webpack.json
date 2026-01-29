@@ -3,8 +3,7 @@
   "compilerOptions": {
     "declaration": false,
     "declarationMap": false,
-    "composite": false,
-    "noEmit": true
+    "composite": false
   },
   "include": [
     "client/src/**/*"

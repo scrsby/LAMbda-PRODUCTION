@@ -21,7 +21,7 @@ form?.addEventListener('submit', function(event) {
 });
 
 function formSumbit() {
-  const email = (document.getElementById('email-field') as HTMLInputElement)?.value;
+  const email = (document.getElementById('email-field') as HTMLFormElement)?.value;
 
   console.log("Submitted email: ", email);
 
@@ -30,11 +30,12 @@ function formSumbit() {
     method: 'POST',
     body: { email }
   })
-  .then(
-
-  )
-  .catch(
-
-  )
-  ;
-};
+  .then((response) => {
+    // Handle successful response
+    console.log('User created successfully:', response);
+  })
+  .catch((error) => {
+    // Handle error
+    console.error('Error creating user:', error);
+  });
+}

@@ -40,7 +40,7 @@ router.post('/createNewUser', async (req: any, res: any) => {
             const insertUser = 'INSERT INTO users(email) VALUES($1) RETURNING id';
             const userResult = await db.query(insertUser, [email]);
             
-            const createAccessToken = 'INSERT INTO access_tokens VALUES ($1) RETURNING access_token';
+            const createAccessToken = 'INSERT INTO access_tokens(user_id) VALUES ($1) RETURNING access_token';
             const tokenResult = await db.query(createAccessToken, [userResult.rows[0].id]);
             
             // Commit the transaction
