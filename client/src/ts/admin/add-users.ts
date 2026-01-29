@@ -9,7 +9,7 @@
  Name: Add Users
  File: add-users.ts
  Description: Handles user creation and the initial access code email
- Last Edited: 26 January 2026
+ Last Edited: 28 January 2026
 */
 
 import { apiAxios } from '../utilities/api.js';

@@ -11,7 +11,7 @@
  Required by: 
  Description: This is the main file for the LAMbda server application, setting up configurations and middleware. It is run on server start.
  Functions: 
- Last Edited: 24 January 2026
+ Last Edited: 28 January 2026
 */
 
 import path, { join } from 'path';
@@ -19,6 +19,7 @@ import express, { type ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import session from 'express-session';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = join(__filename, '..');
@@ -26,18 +27,18 @@ const __dirname = join(__filename, '..');
 // Initialize database connections (the require statement itself can trigger the connection attempt in db.js)
 import db from './db.js';
 
-// Import route modules
-// const itemRoutes = require('../routes/itemRoutes.js');
-
-// Mount routers
-// app.use('/api', itemRoutes); // All routes in itemRoutes will be prefixed with /api
-
 // Initialize Express app
 const app = express();
 
+// Import route modules
+import userRoutes from '../routes/users.js';
+
+// Mount routers
+app.use('/api', userRoutes); // All routes in itemRoutes will be prefixed with /api
+
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:3000', // PRODUCTION - Replace with real host
+  origin: ['http://localhost:3000', 'http://localhost:9000'], // Allow both production and dev server ports
   credentials: true
 }));
 
