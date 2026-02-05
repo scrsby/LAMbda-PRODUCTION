@@ -11,8 +11,9 @@
  Required by: 
  Description: This is the main file for the LAMbda server application, setting up configurations and middleware. It is run on server start.
  Functions: 
- Last Edited: 25 January 2026
+ Last Edited: 28 January 2026
 */
+
 import nodemailer from "nodemailer";
 
 // Create a transporter using Ethereal test credentials.

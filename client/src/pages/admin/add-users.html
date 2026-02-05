@@ -9,10 +9,18 @@
 <body>
     <h2>Enter Emails</h2>
     <form id="add-user-form">
-        <textarea id="email-field" placeholder="Enter one email per line" rows="10" cols="30" required></textarea>
+        <input type="text" id="email-field" placeholder="Input an email" required>
+        <select id="role" required>
+            <option value="" disabled selected>Select Role</option>
+            <option value="admin">Admin</option>
+            <option value="user">Employee</option>
+            <option value="vendor">Vendor</option>
+        </select>
+        <input type="number" id="vendorId" placeholder="Booth Number">
         <button type="submit">Enter</button> 
     </form>
-    <div class="error-message" id="error-message-access"></div>
+    <div class="error-message" id="error-message"></div>
+    <div class="success-message" id="success-message"></div>
 
     <h2>User Status</h2>
        <table>

@@ -17,35 +17,30 @@
 
 import nodemailer from 'nodemailer';
 
-/*
-const mailOptions = {
-    from: '"LAMbda Team" <no-reply@terminalvelocitydevelopment.com>',
-    to: userEmail,
-    subject: "Subject",
-    text: `Text-Based Email body`,
-    html: `HTML-Based Email body`,
-  };
-*/
+export async function sendEmail(mailOptions: any) {
+    // Create transporter inside the function to ensure env vars are loaded
+    const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || '587'),
+        secure: false, // true for 465, false for other ports
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS
+        }
+    });
 
-const transporter = nodemailer.createTransport({
-    host: "email-smtp.us-east-1.amazonaws.com",
-    port: 587,
-    secure: false, // Use true for port 465, false for port 587
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-});
+    // Debug the actual auth values being used
+    console.log('Using auth:', {
+        user: process.env.SMTP_USER ? 'SET' : 'NOT SET', 
+        pass: process.env.SMTP_PASS ? 'SET' : 'NOT SET'
+    });
 
-const sendEmail = async (mailOptions: Object) => {
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Email sent: " + info.messageId);
-    return info;
-  } catch (error) {
-    console.error("Error sending email:", error);
-    throw error;
-  }
-};
-
-module.exports = { sendEmail };
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Email sent successfully:', info.messageId);
+        return info;
+    } catch (error) {
+        console.error('Error sending email:', error);
+        throw error;
+    }
+}

@@ -13,7 +13,7 @@
 */
 
 import axios from 'axios'; 
-const SERVER_LOCATION: String = "localhost:5432"
+const SERVER_LOCATION: String = "localhost:3000"
 
 export async function apiAxios(endpoint: string, options: any = {}) {
     const url = `http://${SERVER_LOCATION}${endpoint}`;
@@ -22,7 +22,11 @@ export async function apiAxios(endpoint: string, options: any = {}) {
         const response = await axios({
             url,
             data: options.body,              
-            withCredentials: true,           
+            withCredentials: true,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            },
             ...options
         });
 
@@ -34,7 +38,7 @@ export async function apiAxios(endpoint: string, options: any = {}) {
         if (err.response) {
             // Server responded with a status outside 2xx
             console.error('API error:', err.response.data);
-            throw new Error(err.response.data || `HTTP ${err.response.status}`);
+            throw err; // Throw the original error to preserve the structure
         } else if (err.request) {
             // Request was made but no response was received
             console.error('Network error:', err.request);

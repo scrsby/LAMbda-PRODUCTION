@@ -5,6 +5,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
  
 export default {
+    mode: 'development',
     entry: {
         'admin/add-users': './client/src/ts/admin/add-users.ts',
         'auth/login': './client/src/ts/auth/login.ts',
@@ -35,10 +36,20 @@ export default {
         }
     },
     devServer: {
-        static: {
-            directory: join(__dirname, "client/src"),
-        },
+        static: [
+            {
+                directory: join(__dirname, "client/src"),
+            },
+            {
+                directory: join(__dirname, "client/dist"),
+            }
+        ],
         compress: true,
-        port: 9000
+        port: 9000,
+        hot: true,
+        liveReload: true,
+        devMiddleware: {
+            writeToDisk: true
+        }
     }
 };

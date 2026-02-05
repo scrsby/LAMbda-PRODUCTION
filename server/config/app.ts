@@ -14,12 +14,14 @@
  Last Edited: 28 January 2026
 */
 
+import dotenv from 'dotenv';
+dotenv.config()
+
 import path, { join } from 'path';
 import express, { type ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import session from 'express-session';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = join(__filename, '..');
@@ -30,19 +32,19 @@ import db from './db.js';
 // Initialize Express app
 const app = express();
 
-// Import route modules
-import userRoutes from '../routes/users.js';
-
-// Mount routers
-app.use('/api', userRoutes); // All routes in itemRoutes will be prefixed with /api
-
-// Middleware
+// Set up middleware
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:9000'], // Allow both production and dev server ports
   credentials: true
 }));
 
 app.use(express.json()); // To parse JSON request bodies
+
+// Import route modules
+import adminRoutes from '../routes/admin.js';
+
+// Mount routers (AFTER middleware)
+app.use('/admin', adminRoutes); // All routes in itemRoutes will be prefixed with /admin
 
 // Session Setup
 app.use(

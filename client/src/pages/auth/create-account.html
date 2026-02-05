@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <title>Create Account</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="stylesheet" href="./css/login-style.css">
+    <link rel="stylesheet" href="../../css/login.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
     <h2>Step 1: Access Code</h2>
-        <input type="text" id="access-code" placeholder="Access Code" autocomplete="off" required>
-        <input type="text" id="email" placeholder="Email"required>
+        <input type="text" id="access-token" placeholder="Access Code" autocomplete="off" required>
+        <input type="text" id="email" placeholder="Email" required>
         <button id="access-next">Next</button>
         <div class="error-message" id="error-message-access"></div>
 
@@ -35,7 +35,6 @@
         <input type="text" id="phone" placeholder="Phone Number" required>
         <button id="details-finish">Finish</button>
         <div class="error-message" id="error-message-details"></div>
-        <script type="module" src="./js/pages/create-account.js"></script>
-
+        <script type="module" src="/dist/auth/create-account.bundle.js"></script>
 </body>
 </html>
