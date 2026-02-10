@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - LAMbda POS</title>
+    <script>
+        // Prevent flash of white in dark mode
+        if (localStorage.getItem('daynight-theme') === 'carbon') {
+            document.documentElement.classList.add('carbon');
+        }
+    </script>
+    <link rel="stylesheet" href="../../style/templatemo-daynight-style.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.dataTables.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=delete">
+    <style>
+        /* POS-specific styling */
+        .pos-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .pos-top-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .item-form-grid {
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-fields {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .form-fields label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .form-fields input {
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .form-submit {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .form-submit input[type="submit"] {
+            padding: 0.625rem 1.25rem;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .form-submit input[type="submit"]:hover {
+            opacity: 0.9;
+        }
+
+        .deals_list {
+            list-style: none;
+            padding: 0;
+            margin: 1rem 0;
+            width: 100%;
+        }
+
+        .deals_list li {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .cart-section {
+            margin-top: 1.5rem;
+        }
+
+        .cart-table-scroll {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin: 0.5rem 0;
+        }
+
+        .checkout_btn {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--accent) 0%, #9333ea 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+
+        .checkout_btn:hover {
+            opacity: 0.9;
+        }
+
+        /* DataTables styling adjustments */
+        table.dataTable {
+            border-collapse: collapse !important;
+            width: 100% !important;
+        }
+
+        table.dataTable thead th {
+            background: var(--bg-secondary);
+            color: var(--text);
+            padding: 0.75rem !important;
+            border-bottom: 2px solid var(--border-color);
+            font-weight: 600;
+        }
+
+        table.dataTable tbody td {
+            padding: 0.75rem !important;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .dataTables_wrapper {
+            color: var(--text);
+        }
+
+        .dataTables_filter input {
+            background: var(--bg);
+            border: 1px solid var(--border-color);
+            color: var(--text);
+            padding: 0.5rem;
+            border-radius: 6px;
+        }
+
+        #cart_table, #cart_table_body {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        #cart_table thead th,
+        #cart_table tfoot td {
+            background: var(--bg-secondary);
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 2px solid var(--border-color);
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        #cart_table_body tbody td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 768px) {
+            .pos-top-section {
+                grid-template-columns: 1fr;
+            }
+
+            .form-fields {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu-overlay"></div>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu">
+        <div class="mobile-menu-header">
+            <a href="register.html" class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                LAMbda POS
+            </a>
+            <button class="mobile-menu-close" onclick="closeMobileMenu()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <nav class="mobile-menu-nav">
+            <a href="register.html" class="active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                </svg>
+                Register
+            </a>
+            <a href="orders.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                Orders
+            </a>
+        </nav>
+        <div class="mobile-menu-footer">
+            <a href="../auth/login.html" class="mobile-logout-btn" id="logout-btn-mobile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Logout
+            </a>
+            <div class="theme-toggle">
+                <button class="theme-btn theme-btn-snow active" onclick="setTheme('snow')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"/>
+                        <line x1="12" y1="1" x2="12" y2="3"/>
+                        <line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/>
+                        <line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                </button>
+                <button class="theme-btn theme-btn-carbon" onclick="setTheme('carbon')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <!-- Top Navigation -->
+        <nav class="top-nav">
+            <div class="nav-container">
+                <div class="nav-left">
+                    <a href="register.html" class="logo">
+                        <div class="logo-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                        </div>
+                        LAMbda POS
+                    </a>
+                    <div class="nav-menu">
+                        <div class="nav-item">
+                            <a href="register.html" class="nav-link active">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                                </svg>
+                                Register
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="orders.html" class="nav-link">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                    <polyline points="10 9 9 9 8 9"/>
+                                </svg>
+                                Orders
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="nav-right">
+                    <div class="theme-toggle">
+                        <button class="theme-btn theme-btn-snow active" onclick="setTheme('snow')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="5"/>
+                                <line x1="12" y1="1" x2="12" y2="3"/>
+                                <line x1="12" y1="21" x2="12" y2="23"/>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                                <line x1="1" y1="12" x2="3" y2="12"/>
+                                <line x1="21" y1="12" x2="23" y2="12"/>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                            </svg>
+                        </button>
+                        <button class="theme-btn theme-btn-carbon" onclick="setTheme('carbon')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <button class="user-menu">
+                        <div class="user-avatar">S</div>
+                        <span class="user-name">Sean</span>
+                    </button>
+                    <a href="../auth/login.html" class="btn-logout" title="Logout" id="logout-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                    </a>
+                    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="3" y1="12" x2="21" y2="12"/>
+                            <line x1="3" y1="6" x2="21" y2="6"/>
+                            <line x1="3" y1="18" x2="21" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <div class="pos-grid">
+                <!-- Top Section: Search and Deals -->
+                <div class="pos-top-section">
+                    <!-- Search Section -->
+                    <div class="card">
+                        <h2 class="settings-title">Search & Enter</h2>
+
+                        <!-- Input Form -->
+                        <form id="input_box" class="item-form-grid">
+                            <div class="form-fields">
+                                <label for="id">
+                                    Seller ID
+                                    <input type="text" id="id" name="id" placeholder="Enter seller ID">
+                                </label>
+                                <label for="inv_no">
+                                    Invoice
+                                    <input type="text" id="inv_no" name="inv_no" placeholder="Enter invoice">
+                                </label>
+                                <label for="name">
+                                    Description
+                                    <input type="text" id="name" name="name" placeholder="Enter description">
+                                </label>
+                                <label for="price">
+                                    Item Price
+                                    <input type="text" id="price" name="price" placeholder="Enter price">
+                                </label>
+                            </div>
+                            <div class="form-submit">
+                                <input type="submit" value="Create Item">
+                            </div>
+                        </form>
+
+                        <!-- Search Table -->
+                        <div style="overflow-x: auto; margin-top: 1rem;">
+                            <table id="search_table" class="display responsive nowrap" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>Seller ID</th>
+                                        <th>Inv</th>
+                                        <th>Item Name</th>
+                                        <th>Item Price</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="item_list">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Deals Section -->
+                    <div class="card">
+                        <h2 class="settings-title">Running Discounts</h2>
+                        <p class="settings-desc">Active promotional discounts</p>
+
+                        <button class="btn btn-secondary" id="deals_toggle_btn" style="width: 100%; margin: 1rem 0;">
+                            Show All
+                        </button>
+
+                        <div style="text-align: center;">
+                            <ul class="deals_list">
+                                <!-- Daily deals will appear here -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cart Section -->
+                <div class="cart-section">
+                    <div class="card">
+                        <h2 class="settings-title">Shopping Cart</h2>
+                        <p class="settings-desc">Review and checkout items</p>
+
+                        <div style="overflow-x: auto; margin-top: 1rem;">
+                            <table id="cart_table" style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th>Vendor ID</th>
+                                        <th>Invoice</th>
+                                        <th>Description</th>
+                                        <th>Price</th>
+                                        <th>Discount %</th>
+                                        <th>Discount</th>
+                                        <th>Subtotal</th>
+                                        <th>Surcharge</th>
+                                        <th>Total</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                            </table>
+
+                            <div class="cart-table-scroll">
+                                <table id="cart_table_body" style="width: 100%;">
+                                    <tbody id="cart_list"></tbody>
+                                </table>
+                            </div>
+
+                            <table id="cart_table" style="width: 100%;">
+                                <tfoot>
+                                    <tr id="cart_total_row">
+                                        <td colspan="9" style="text-align:right;font-weight:bold;">
+                                            Total: $<span id="cart_total_value">0.00</span>
+                                        </td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <button class="checkout_btn" id="checkout-btn">
+                            Checkout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2026 LAMbda POS. Designed by <a href="https://www.templatemo.com" target="_blank" rel="nofollow">TemplateMo</a></p>
+        </footer>
+    </div>
+
+    <script src="../../style/templatemo-daynight-script.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
+    <script type="module" src="./js/pages/cashier.js"></script>
+</body>
+</html>

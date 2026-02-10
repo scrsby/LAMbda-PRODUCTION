@@ -421,6 +421,7 @@ input, select, textarea {
 
 	body {
 		text-decoration: none;
+		background-color: black;
 	}
 
 		body:before {
@@ -548,8 +549,13 @@ input, select, textarea {
 			}
 
 		}
-
-	h1, h2, h3, h4, h5, h6 {
+	h1 { /* HEADER -- CHANGE COLOR LATER */
+		font-weight: 900;
+		color: #03ceba;
+		letter-spacing: -0.0325em;
+	}
+	
+	h2, h3, h4, h5, h6 {
 		font-weight: 900;
 		color: inherit;
 		letter-spacing: -0.0325em;
@@ -1832,7 +1838,7 @@ input, select, textarea {
 		left: 0;
 		top: 0;
 		width: 100%;
-		background: rgba(255, 255, 255, 0.95);
+		background: rgba(27, 27, 27, 0.95);
 		height: 3em;
 		line-height: 3em;
 		box-shadow: 0 0 0.15em 0 rgba(0, 0, 0, 0.1);
