@@ -8,6 +8,7 @@ export default {
     mode: 'development',
     entry: {
         'admin/add-users': './client/src/ts/admin/add-users.ts',
+        'admin/admin-user-settings': './client/src/ts/admin/admin-user-settings.ts',
         'auth/login': './client/src/ts/auth/login.ts',
         'auth/create-account': './client/src/ts/auth/create-account.ts'
     },

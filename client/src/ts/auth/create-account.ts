@@ -1,105 +1,125 @@
 /*
-  _               __  __ _         _       
- | |        /\   |  \/  | |       | |      
- | |       /  \  | \  / | |__   __| | __ _ 
+  _               __  __ _         _
+ | |        /\   |  \/  | |       | |
+ | |       /  \  | \  / | |__   __| | __ _
  | |      / /\ \ | |\/| | '_ \ / _` |/ _` |
  | |____ / ____ \| |  | | |_) | (_| | (_| |
  |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
- 
+
  Name: Create Account
  File: create-account.ts
- Description: Handles user creation and the initial access code email
- Last Edited: 4 February 2026
+ Description: Handles user account creation with access token validation
+ Last Edited: 9 February 2026
 */
 
-// Create account functionality
-const urlParams = new URLSearchParams(window.location.search);
-        
-// Pull the specific 'token' value from URL
-const myToken = urlParams.get('token');
+import { apiAxios } from '../utilities/api.js';
 
-console.log(myToken)
-/*
-// Set the access token if found in URL
-if (myToken) {
-    const accessTokenInput = document.getElementById('access-token') as HTMLInputElement;
-    if (accessTokenInput) {
-        accessTokenInput.value = myToken;
-    }
-}
-
-// Add event listeners for form steps
+// Check for token in URL on page load
 document.addEventListener('DOMContentLoaded', () => {
-    const accessNextBtn = document.getElementById('access-next');
-    const credentialsNextBtn = document.getElementById('credentials-next');
-    const detailsFinishBtn = document.getElementById('details-finish');
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
 
-    if (accessNextBtn) {
-        accessNextBtn.addEventListener('click', handleAccessCodeStep);
-    }
-
-    if (credentialsNextBtn) {
-        credentialsNextBtn.addEventListener('click', handleCredentialsStep);
-    }
-
-    if (detailsFinishBtn) {
-        detailsFinishBtn.addEventListener('click', handleAccountCreation);
+    if (token) {
+        // Pre-fill and disable the access token field if token is in URL
+        const accessTokenInput = document.getElementById('access-token') as HTMLInputElement;
+        if (accessTokenInput) {
+            accessTokenInput.value = token;
+            accessTokenInput.disabled = true;
+            accessTokenInput.style.backgroundColor = 'var(--bg-secondary)';
+            accessTokenInput.style.cursor = 'not-allowed';
+        }
     }
 });
 
-function handleAccessCodeStep() {
-    const accessToken = (document.getElementById('access-token') as HTMLInputElement)?.value;
-    const email = (document.getElementById('email') as HTMLInputElement)?.value;
-    const errorDiv = document.getElementById('error-message-access');
+// Form submission handler
+const form = document.getElementById('create-account-form');
+form?.addEventListener('submit', function(event) {
+    event.preventDefault();
+    handleAccountCreation();
+});
 
-    if (!accessToken || !email) {
-        if (errorDiv) errorDiv.textContent = 'Please fill in all fields';
-        return;
-    }
-
-    // TODO: Validate access token with backend
-    console.log('Access code step completed');
-}
-
-function handleCredentialsStep() {
-    const username = (document.getElementById('username') as HTMLInputElement)?.value;
+/* HANDLE ACCOUNT CREATION
+* Validates form fields and submits account creation request to backend
+*/
+async function handleAccountCreation() {
+    const email = (document.getElementById('email') as HTMLInputElement)?.value.trim();
+    const accessToken = (document.getElementById('access-token') as HTMLInputElement)?.value.trim();
+    const username = (document.getElementById('username') as HTMLInputElement)?.value.trim();
     const password = (document.getElementById('password') as HTMLInputElement)?.value;
     const repeatPassword = (document.getElementById('repeat-password') as HTMLInputElement)?.value;
-    const errorDiv = document.getElementById('error-message-credentials');
+    const errorDiv = document.getElementById('error-message');
 
-    if (!username || !password || !repeatPassword) {
-        if (errorDiv) errorDiv.textContent = 'Please fill in all fields';
+    // Validation checks
+    if (!email || !accessToken || !username || !password || !repeatPassword) {
+        showError('Please fill in all fields');
         return;
     }
 
-    if (password !== repeatPassword) {
-        if (errorDiv) errorDiv.textContent = 'Passwords do not match';
+    if (!isValidEmail(email)) {
+        showError('Please enter a valid email address');
         return;
     }
 
     if (username.length < 8) {
-        if (errorDiv) errorDiv.textContent = 'Username must be at least 8 characters';
+        showError('Username must be at least 8 characters long');
         return;
     }
 
-    // TODO: Add password validation
-    console.log('Credentials step completed');
-}
-
-function handleAccountCreation() {
-    const firstName = (document.getElementById('first-name') as HTMLInputElement)?.value;
-    const lastName = (document.getElementById('last-name') as HTMLInputElement)?.value;
-    const phone = (document.getElementById('phone') as HTMLInputElement)?.value;
-    const errorDiv = document.getElementById('error-message-details');
-
-    if (!firstName || !lastName || !phone) {
-        if (errorDiv) errorDiv.textContent = 'Please fill in all fields';
+    if (password.length < 8) {
+        showError('Password must be at least 8 characters long');
         return;
     }
 
-    // TODO: Submit account creation to backend
-    console.log('Account creation completed');
+    if (password !== repeatPassword) {
+        showError('Passwords do not match');
+        return;
+    }
+
+    // Submit to backend
+    try {
+        const response = await apiAxios('/auth/createAccount', {
+            method: 'POST',
+            body: {
+                email,
+                accessToken,
+                username,
+                password
+            }
+        });
+
+        if (response.success) {
+            // Redirect to login page or dashboard
+            alert('Account created successfully! Redirecting to login...');
+            window.location.href = 'login.html';
+        }
+    } catch (error: any) {
+        console.error('Account creation error:', error);
+
+        if (error.response?.data?.message) {
+            showError(error.response.data.message);
+        } else if (error.message) {
+            showError(error.message);
+        } else {
+            showError('An error occurred while creating your account. Please try again.');
+        }
+    }
 }
 
-*/
+/* VALIDATION HELPERS */
+function isValidEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+function showError(message: string) {
+    const errorDiv = document.getElementById('error-message');
+    if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+
+        // Scroll to error message
+        errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
 export {};

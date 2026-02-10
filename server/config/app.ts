@@ -42,9 +42,11 @@ app.use(express.json()); // To parse JSON request bodies
 
 // Import route modules
 import adminRoutes from '../routes/admin.js';
+import authRoutes from '../routes/auth.js';
 
 // Mount routers (AFTER middleware)
-app.use('/admin', adminRoutes); // All routes in itemRoutes will be prefixed with /admin
+app.use('/admin', adminRoutes); // All routes in adminRoutes will be prefixed with /admin
+app.use('/auth', authRoutes); // All routes in authRoutes will be prefixed with /auth
 
 // Session Setup
 app.use(
@@ -63,6 +65,9 @@ app.use(
 app.use('/', express.static(path.join(__dirname, '..', '..', 'client', 'src', 'pages'), {
     extensions: ['html']
 }));
+
+// Serve style files (CSS, JS)
+app.use('/style', express.static(path.join(__dirname, '..', '..', 'client', 'src', 'style')));
 
 // Serve bundled JavaScript files
 app.use('/dist', express.static(path.join(__dirname, '..', '..', 'client', 'dist')));

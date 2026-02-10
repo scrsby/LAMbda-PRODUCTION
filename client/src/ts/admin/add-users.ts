@@ -36,9 +36,13 @@ function formSumbit(): void {
 */
 async function createUser(email: string) {
     try {
+        const baseUrl = window.location.origin;
         const response = await apiAxios('/admin/createNewUser', {
             method: 'POST',
-            body: { email }
+            body: { 
+                email,
+                baseUrl: baseUrl
+            }
         });
 
         // Success case - response is already the data, not response.data

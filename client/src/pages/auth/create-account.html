@@ -2,39 +2,106 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Create Account</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="stylesheet" href="../../css/login.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account - LAMbda Admin</title>
+    <script>if(localStorage.getItem("daynight-theme")==="carbon"){document.documentElement.classList.add("carbon");}</script>
+    </style>
+    <link rel="stylesheet" href="../../style/templatemo-daynight-style.css">
+    <!--
+
+TemplateMo 608 DayNight Admin
+
+https://templatemo.com/tm-608-daynight-admin
+
+-->
 </head>
 <body>
-    <h2>Step 1: Access Code</h2>
-        <input type="text" id="access-token" placeholder="Access Code" autocomplete="off" required>
-        <input type="text" id="email" placeholder="Email" required>
-        <button id="access-next">Next</button>
-        <div class="error-message" id="error-message-access"></div>
+    <!-- Theme Toggle (Fixed Position) -->
+    <div class="login-theme-toggle">
+        <div class="theme-toggle">
+            <button class="theme-btn theme-btn-snow active" onclick="setTheme('snow')" title="Snow Edition">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+            </button>
+            <button class="theme-btn theme-btn-carbon" onclick="setTheme('carbon')" title="Carbon Edition">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
 
-    <h2>Step 2: Set Credentials</h2>
-        <label id="username-check" style="display:block; font-size:0.95em; color:#555;">* Must be 8 characters</label>
-        <input type="text" id="username" placeholder="Username" autocomplete="off" required>
-    
-        <label id="password-check" style="display:block; font-size:0.95em; color:#555;">
-            * Must be at least 8 characters long, include uppercase and lowercase letters, and a number or symbol
-        </label>
-        <input type="password" id="password" placeholder="Password" required>
+    <!-- Login Page -->
+    <div class="login-page">
+        <div class="login-container">
+            <div class="login-card">
+                <div class="login-header">
+                    <div class="login-logo">
+                        <div class="logo-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                        </div>
+                        <span>LAMbda</span>
+                    </div>
+                    <h1 class="login-title">Create Your Account</h1>
+                    <p class="login-subtitle">Fill in your details to get started</p>
+                </div>
 
-        <label id="repeat-password-check" style="display:block; font-size:0.95em; color:#555;">* Must match the password</label>
-        <input type="password" id="repeat-password" placeholder="Repeat Password" required>
+                <form class="login-form" id="create-account-form">
+                    <div class="form-group">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" id="email" class="form-input" placeholder="you@example.com" required>
+                    </div>
 
-        <button id="credentials-next">Next</button>
-        <div class="error-message" id="error-message-credentials"></div>
- 
-    <h2>Step 3: Add Account Details</h2>
-        <input type="text" id="first-name" placeholder="First Name" required>
-        <input type="text" id="last-name" placeholder="Last Name" required>
-        <input type="text" id="phone" placeholder="Phone Number" required>
-        <button id="details-finish">Finish</button>
-        <div class="error-message" id="error-message-details"></div>
-        <script type="module" src="/dist/auth/create-account.bundle.js"></script>
+                    <div class="form-group">
+                        <label class="form-label">Access Token</label>
+                        <input type="text" id="access-token" class="form-input" placeholder="Enter your access token" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Username</label>
+                        <input type="text" id="username" class="form-input" placeholder="Choose a username (min 8 characters)" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Repeat Password</label>
+                        <input type="password" id="repeat-password" class="form-input" placeholder="Repeat your password" required>
+                    </div>
+
+                    <div class="error-message" id="error-message" style="display: none; padding: 12px; background-color: #fee; border: 1px solid #fcc; border-radius: 6px; color: #c33; margin-bottom: 1rem; font-size: 0.875rem;"></div>
+
+                    <button type="submit" class="btn btn-primary">
+                        Create Account
+                    </button>
+                </form>
+
+                <p class="login-footer">
+                    Already have an account? <a href="login.html">Sign in</a>
+                </p>
+            </div>
+
+            <p style="text-align: center; margin-top: 1.5rem; font-size: 0.8125rem; color: var(--text-secondary);">
+                &copy; 2026 Terminal Velocity Development. All rights reserved.
+            </p>
+        </div>
+    </div>
+
+    <script src="../../style/templatemo-daynight-script.js"></script>
+    <script src="/dist/auth/create-account.bundle.js"></script>
 </body>
 </html>
