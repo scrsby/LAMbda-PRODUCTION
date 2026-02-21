@@ -44,24 +44,20 @@ form?.addEventListener('submit', function(event) {
 async function handleAccountCreation() {
     const email = (document.getElementById('email') as HTMLInputElement)?.value.trim();
     const accessToken = (document.getElementById('access-token') as HTMLInputElement)?.value.trim();
-    const username = (document.getElementById('username') as HTMLInputElement)?.value.trim();
     const password = (document.getElementById('password') as HTMLInputElement)?.value;
     const repeatPassword = (document.getElementById('repeat-password') as HTMLInputElement)?.value;
     const errorDiv = document.getElementById('error-message');
 
+    console.log('Form values:', { email, accessToken, password, repeatPassword });
+
     // Validation checks
-    if (!email || !accessToken || !username || !password || !repeatPassword) {
+    if (!email || !accessToken || !password || !repeatPassword) {
         showError('Please fill in all fields');
         return;
     }
 
     if (!isValidEmail(email)) {
         showError('Please enter a valid email address');
-        return;
-    }
-
-    if (username.length < 8) {
-        showError('Username must be at least 8 characters long');
         return;
     }
 
@@ -82,7 +78,6 @@ async function handleAccountCreation() {
             body: {
                 email,
                 accessToken,
-                username,
                 password
             }
         });
@@ -111,7 +106,7 @@ function isValidEmail(email: string): boolean {
     return emailRegex.test(email);
 }
 
-function showError(message: string) {
+export function showError(message: string) {
     const errorDiv = document.getElementById('error-message');
     if (errorDiv) {
         errorDiv.textContent = message;

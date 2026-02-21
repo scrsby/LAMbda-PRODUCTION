@@ -14,19 +14,21 @@
 
 import { Router } from 'express';
 import db from '../config/db.js';
+import { sendEmail } from '../services/mailer.js';
+import bcrypt from 'bcrypt'; 
 
 const router = Router();
 
 /* CREATE ACCOUNT
 *  Route to create a new user account with access token validation
-*  PARAMETERS: email, accessToken, username, password
+*  PARAMETERS: email, accessToken, password
 *  RETURNS: Success message or error
 */
 router.post('/createAccount', async (req: any, res: any) => {
-    const { email, accessToken, username, password } = req.body;
+    const { email, accessToken, password } = req.body;
 
     // Validate required fields
-    if (!email || !accessToken || !username || !password) {
+    if (!email || !accessToken || !password) {
         return res.status(400).json({
             success: false,
             message: 'All fields are required'
@@ -47,6 +49,7 @@ router.post('/createAccount', async (req: any, res: any) => {
                 WHERE access_token = $1 AND email = $2
             `;
             const tokenResult = await client.query(tokenQuery, [accessToken, email]);
+            console.log('Token query result:', tokenResult.rows); // Debug log
 
             if (tokenResult.rows.length === 0) {
                 await client.query('ROLLBACK');
@@ -69,33 +72,32 @@ router.post('/createAccount', async (req: any, res: any) => {
 
             // Check if user already exists
             const userCheckQuery = `
-                SELECT id FROM users WHERE email = $1 OR username = $2
+                SELECT user_id FROM users WHERE email = $1
             `;
-            const userCheckResult = await client.query(userCheckQuery, [email, username]);
+            const userCheckResult = await client.query(userCheckQuery, [email]);
 
             if (userCheckResult.rows.length > 0) {
                 await client.query('ROLLBACK');
                 return res.status(400).json({
                     success: false,
-                    message: 'User with this email or username already exists'
+                    message: 'User with this email already exists'
                 });
             }
 
             // TODO: Hash the password using bcrypt before storing
-            // For now, we'll store it as plain text (NOT RECOMMENDED FOR PRODUCTION)
             // Install bcrypt: npm install bcrypt @types/bcrypt
             // import bcrypt from 'bcrypt';
             // const hashedPassword = await bcrypt.hash(password, 10);
 
+
             // Create the user account
             const createUserQuery = `
-                INSERT INTO users (email, username, password, created_at)
-                VALUES ($1, $2, $3, NOW())
-                RETURNING id, email, username, created_at
+                INSERT INTO users (email, password_hash, created_at)
+                VALUES ($1, $2, NOW())
+                RETURNING user_id, email, created_at
             `;
             const createUserResult = await client.query(createUserQuery, [
                 email,
-                username,
                 password // Replace with hashedPassword when bcrypt is implemented
             ]);
 
@@ -111,9 +113,8 @@ router.post('/createAccount', async (req: any, res: any) => {
                 success: true,
                 message: 'Account created successfully',
                 user: {
-                    id: createUserResult.rows[0].id,
+                    id: createUserResult.rows[0].user_id,
                     email: createUserResult.rows[0].email,
-                    username: createUserResult.rows[0].username,
                     createdAt: createUserResult.rows[0].created_at
                 }
             });
@@ -132,6 +133,62 @@ router.post('/createAccount', async (req: any, res: any) => {
             message: 'Internal server error while creating account'
         });
     }
+});
+
+/* LOGIN
+*  Params: email, password
+*  Returns: Success message or error
+*  Desc: Authenticates a user with their email and password. This is a placeholder route and should be expanded with proper session handling or JWT token generation for production use.
+*/
+router.post('/login', async (req: any, res: any) => {
+    const { email, password } = req.body;
+
+    // Validate fields
+    if (!email || !password) {
+        return res.status(400).json({
+            success: false,
+            message: 'All fields are required'
+        });
+    }
+
+     try {
+        // Connect to database to begin transaction
+        const client = await db.connect();
+
+        try {
+            // Validate username and password pair. TODO: Add hashing
+            const loginQuery = `
+                SELECT email, password_hash, user_type
+                FROM users
+                WHERE email = $1 AND password = $2
+            `;
+            const loginResult = await client.query(loginQuery, [email, password]);
+            console.log('Token query result:', loginResult.rows); // Debug log
+
+            res.status(201).json({
+                success: true,
+                message: 'Account created successfully',
+                user: {
+                    id: loginResult.rows[0].user_id,
+                    email: loginResult.rows[0].email,
+                    user_type: loginResult.rows[0].user_type
+                }
+            });
+
+        } catch(error) {
+            // Query error
+            console.error('Error creating account:', error);
+            throw error;
+        };
+     } catch(error) {
+        // Connection error
+        console.error('Error creating account:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while creating account'
+        });
+     };
+
 });
 
 export default router;

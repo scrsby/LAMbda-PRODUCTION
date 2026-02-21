@@ -66,6 +66,10 @@ app.use('/', express.static(path.join(__dirname, '..', '..', 'client', 'src', 'p
     extensions: ['html']
 }));
 
+
+// Serve image files
+app.use('/assets', express.static(path.join(__dirname, '..', '..', 'client', 'src', 'assets')));
+
 // Serve style files (CSS, JS)
 app.use('/style', express.static(path.join(__dirname, '..', '..', 'client', 'src', 'style')));
 
