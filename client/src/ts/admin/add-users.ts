@@ -12,7 +12,19 @@
  Last Edited: 4 February 2026
 */
 
-import { apiAxios } from '../utilities/api.js';
+import { apiAxios, requireAuth, logout } from '../utilities/api.js';
+
+// Check authentication on page load
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = await requireAuth();
+  if (!user) return; // Will redirect to login
+  
+  // Only allow admin users
+  if (user.userType !== 'admin') {
+    window.location.href = '/auth/login.html';
+    return;
+  }
+});
 
 const form = document.getElementById('add-user-form');
 form?.addEventListener('submit', function(event) {
@@ -20,11 +32,27 @@ form?.addEventListener('submit', function(event) {
   formSumbit();
 });
 
-function formSumbit(): void {
-  const email = (document.getElementById('email-field') as HTMLFormElement)?.value;
+// Logout button handler
+const logoutBtn = document.getElementById('logout-btn');
+logoutBtn?.addEventListener('click', async () => {
+  const success = await logout();
+  if (success) {
+    window.location.href = '/auth/login.html';
+  }
+});
 
-  console.log("Submitted email: ", email);
-  createUser(email);
+function formSumbit(): void {
+  const email = (document.getElementById('email-field') as HTMLInputElement)?.value;
+  const role = (document.getElementById('role') as HTMLSelectElement)?.value;
+  const vendorId = (document.getElementById('vendorId') as HTMLInputElement)?.value;
+  console.log("Form values:", { email, role, vendorId });
+  
+  if (!email || !role) {
+    showErrorMessage('Email and Role are required');
+    return;
+  }
+  
+  createUser(email, role, vendorId);
 }
 
 /* CREATE USER SEQUENCE
@@ -34,13 +62,15 @@ function formSumbit(): void {
 * 
 * 
 */
-async function createUser(email: string) {
+async function createUser(email: string, role: string, vendorId: string) {
     try {
         const baseUrl = window.location.origin;
         const response = await apiAxios('/admin/createNewUser', {
             method: 'POST',
             body: { 
                 email,
+                user_type: role,
+                vendor_id: vendorId,
                 baseUrl: baseUrl
             }
         });

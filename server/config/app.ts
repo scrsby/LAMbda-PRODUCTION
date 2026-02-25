@@ -40,6 +40,20 @@ app.use(cors({
 
 app.use(express.json()); // To parse JSON request bodies
 
+// Session Setup (must be before routes)
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'testtest', // Use env variable in production
+    saveUninitialized: false, // Don't create session until a login occurs
+    resave: false, // Don't save session if unmodified
+    cookie: {
+      secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+      httpOnly: true, // Prevent client-side JS access
+      maxAge: 48 * 60 * 60 * 1000 // 2 days in milliseconds
+    },
+  })
+);
+
 // Import route modules
 import adminRoutes from '../routes/admin.js';
 import authRoutes from '../routes/auth.js';
@@ -47,19 +61,6 @@ import authRoutes from '../routes/auth.js';
 // Mount routers (AFTER middleware)
 app.use('/admin', adminRoutes); // All routes in adminRoutes will be prefixed with /admin
 app.use('/auth', authRoutes); // All routes in authRoutes will be prefixed with /auth
-
-// Session Setup
-app.use(
-  session({
-    secret: 'testtest', // Replace with a strong secret in production
-    saveUninitialized: false, // Don't create session until a login occurs
-    resave: false, // Don't save session if unmodified
-    cookie: {
-      secure: false, // Set to true if using HTTPS
-      maxAge: 48 * 60 * 60 * 1000 // 2 days in milliseconds
-    },
-  })
-);
 
 // Add the client folder path
 app.use('/', express.static(path.join(__dirname, '..', '..', 'client', 'src', 'pages'), {

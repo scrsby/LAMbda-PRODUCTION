@@ -44,7 +44,7 @@ router.post('/createAccount', async (req: any, res: any) => {
 
             // Validate access token and check if it matches the email
             const tokenQuery = `
-                SELECT email, expires_at
+                SELECT email, expires_at, user_type
                 FROM access_tokens
                 WHERE access_token = $1 AND email = $2
             `;
@@ -84,21 +84,19 @@ router.post('/createAccount', async (req: any, res: any) => {
                 });
             }
 
-            // TODO: Hash the password using bcrypt before storing
-            // Install bcrypt: npm install bcrypt @types/bcrypt
-            // import bcrypt from 'bcrypt';
-            // const hashedPassword = await bcrypt.hash(password, 10);
-
+            // Hash the password using bcrypt before storing
+            const hashedPassword = await bcrypt.hash(password, 10);
 
             // Create the user account
             const createUserQuery = `
-                INSERT INTO users (email, password_hash, created_at)
-                VALUES ($1, $2, NOW())
+                INSERT INTO users (email, password_hash, user_type)
+                VALUES ($1, $2, $3)
                 RETURNING user_id, email, created_at
             `;
             const createUserResult = await client.query(createUserQuery, [
                 email,
-                password // Replace with hashedPassword when bcrypt is implemented
+                hashedPassword,
+                tokenData.user_type
             ]);
 
             // Delete or mark the access token as used
@@ -156,39 +154,223 @@ router.post('/login', async (req: any, res: any) => {
         const client = await db.connect();
 
         try {
-            // Validate username and password pair. TODO: Add hashing
+            // Fetch user by email (include profile fields for completeness check)
             const loginQuery = `
-                SELECT email, password_hash, user_type
+                SELECT user_id, email, password_hash, user_type, first_name, last_name, phone
                 FROM users
-                WHERE email = $1 AND password = $2
+                WHERE email = $1
             `;
-            const loginResult = await client.query(loginQuery, [email, password]);
-            console.log('Token query result:', loginResult.rows); // Debug log
+            const loginResult = await client.query(loginQuery, [email]);
 
-            res.status(201).json({
+            if (loginResult.rows.length === 0) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Invalid email or password'
+                });
+            }
+
+            const user = loginResult.rows[0];
+
+            // Verify password using bcrypt
+            const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+
+            if (!isPasswordValid) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Invalid email or password'
+                });
+            }
+
+            // Store user data in session
+            req.session.user = {
+                id: user.user_id,
+                email: user.email,
+                userType: user.user_type,
+                firstName: user.first_name,
+                lastName: user.last_name,
+                phone: user.phone
+            };
+
+            // Log session cookie info to console
+            console.log('Session created for user:', {
+                sessionId: req.sessionID,
+                user: req.session.user,
+                cookie: req.session.cookie
+            });
+
+            res.status(200).json({
                 success: true,
-                message: 'Account created successfully',
+                message: 'Login successful',
                 user: {
-                    id: loginResult.rows[0].user_id,
-                    email: loginResult.rows[0].email,
-                    user_type: loginResult.rows[0].user_type
+                    id: user.user_id,
+                    email: user.email,
+                    user_type: user.user_type,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    phone: user.phone
                 }
             });
 
         } catch(error) {
             // Query error
-            console.error('Error creating account:', error);
+            console.error('Error authenticating user:', error);
             throw error;
-        };
+        }
      } catch(error) {
         // Connection error
-        console.error('Error creating account:', error);
+        console.error('Error authenticating user:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error while creating account'
         });
      };
 
+});
+
+/* LOGOUT
+*  Params: none
+*  Returns: Success message or error
+*  Desc: Destroys the user's session and clears the session cookie
+*/
+router.post('/logout', (req: any, res: any) => {
+    req.session.destroy((err: Error) => {
+        if (err) {
+            console.error('Error destroying session:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Error logging out'
+            });
+        }
+        res.clearCookie('connect.sid'); // Default session cookie name
+        res.status(200).json({
+            success: true,
+            message: 'Logged out successfully'
+        });
+    });
+});
+
+/* GET CURRENT USER
+*  Params: none
+*  Returns: Current session user data or unauthorized error
+*  Desc: Returns the currently logged in user's information from their session
+*/
+router.get('/me', (req: any, res: any) => {
+    if (!req.session.user) {
+        return res.status(401).json({
+            success: false,
+            message: 'Not authenticated'
+        });
+    }
+    res.status(200).json({
+        success: true,
+        user: req.session.user
+    });
+});
+
+/* UPDATE PROFILE
+*  Params: firstName, lastName, phone (all optional)
+*  Returns: Success message or error
+*  Desc: Updates the user's profile information (first name, last name, phone)
+*/
+router.post('/update-profile', async (req: any, res: any) => {
+    // Check if user is authenticated
+    if (!req.session.user) {
+        return res.status(401).json({
+            success: false,
+            message: 'Not authenticated'
+        });
+    }
+
+    const { firstName, lastName, phone } = req.body;
+    const userId = req.session.user.id;
+
+    // Validate that at least one field is provided
+    if (!firstName && !lastName && !phone) {
+        return res.status(400).json({
+            success: false,
+            message: 'At least one field (firstName, lastName, or phone) is required'
+        });
+    }
+
+    try {
+        const client = await db.connect();
+
+        try {
+            // Build dynamic update query based on provided fields
+            const updates: string[] = [];
+            const values: any[] = [];
+            let paramIndex = 1;
+
+            if (firstName !== undefined && firstName !== null) {
+                updates.push(`first_name = $${paramIndex}`);
+                values.push(firstName);
+                paramIndex++;
+            }
+
+            if (lastName !== undefined && lastName !== null) {
+                updates.push(`last_name = $${paramIndex}`);
+                values.push(lastName);
+                paramIndex++;
+            }
+
+            if (phone !== undefined && phone !== null) {
+                updates.push(`phone = $${paramIndex}`);
+                values.push(phone);
+                paramIndex++;
+            }
+
+            // Add user_id as the last parameter
+            values.push(userId);
+
+            const updateQuery = `
+                UPDATE users
+                SET ${updates.join(', ')}
+                WHERE user_id = $${paramIndex}
+                RETURNING user_id, email, first_name, last_name, phone
+            `;
+
+            const result = await client.query(updateQuery, values);
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'User not found'
+                });
+            }
+
+            const updatedUser = result.rows[0];
+
+            // Update session with new info
+            req.session.user = {
+                ...req.session.user,
+                firstName: updatedUser.first_name,
+                lastName: updatedUser.last_name,
+                phone: updatedUser.phone
+            };
+
+            res.status(200).json({
+                success: true,
+                message: 'Profile updated successfully',
+                user: {
+                    id: updatedUser.user_id,
+                    email: updatedUser.email,
+                    firstName: updatedUser.first_name,
+                    lastName: updatedUser.last_name,
+                    phone: updatedUser.phone
+                }
+            });
+
+        } finally {
+            client.release();
+        }
+
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while updating profile'
+        });
+    }
 });
 
 export default router;

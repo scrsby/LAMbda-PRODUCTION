@@ -9,8 +9,10 @@ export default {
     entry: {
         'admin/add-users': './client/src/ts/admin/add-users.ts',
         'admin/admin-user-settings': './client/src/ts/admin/admin-user-settings.ts',
+        'admin/admin-index': './client/src/ts/admin/admin-index.ts',
         'auth/login': './client/src/ts/auth/login.ts',
-        'auth/create-account': './client/src/ts/auth/create-account.ts'
+        'auth/create-account': './client/src/ts/auth/create-account.ts',
+        'auth/account-finalization': './client/src/ts/auth/account-finalization.ts'
     },
     output: {
         path: _resolve(__dirname, "client/dist"),

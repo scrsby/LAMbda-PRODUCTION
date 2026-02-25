@@ -51,6 +51,10 @@ https://templatemo.com/tm-608-daynight-admin
                     <p class="login-subtitle">Sign in to your account to continue</p>
                 </div>
 
+                <div id="error-display" class="error-display" style="display: none; background-color: #fee2e2; border: 1px solid #ef4444; color: #dc2626; padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem;">
+                    <span id="error-message"></span>
+                </div>
+
                 <form class="login-form" id="login-form">
                     <div class="form-group">
                         <label class="form-label">Email Address</label>
@@ -70,7 +74,7 @@ https://templatemo.com/tm-608-daynight-admin
                         <label for="remember" style="font-size: 0.875rem; color: var(--text-secondary); cursor: pointer;">Remember me for 30 days</label>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary" onclick="event.preventDefault();">
+                    <button type="submit" class="btn btn-primary">
                         Sign In
                     </button>
                 </form>

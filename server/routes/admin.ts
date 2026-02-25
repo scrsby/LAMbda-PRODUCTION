@@ -147,7 +147,8 @@ router.get('/getAllAccessTokens', async (req: any, res: any) => {
 //  PARAMETERS: email
 //  RETURNS: 
 router.post('/createNewUser', async (req: any, res: any) => {
-    const { email, baseUrl } = req.body;
+    const { email, baseUrl, user_type, vendor_id } = req.body;
+    console.log('Received request to create new user with email:', email, 'user_type:', user_type, 'vendor_id:', vendor_id);
 
     // Wrap sequence in try statement to catch any miscelaneous errors
     try {
@@ -173,12 +174,23 @@ router.post('/createNewUser', async (req: any, res: any) => {
             }
         }
 
+        // Check if user already exists in users table
+        const userCheckQuery = `SELECT user_id FROM users WHERE email = $1`;
+        const userCheckResult = await db.query(userCheckQuery, [email]);
+
+        if (userCheckResult.rows.length > 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'User with this email already exists' 
+            });
+        }
+
     // USER CREATION SEQUENCE - Start transaction
     await db.query('BEGIN');
 
     try {        
-            const createAccessToken = 'INSERT INTO access_tokens(created_by, email) VALUES ($1, $2) RETURNING access_token';
-            const tokenResult = await db.query(createAccessToken, ['001', email]);
+            const createAccessToken = 'INSERT INTO access_tokens(created_by, email, user_type) VALUES ($1, $2, $3) RETURNING access_token';
+            const tokenResult = await db.query(createAccessToken, ['001', email, user_type]);
 
             // Send email BEFORE committing the transaction
             try {

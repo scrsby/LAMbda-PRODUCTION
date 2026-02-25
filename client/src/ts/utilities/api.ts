@@ -8,12 +8,22 @@
  
  Name: API Send Utility
  File: api.ts
- Description: Handles interaction with the backend with Axios
- Last Edited: 26 January 2026
+ Description: Handles interaction with the backend with Axios, including session management
+ Last Edited: 24 February 2026
 */
 
 import axios from 'axios'; 
 const SERVER_LOCATION: String = "localhost:3000"
+
+// User session type
+export interface SessionUser {
+    id: number;
+    email: string;
+    userType: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    phone?: string | null;
+}
 
 export async function apiAxios(endpoint: string, options: any = {}) {
     const url = `http://${SERVER_LOCATION}${endpoint}`;
@@ -22,7 +32,7 @@ export async function apiAxios(endpoint: string, options: any = {}) {
         const response = await axios({
             url,
             data: options.body,              
-            withCredentials: true,
+            withCredentials: true, // Required for session cookies
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers
@@ -48,4 +58,62 @@ export async function apiAxios(endpoint: string, options: any = {}) {
             throw err;
         }
     }
+}
+
+/* LOGOUT
+* Ends the user's session on the server and clears the session cookie
+* Returns: Promise<boolean> - true if logout was successful
+*/
+export async function logout(): Promise<boolean> {
+    try {
+        const response = await apiAxios('/auth/logout', {
+            method: 'POST'
+        });
+        return response.success === true;
+    } catch (error) {
+        console.error('Logout error:', error);
+        return false;
+    }
+}
+
+/* GET CURRENT USER
+* Retrieves the currently logged in user's session data
+* Returns: Promise<SessionUser | null> - user data if authenticated, null otherwise
+*/
+export async function getCurrentUser(): Promise<SessionUser | null> {
+    try {
+        const response = await apiAxios('/auth/me', {
+            method: 'GET'
+        });
+        if (response.success && response.user) {
+            return response.user as SessionUser;
+        }
+        return null;
+    } catch (error) {
+        // User is not authenticated
+        return null;
+    }
+}
+
+/* IS AUTHENTICATED
+* Quick check if user has an active session
+* Returns: Promise<boolean> - true if user is logged in
+*/
+export async function isAuthenticated(): Promise<boolean> {
+    const user = await getCurrentUser();
+    return user !== null;
+}
+
+/* REQUIRE AUTH
+* Checks if user is authenticated, redirects to login if not
+* @param redirectUrl - URL to redirect to if not authenticated (default: login page)
+* Returns: Promise<SessionUser | null> - user data if authenticated
+*/
+export async function requireAuth(redirectUrl: string = '/auth/login.html'): Promise<SessionUser | null> {
+    const user = await getCurrentUser();
+    if (!user) {
+        window.location.href = redirectUrl;
+        return null;
+    }
+    return user;
 }
