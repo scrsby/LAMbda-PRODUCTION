@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Management - DayNight Admin</title>
+    <title>User Management - LAMbda Admin</title>
     <script>if(localStorage.getItem("daynight-theme")==="carbon"){document.documentElement.classList.add("carbon");}</script>
     <link rel="stylesheet" href="../../style/templatemo-daynight-style.css">
     <!--
 
-TemplateMo 608 DayNight Admin
+TemplateMo 608 LAMbda Admin
 
 https://templatemo.com/tm-608-daynight-admin
 
@@ -23,7 +23,7 @@ https://templatemo.com/tm-608-daynight-admin
         <div class="mobile-menu-header">
             <a href="admin-index.html" class="logo">
                 <div class="logo-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
-                DayNight
+                LAMbda
             </a>
             <button class="mobile-menu-close" onclick="closeMobileMenu()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
@@ -48,7 +48,7 @@ https://templatemo.com/tm-608-daynight-admin
         <nav class="top-nav">
             <div class="nav-container">
                 <div class="nav-left">
-                    <a href="admin-index.html" class="logo"><div class="logo-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>DayNight</a>
+                    <a href="admin-index.html" class="logo"><div class="logo-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>LAMbda</a>
                     <div class="nav-menu">
                         <div class="nav-item"><a href="admin-index.html" class="nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a></div>
                         <div class="nav-item"><a href="admin-user-settings.html" class="nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Users</a></div>
@@ -72,39 +72,48 @@ https://templatemo.com/tm-608-daynight-admin
         <!-- Main Content -->
         <main class="main-content">
             <div class="page-header">
-                <h1 class="greeting">User Management</h1>
-                <p class="greeting-sub">Manage user accounts and access tokens</p>
+                <h1 class="greeting">Inventory Management</h1>
+                <p class="greeting-sub">Manage items in stock</p>
             </div>
 
-            <!-- Add Users Section -->
+            <!-- Search/Add Items Section -->
             <section class="settings-section">
                 <div class="card">
-                    <h2 class="settings-title">Add Users</h2>
-                    <p class="settings-desc">Create new user accounts and send access tokens</p>
+                    <h2 class="settings-title">Search and Add Items</h2>
+                    <p class="settings-desc">Search the catalog or add a new item to inventory</p>
 
-                    <form id="add-user-form" style="margin-bottom: 1.5rem;">
+                    <form id="inventory-form" style="margin-bottom: 1.5rem;">
                         <div class="form-group">
-                            <label class="form-label">Email Address</label>
-                            <input type="email" id="email-field" class="form-input" placeholder="Enter user email" required>
+                            <label class="form-label">Item Name</label>
+                            <input type="text" id="item-search" class="form-input" placeholder="Item Name" required>
                         </div>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                             <div class="form-group" style="margin-bottom: 0;">
-                                <label class="form-label">Role</label>
-                                <select id="role" class="form-input" required>
-                                    <option value="" disabled selected>Select Role</option>
-                                    <option value="admin">Admin</option>
-                                    <option value="user">Employee</option>
-                                    <option value="vendor">Vendor</option>
-                                </select>
+                                <label class="form-label">Vendor ID</label>
+                                <input type="text" id="vendor-id" class="form-input" placeholder="Enter vendor ID">
                             </div>
                             <div class="form-group" style="margin-bottom: 0;">
-                                <label class="form-label">Booth Number (Vendor only)</label>
-                                <input type="number" id="vendorId" class="form-input" placeholder="Enter booth number">
+                                <label class="form-label">Inventory Number</label>
+                                <input type="text" id="vendor-inventory-number" class="form-input" placeholder="Enter inventory number">
                             </div>
                         </div>
 
-                        <button type="submit" class="btn btn-primary">Create User</button>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">Item Price</label>
+                                <input type="number" id="item-price" class="form-input" placeholder="Enter item price" min="0" step="0.01">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">Item Quantity</label>
+                                <input type="number" id="item-quantity" class="form-input" placeholder="Enter item quantity" min="0" step="1">
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 0.75rem;">
+                            <button type="button" class="btn btn-secondary" id="search-item-btn">Search</button>
+                            <button type="submit" class="btn btn-primary" id="add-item-btn">Add Item</button>
+                        </div>
                     </form>
 
                     <div class="error-message" id="error-message" style="display: none; padding: 12px; background-color: #fee; border: 1px solid #fcc; border-radius: 6px; color: #c33; margin-bottom: 1rem;"></div>
@@ -112,28 +121,27 @@ https://templatemo.com/tm-608-daynight-admin
                 </div>
             </section>
 
-            <!-- User View Section -->
+            <!-- Inventory View Section -->
             <section class="settings-section">
                 <div class="card">
-                    <h2 class="settings-title">User Management</h2>
-                    <p class="settings-desc">View and manage all users with access tokens</p>
+                    <h2 class="settings-title">Inventory Management</h2>
+                    <p class="settings-desc">View and manage all items in the inventory</p>
 
                     <div style="overflow-x: auto; margin-top: 1.5rem;">
                         <table style="width: 100%; border-collapse: collapse;">
                             <thead>
                                 <tr style="border-bottom: 2px solid #e5e7eb;">
-                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Email</th>
-                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Access Token</th>
-                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Status</th>
-                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Created By</th>
-                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Created At</th>
-                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Expires At</th>
+                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Item Name</th>
+                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Vendor ID</th>
+                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Vendor Inventory Number</th>
+                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Item Price</th>
+                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Item Quantity</th>
                                     <th style="text-align: center; padding: 12px; font-weight: 600; color: #4b5563;">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="users-table-body">
+                            <tbody id="inventory-table-body">
                                 <tr>
-                                    <td colspan="7" style="text-align: center; padding: 20px; color: #9ca3af;">Loading users...</td>
+                                    <td colspan="6" style="text-align: center; padding: 20px; color: #9ca3af;">Loading items...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -142,7 +150,7 @@ https://templatemo.com/tm-608-daynight-admin
             </section>
         </main>
 
-        <footer class="footer"><p>&copy; 2026 DayNight Admin. Designed by <a href="https://www.templatemo.com" target="_blank" rel="nofollow">TemplateMo</a></p></footer>
+        <footer class="footer"><p>&copy; 2026 LAMbda Admin. Designed by <a href="https://www.templatemo.com" target="_blank" rel="nofollow">TemplateMo</a></p></footer>
     </div>
     <script src="../../style/templatemo-daynight-script.js"></script>
     <script src="/dist/admin/admin-user-settings.bundle.js"></script>

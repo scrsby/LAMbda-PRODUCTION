@@ -6,6 +6,7 @@ declare module 'express-session' {
       id: number;
       email: string;
       userType: string;
+      vendorId?: number; // Vendor booth number, only populated for vendor users
     };
   }
 }
