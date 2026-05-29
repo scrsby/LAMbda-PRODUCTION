@@ -10,6 +10,7 @@ export default {
         'admin/add-users': './client/src/ts/admin/add-users.ts',
         'admin/admin-user-settings': './client/src/ts/admin/admin-user-settings.ts',
         'admin/admin-index': './client/src/ts/admin/admin-index.ts',
+        'admin/admin-inventory-settings': './client/src/ts/admin/admin-inventory-settings.ts',
         'auth/login': './client/src/ts/auth/login.ts',
         'auth/create-account': './client/src/ts/auth/create-account.ts',
         'auth/account-finalization': './client/src/ts/auth/account-finalization.ts'

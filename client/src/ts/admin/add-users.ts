@@ -13,6 +13,7 @@
 */
 
 import { apiAxios, requireAuth, logout } from '../utilities/api.js';
+import { showErrorMessage, showSuccessMessage } from '../utilities/messages.js';
 
 // Check authentication on page load
 document.addEventListener('DOMContentLoaded', async () => {
@@ -94,29 +95,3 @@ async function createUser(email: string, role: string, vendorId: string) {
     }
 }
 
-/* MESSAGE DISPLAY FUNCTIONS
-* Params: Error message
-*
-* 
-*/
-function showErrorMessage(message: string) {
-    const errorDiv = document.getElementById('error-message');
-    const successDiv = document.getElementById('success-message');
-    if (errorDiv) {
-        errorDiv.textContent = message;
-        errorDiv.style.display = 'block';
-    } if (successDiv) {
-        successDiv.style.display = 'none';
-    }
-}
-
-function showSuccessMessage(message: string) {
-    const errorDiv = document.getElementById('error-message');
-    const successDiv = document.getElementById('success-message');
-    if (errorDiv) {
-        errorDiv.style.display = 'none';
-    } if (successDiv) {
-        successDiv.textContent = message;
-        successDiv.style.display = 'block';
-    }
-}

@@ -7,21 +7,6 @@
  |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
  
  Name: Database Connection File
- File: db.js
- Required by: app.js
- Description: Creates a pool to connect to the Postgres database
- Last Edited: 27 January 2026
-*/
-
-/*
-  _               __  __ _         _       
- | |        /\   |  \/  | |       | |      
- | |       /  \  | \  / | |__   __| | __ _ 
- | |      / /\ \ | |\/| | '_ \ / _` |/ _` |
- | |____ / ____ \| |  | | |_) | (_| | (_| |
- |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
- 
- Name: Database Connection File
  File: db.ts
  Required by: app.ts
  Description: Supabase database connection (pg pool + JS client)
@@ -41,11 +26,6 @@ dotenv.config({
     override: true,
     path: path.join(__dirname, '../../.env') 
 });
-
-// DEBUG - remove after fixing
-console.log('DATABASE_URL:', process.env.DATABASE_URL);
-console.log('__dirname:', __dirname);
-console.log('.env path:', path.join(__dirname, '../../.env'));
 
 // ============================================
 // PostgreSQL Pool (for direct SQL queries)
