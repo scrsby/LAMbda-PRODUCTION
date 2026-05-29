@@ -58,11 +58,13 @@ app.use(
 import adminRoutes from '../routes/admin.js';
 import authRoutes from '../routes/auth.js';
 import inventoryRoutes from '../routes/inventory.js';
+import posRoutes from '../routes/POS.js';
 
 // Mount routers (AFTER middleware)
 app.use('/admin', adminRoutes); // All routes in adminRoutes will be prefixed with /admin
 app.use('/auth', authRoutes); // All routes in authRoutes will be prefixed with /auth
 app.use('/inventory', inventoryRoutes); // All routes in inventoryRoutes will be prefixed with /inventory
+app.use('/POS', posRoutes); // All routes in posRoutes will be prefixed with /POS
 
 // Add the client folder path
 app.use('/', express.static(path.join(__dirname, '..', '..', 'client', 'src', 'pages'), {

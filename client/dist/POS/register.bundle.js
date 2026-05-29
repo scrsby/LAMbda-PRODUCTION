@@ -31,14 +31,14 @@ eval("{// Copyright Joyent, Inc. and other Node contributors.\n//\n// Permission
 
 /***/ },
 
-/***/ "./client/src/ts/auth/create-account.ts"
-/*!**********************************************!*\
-  !*** ./client/src/ts/auth/create-account.ts ***!
-  \**********************************************/
+/***/ "./client/src/ts/POS/register.ts"
+/*!***************************************!*\
+  !*** ./client/src/ts/POS/register.ts ***!
+  \***************************************/
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   showError: () => (/* binding */ showError)\n/* harmony export */ });\n/* harmony import */ var _utilities_api_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../utilities/api.js */ \"./client/src/ts/utilities/api.ts\");\n/*\n  _               __  __ _         _\n | |        /\\   |  \\/  | |       | |\n | |       /  \\  | \\  / | |__   __| | __ _\n | |      / /\\ \\ | |\\/| | '_ \\ / _` |/ _` |\n | |____ / ____ \\| |  | | |_) | (_| | (_| |\n |______/_/    \\_\\_|  |_|_.__/ \\__,_|\\__,_|\n\n Name: Create Account\n File: create-account.ts\n Description: Handles user account creation with access token validation\n Last Edited: 9 February 2026\n*/\n\n// Check for token in URL on page load\ndocument.addEventListener('DOMContentLoaded', () => {\n    const urlParams = new URLSearchParams(window.location.search);\n    const token = urlParams.get('token');\n    if (token) {\n        // Pre-fill and disable the access token field if token is in URL\n        const accessTokenInput = document.getElementById('access-token');\n        if (accessTokenInput) {\n            accessTokenInput.value = token;\n            accessTokenInput.disabled = true;\n            accessTokenInput.style.backgroundColor = 'var(--bg-secondary)';\n            accessTokenInput.style.cursor = 'not-allowed';\n        }\n    }\n});\n// Form submission handler\nconst form = document.getElementById('create-account-form');\nform?.addEventListener('submit', function (event) {\n    event.preventDefault();\n    handleAccountCreation();\n});\n/* HANDLE ACCOUNT CREATION\n* Validates form fields and submits account creation request to backend\n*/\nasync function handleAccountCreation() {\n    const email = document.getElementById('email')?.value.trim();\n    const accessToken = document.getElementById('access-token')?.value.trim();\n    const password = document.getElementById('password')?.value;\n    const repeatPassword = document.getElementById('repeat-password')?.value;\n    const errorDiv = document.getElementById('error-message');\n    console.log('Form values:', { email, accessToken, password, repeatPassword });\n    // Validation checks\n    if (!email || !accessToken || !password || !repeatPassword) {\n        showError('Please fill in all fields');\n        return;\n    }\n    if (!isValidEmail(email)) {\n        showError('Please enter a valid email address');\n        return;\n    }\n    if (password.length < 8) {\n        showError('Password must be at least 8 characters long');\n        return;\n    }\n    if (password !== repeatPassword) {\n        showError('Passwords do not match');\n        return;\n    }\n    // Submit to backend\n    try {\n        const response = await (0,_utilities_api_js__WEBPACK_IMPORTED_MODULE_0__.apiAxios)('/auth/createAccount', {\n            method: 'POST',\n            body: {\n                email,\n                accessToken,\n                password\n            }\n        });\n        if (response.success) {\n            // Redirect to login page or dashboard\n            alert('Account created successfully! Redirecting to login...');\n            window.location.href = 'login.html';\n        }\n    }\n    catch (error) {\n        console.error('Account creation error:', error);\n        if (error.response?.data?.message) {\n            showError(error.response.data.message);\n        }\n        else if (error.message) {\n            showError(error.message);\n        }\n        else {\n            showError('An error occurred while creating your account. Please try again.');\n        }\n    }\n}\n/* VALIDATION HELPERS */\nfunction isValidEmail(email) {\n    const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n    return emailRegex.test(email);\n}\nfunction showError(message) {\n    const errorDiv = document.getElementById('error-message');\n    if (errorDiv) {\n        errorDiv.textContent = message;\n        errorDiv.style.display = 'block';\n        // Scroll to error message\n        errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });\n    }\n}\n\n\n\n//# sourceURL=webpack://lambda/./client/src/ts/auth/create-account.ts?\n}");
+eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony import */ var _utilities_api_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../utilities/api.js */ \"./client/src/ts/utilities/api.ts\");\n/*\n  _               __  __ _         _\n | |        /\\   |  \\/  | |       | |\n | |       /  \\  | \\  / | |__   __| | __ _\n | |      / /\\ \\ | |\\/| | '_ \\ / _` |/ _` |\n | |____ / ____ \\| |  | | |_) | (_| | (_| |\n |______/_/    \\_\\_|  |_|_.__/ \\__,_|\\__,_|\n \n Name: Register POS Transaction\n File: register.ts\n Description: Handles all client-side logic for registering a POS transaction, including form handling and API communication.\n Last Edited: 29 May 2026\n*/\n\nlet ticket_items = [];\nlet unsynced_items = [];\n/// BUTTON HANDLERS\nconst createTicketBtn = document.getElementById('create-ticket-btn');\ncreateTicketBtn?.addEventListener('click', async () => {\n    const ticketId = await createTicket();\n    if (ticketId) {\n        // Store the ticket ID for later use when adding items\n        localStorage.setItem('currentTicketId', ticketId);\n        alert(`Ticket created with ID: ${ticketId}`);\n    }\n});\n/*  CREATE TICKET\n*/\nasync function createTicket() {\n    try {\n        const response = await (0,_utilities_api_js__WEBPACK_IMPORTED_MODULE_0__.apiAxios)('/POS/create-ticket', { method: 'POST' });\n        const { ticketId } = response;\n        console.log('Created ticket with ID:', ticketId);\n        return ticketId;\n    }\n    catch (error) {\n        console.error('Error creating ticket:', error);\n        alert('Failed to create ticket. Please try again.');\n    }\n}\n\n\n//# sourceURL=webpack://lambda/./client/src/ts/POS/register.ts?\n}");
 
 /***/ },
 
@@ -799,7 +799,7 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpa
 /******/ 	
 /******/ 	/* webpack/runtime/get update manifest filename */
 /******/ 	(() => {
-/******/ 		__webpack_require__.hmrF = () => ("auth_create-account." + __webpack_require__.h() + ".hot-update.json");
+/******/ 		__webpack_require__.hmrF = () => ("POS_register." + __webpack_require__.h() + ".hot-update.json");
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
@@ -1315,7 +1315,7 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpa
 /******/ 		// undefined = chunk not loaded, null = chunk preloaded/prefetched
 /******/ 		// [resolve, reject, Promise] = chunk loading, 0 = chunk loaded
 /******/ 		var installedChunks = __webpack_require__.hmrS_jsonp = __webpack_require__.hmrS_jsonp || {
-/******/ 			"auth/create-account": 0
+/******/ 			"POS/register": 0
 /******/ 		};
 /******/ 		
 /******/ 		// no chunk on demand loading
@@ -1836,7 +1836,7 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpa
 /******/ 	// Load entry module and return exports
 /******/ 	__webpack_require__("./node_modules/webpack-dev-server/client/index.js?protocol=ws%3A&hostname=0.0.0.0&port=9000&pathname=%2Fws&logging=info&overlay=true&reconnect=10&hot=true&live-reload=true");
 /******/ 	__webpack_require__("./node_modules/webpack/hot/dev-server.js");
-/******/ 	var __webpack_exports__ = __webpack_require__("./client/src/ts/auth/create-account.ts");
+/******/ 	var __webpack_exports__ = __webpack_require__("./client/src/ts/POS/register.ts");
 /******/ 	
 /******/ })()
 ;

@@ -111,9 +111,7 @@ async function loadUsersTable() {
     if (!tableBody) return;
 
     try {
-        const response = await apiAxios('/admin/getAllAccessTokens', {
-            method: 'GET'
-        });
+        const response = await apiAxios('/admin/getAllAccessTokens', { method: 'GET' });
 
         if (response.success && response.data.length > 0) {
             tableBody.innerHTML = '';

@@ -13,7 +13,8 @@ export default {
         'admin/admin-inventory-settings': './client/src/ts/admin/admin-inventory-settings.ts',
         'auth/login': './client/src/ts/auth/login.ts',
         'auth/create-account': './client/src/ts/auth/create-account.ts',
-        'auth/account-finalization': './client/src/ts/auth/account-finalization.ts'
+        'auth/account-finalization': './client/src/ts/auth/account-finalization.ts',
+        'POS/register' : './client/src/ts/POS/register.ts'
     },
     output: {
         path: _resolve(__dirname, "client/dist"),
