@@ -3,26 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orders - Lawrence Antique Mall</title>
+    <title>Order Detail - Lawrence Antique Mall</title>
     <script>
-        // Prevent flash of white in dark mode
         if (localStorage.getItem('daynight-theme') === 'carbon') {
             document.documentElement.classList.add('carbon');
         }
     </script>
     <link rel="stylesheet" href="../../style/POS/orders.css">
     <link rel="stylesheet" href="../../style/templatemo-daynight-style.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.dataTables.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=delete">
-    
-   
 </head>
 <body>
-    <!-- Mobile Menu Overlay -->
     <div class="mobile-menu-overlay"></div>
 
-    <!-- Mobile Menu -->
     <div class="mobile-menu">
         <div class="mobile-menu-header">
             <a href="register.html" class="logo">
@@ -101,7 +93,6 @@
     </div>
 
     <div class="app-container">
-        <!-- Top Navigation -->
         <nav class="top-nav">
             <div class="nav-container">
                 <div class="nav-left">
@@ -181,61 +172,74 @@
             </div>
         </nav>
 
-        <!-- Main Content -->
         <main class="main-content">
+            <div id="order-detail-error" class="card orders-error-state" style="display:none;"></div>
 
-            <!-- Search & Filter Bar -->
-            <div class="card" style="margin-bottom: 0.75rem;">
-                <div class="section-header-row">
-                    <h2 class="settings-title">Orders</h2>
+            <div id="order-detail-content">
+                <div class="card" style="margin-bottom: 0.75rem;">
+                    <div class="section-header-row">
+                        <div>
+                            <h2 class="settings-title" id="ticket-detail-title">Ticket Detail</h2>
+                            <p class="settings-desc">Full ticket information and all associated items.</p>
+                        </div>
+                        <a href="orders.html" class="btn btn-secondary">Back to Orders</a>
+                    </div>
                 </div>
-                <div class="ticket-toolbar">
-                    <label class="ticket-toolbar-field">
-                        Order ID
-                        <input type="text" id="filter-id" placeholder="Search by ticket ID...">
-                    </label>
-                    <label class="ticket-toolbar-field">
-                        Search Items
-                        <input type="text" id="search-items" placeholder="Search by item description...">
-                    </label>
-                    <label class="ticket-toolbar-field">
-                        Start Time
-                        <input type="datetime-local" id="filter-start">
-                    </label>
-                    <label class="ticket-toolbar-field">
-                        End Time
-                        <input type="datetime-local" id="filter-end">
-                    </label>
-                    <label class="ticket-toolbar-field">
-                        Employee
-                        <input type="text" id="filter-employee" placeholder="Filter by employee...">
-                    </label>
-                    <div class="ticket-toolbar-actions">
-                        <button type="button" class="btn btn-primary" id="search-btn">Search</button>
-                        <button type="button" class="btn btn-secondary" id="clear-btn">Clear</button>
+
+                <div class="card" style="margin-bottom: 0.75rem;">
+                    <div class="ticket-detail-grid">
+                        <div class="ticket-detail-field">
+                            <span class="ticket-detail-label">Ticket ID</span>
+                            <span class="ticket-detail-value" id="detail-ticket-id">-</span>
+                        </div>
+                        <div class="ticket-detail-field">
+                            <span class="ticket-detail-label">Created</span>
+                            <span class="ticket-detail-value" id="detail-created-at">-</span>
+                        </div>
+                        <div class="ticket-detail-field">
+                            <span class="ticket-detail-label">Employee</span>
+                            <span class="ticket-detail-value" id="detail-employee">-</span>
+                        </div>
+                        <div class="ticket-detail-field">
+                            <span class="ticket-detail-label">Cashier ID</span>
+                            <span class="ticket-detail-value" id="detail-cashier-id">-</span>
+                        </div>
+                        <div class="ticket-detail-field">
+                            <span class="ticket-detail-label">Status</span>
+                            <span class="ticket-detail-value" id="detail-status">-</span>
+                        </div>
+                        <div class="ticket-detail-field">
+                            <span class="ticket-detail-label">Total</span>
+                            <span class="ticket-detail-value" id="detail-total">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-header-row">
+                        <h2 class="settings-title">Ticket Items</h2>
+                    </div>
+                    <div class="ticket-items-scroll">
+                        <table id="ticket_items_table" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Item ID</th>
+                                    <th>Vendor ID</th>
+                                    <th>Inventory Code</th>
+                                    <th>Name</th>
+                                    <th>Qty</th>
+                                    <th>Base Price</th>
+                                    <th>Discount %</th>
+                                    <th>Discount $</th>
+                                    <th>Final Price</th>
+                                    <th>Line Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ticket-items-list"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-
-            <!-- Orders Table -->
-            <div class="card">
-                <div style="overflow-x: auto;">
-                    <table id="orders_table" class="display responsive nowrap" style="width: 100%;">
-                        <thead>
-                            <tr>
-                                <th>Ticket ID</th>
-                                <th>Date / Time</th>
-                                <th>Employee</th>
-                                <th>Total</th>
-                                <th>See More</th>
-                            </tr>
-                        </thead>
-                        <tbody id="orders_list">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
         </main>
 
         <footer class="footer">
@@ -244,9 +248,6 @@
     </div>
 
     <script src="../../style/templatemo-daynight-script.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
-    <script src="/dist/POS/orders.bundle.js"></script>
+    <script src="/dist/POS/order-detail.bundle.js"></script>
 </body>
 </html>
