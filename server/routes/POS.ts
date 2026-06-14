@@ -20,6 +20,123 @@ import { sendEmail } from '../services/mailer.js'
 
 const router = express.Router();
 
+async function getTicketDetail(ticketId: string) {
+    const ticketResult = await db.query(
+        `SELECT t.ticket_id,
+                t.cashier_id,
+                t.created_at,
+                t.status AS ticket_status,
+                COALESCE(t.total, 0)::float AS total,
+                COALESCE(
+                    NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
+                    u.email,
+                    CONCAT('Employee #', t.cashier_id::text)
+                ) AS employee_name
+         FROM tickets t
+         LEFT JOIN users u ON u.user_id = t.cashier_id
+         WHERE t.ticket_id = $1`,
+        [ticketId]
+    );
+
+    if (ticketResult.rows.length === 0) {
+        return null;
+    }
+
+    const itemsResult = await db.query(
+        `SELECT ticket_item_id,
+                ticket_id,
+                vendor_id,
+                inventory_code         AS vendor_inventory_id,
+                item_name              AS name,
+                base_price::float      AS vendor_price,
+                discount_percent,
+                discount_amount::float AS discount_amount,
+                final_price::float     AS final_price,
+                commission::float      AS commission,
+                payout::float          AS payout,
+                quantity
+         FROM ticket_items
+         WHERE ticket_id = $1`,
+        [ticketId]
+    );
+
+    return {
+        ticket: ticketResult.rows[0],
+        items: itemsResult.rows
+    };
+}
+
+async function getTicketSummaries(filters: {
+    orderId?: string;
+    itemSearch?: string;
+    startDate?: string;
+    endDate?: string;
+    employee?: string;
+}) {
+    const conditions: string[] = [];
+    const values: string[] = [];
+
+    if (filters.orderId) {
+        values.push(`%${filters.orderId}%`);
+        conditions.push(`CAST(t.ticket_id AS TEXT) ILIKE $${values.length}`);
+    }
+
+    if (filters.itemSearch) {
+        values.push(`%${filters.itemSearch}%`);
+        conditions.push(
+            `EXISTS (
+                SELECT 1
+                FROM ticket_items ti
+                WHERE ti.ticket_id = t.ticket_id
+                  AND ti.item_name ILIKE $${values.length}
+            )`
+        );
+    }
+
+    if (filters.startDate) {
+        values.push(filters.startDate);
+        conditions.push(`t.created_at >= $${values.length}`);
+    }
+
+    if (filters.endDate) {
+        values.push(filters.endDate);
+        conditions.push(`t.created_at <= $${values.length}`);
+    }
+
+    if (filters.employee) {
+        values.push(`%${filters.employee}%`);
+        conditions.push(
+            `COALESCE(
+                NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
+                u.email,
+                CONCAT('Employee #', t.cashier_id::text)
+            ) ILIKE $${values.length}`
+        );
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const result = await db.query(
+        `SELECT t.ticket_id,
+                t.cashier_id,
+                t.created_at,
+                t.status AS ticket_status,
+                COALESCE(t.total, 0)::float AS total,
+                COALESCE(
+                    NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
+                    u.email,
+                    CONCAT('Employee #', t.cashier_id::text)
+                ) AS employee_name
+         FROM tickets t
+         LEFT JOIN users u ON u.user_id = t.cashier_id
+         ${whereClause}
+         ORDER BY t.created_at DESC`,
+        values
+    );
+
+    return result.rows;
+}
+
 /* CREATE TICKET
 * Endpoint to create a new receipt and process a transaction
 * Request body is empty, return the new receipt ID and details for items to be added
@@ -121,43 +238,11 @@ router.post('/update-ticket', async (req, res) => {
 router.get('/ticket/:id', async (req, res) => {
     const ticketId = req.params.id;
     try {
-        const ticketResult = await db.query(
-            `SELECT t.ticket_id,
-                    t.cashier_id,
-                    t.created_at,
-                    t.status AS ticket_status,
-                    COALESCE(t.total, 0)::float AS total,
-                    COALESCE(
-                        NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
-                        u.email,
-                        CONCAT('Employee #', t.cashier_id::text)
-                    ) AS employee_name
-             FROM tickets t
-             LEFT JOIN users u ON u.user_id = t.cashier_id
-             WHERE t.ticket_id = $1`,
-            [ticketId]
-        );
-        if (ticketResult.rows.length === 0) {
+        const ticketDetail = await getTicketDetail(ticketId);
+        if (!ticketDetail) {
             return res.status(404).json({ error: 'Ticket not found' });
         }
-        const itemsResult = await db.query(
-            `SELECT ticket_item_id,
-                    ticket_id,
-                    vendor_id,
-                    inventory_code        AS vendor_inventory_id,
-                    item_name             AS name,
-                    base_price::float     AS vendor_price,
-                    discount_percent,
-                    discount_amount::float AS discount_amount,
-                    final_price::float    AS final_price,
-                    commission::float     AS commission,
-                    payout::float         AS payout,
-                    quantity
-             FROM ticket_items
-             WHERE ticket_id = $1`,
-            [ticketId]
-        );
-        res.status(200).json({ ticket: ticketResult.rows[0], items: itemsResult.rows });
+        res.status(200).json(ticketDetail);
     } catch (error) {
         console.error('Error fetching ticket:', error);
         res.status(500).json({ error: 'Failed to fetch ticket' });
@@ -174,69 +259,15 @@ router.get('/tickets', async (req, res) => {
     const endDate = req.query.endDate?.toString().trim();
     const employee = req.query.employee?.toString().trim();
 
-    const conditions: string[] = [];
-    const values: string[] = [];
-
-    if (orderId) {
-        values.push(`%${orderId}%`);
-        conditions.push(`CAST(t.ticket_id AS TEXT) ILIKE $${values.length}`);
-    }
-
-    if (itemSearch) {
-        values.push(`%${itemSearch}%`);
-        conditions.push(
-            `EXISTS (
-                SELECT 1
-                FROM ticket_items ti
-                WHERE ti.ticket_id = t.ticket_id
-                  AND ti.item_name ILIKE $${values.length}
-            )`
-        );
-    }
-
-    if (startDate) {
-        values.push(startDate);
-        conditions.push(`t.created_at >= $${values.length}`);
-    }
-
-    if (endDate) {
-        values.push(endDate);
-        conditions.push(`t.created_at <= $${values.length}`);
-    }
-
-    if (employee) {
-        values.push(`%${employee}%`);
-        conditions.push(
-            `COALESCE(
-                NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
-                u.email,
-                CONCAT('Employee #', t.cashier_id::text)
-            ) ILIKE $${values.length}`
-        );
-    }
-
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
     try {
-        const result = await db.query(
-            `SELECT t.ticket_id,
-                    t.cashier_id,
-                    t.created_at,
-                    t.status AS ticket_status,
-                    COALESCE(t.total, 0)::float AS total,
-                    COALESCE(
-                        NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
-                        u.email,
-                        CONCAT('Employee #', t.cashier_id::text)
-                    ) AS employee_name
-             FROM tickets t
-             LEFT JOIN users u ON u.user_id = t.cashier_id
-             ${whereClause}
-             ORDER BY t.created_at DESC`,
-            values
-        );
-
-        res.status(200).json({ tickets: result.rows });
+        const tickets = await getTicketSummaries({
+            orderId,
+            itemSearch,
+            startDate,
+            endDate,
+            employee
+        });
+        res.status(200).json({ tickets });
     } catch (error) {
         console.error('Error fetching tickets:', error);
         res.status(500).json({ error: 'Failed to fetch tickets' });
@@ -256,16 +287,41 @@ router.post('/close-receipt', async (req, res) => {
 * Endpoint to retrieve all receipts for a given day or time period
 */
 router.get('/receipts', async (req, res) => {
-    req.url = `/tickets${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`;
-    router.handle(req, res, () => undefined);
+    const orderId = req.query.orderId?.toString().trim();
+    const itemSearch = req.query.itemSearch?.toString().trim();
+    const startDate = req.query.startDate?.toString().trim();
+    const endDate = req.query.endDate?.toString().trim();
+    const employee = req.query.employee?.toString().trim();
+
+    try {
+        const tickets = await getTicketSummaries({
+            orderId,
+            itemSearch,
+            startDate,
+            endDate,
+            employee
+        });
+        res.status(200).json({ tickets });
+    } catch (error) {
+        console.error('Error fetching receipts:', error);
+        res.status(500).json({ error: 'Failed to fetch receipts' });
+    }
 });
 
 /* GET TICKET DETAILS
 * Endpoint to retrieve details of a specific receipt
 */
 router.get('/receipt/:id', async (req, res) => {
-    req.url = `/ticket/${req.params.id}`;
-    router.handle(req, res, () => undefined);
+    try {
+        const ticketDetail = await getTicketDetail(req.params.id);
+        if (!ticketDetail) {
+            return res.status(404).json({ error: 'Receipt not found' });
+        }
+        res.status(200).json(ticketDetail);
+    } catch (error) {
+        console.error('Error fetching receipt:', error);
+        res.status(500).json({ error: 'Failed to fetch receipt' });
+    }
 });
 
 export default router;
