@@ -3,280 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - LAMbda POS</title>
+    <title>Register - Lawrence Antique Mall</title>
     <script>
         // Prevent flash of white in dark mode
         if (localStorage.getItem('daynight-theme') === 'carbon') {
             document.documentElement.classList.add('carbon');
         }
     </script>
+    <link rel="stylesheet" href="../../style/POS/register.css">
     <link rel="stylesheet" href="../../style/templatemo-daynight-style.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.dataTables.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=delete">
-    <style>
-        /* POS-specific styling */
-        .top-nav {
-            min-height: auto;
-        }
-
-        .nav-container {
-            padding: 0.5rem 0.75rem;
-        }
-
-        .main-content {
-            padding: 0.75rem;
-        }
-
-        .page-header {
-            margin-bottom: 0.75rem;
-        }
-
-        .card {
-            padding: 0.75rem;
-        }
-
-        .settings-title {
-            font-size: 1rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .settings-desc {
-            font-size: 0.8125rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .btn,
-        .btn-logout {
-            padding: 0.45rem 0.7rem;
-            min-height: auto;
-        }
-
-        .pos-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 0.75rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .ticket-toolbar {
-            display: flex;
-            align-items: end;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .ticket-toolbar-field {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-            min-width: 220px;
-            flex: 1 1 220px;
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-
-        .ticket-toolbar-field input {
-            padding: 0.375rem 0.5rem;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background: var(--bg);
-            color: var(--text);
-        }
-
-        .ticket-toolbar-actions {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .ticket-toolbar-actions .btn {
-            min-width: 130px;
-        }
-
-        .pos-top-section {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 0.75rem;
-        }
-
-        .item-form-grid {
-            display: grid;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .section-header-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .form-fields {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.5rem;
-        }
-
-        .form-fields label {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-
-        .form-fields input {
-            padding: 0.375rem 0.5rem;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background: var(--bg);
-            color: var(--text);
-        }
-
-        .form-submit {
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        .form-submit input[type="submit"] {
-            padding: 0.45rem 0.8rem;
-            background: var(--accent);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-        }
-
-        .form-submit input[type="submit"]:hover {
-            opacity: 0.9;
-        }
-
-        .deals_list {
-            list-style: none;
-            padding: 0;
-            margin: 0.5rem 0;
-            width: 100%;
-        }
-
-        .deals_list li {
-            padding: 0.4rem 0.25rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .cart-section {
-            margin-top: 0.75rem;
-        }
-
-        .cart-table-scroll {
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            margin: 0.25rem 0;
-        }
-
-        .checkout_btn {
-            width: 100%;
-            padding: 0.625rem;
-            background: linear-gradient(135deg, var(--accent) 0%, #9333ea 100%);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 0.5rem;
-        }
-
-        .checkout_btn:hover {
-            opacity: 0.9;
-        }
-
-        /* DataTables styling adjustments */
-        table.dataTable {
-            border-collapse: collapse !important;
-            width: 100% !important;
-        }
-
-        table.dataTable thead th {
-            background: var(--bg-secondary);
-            color: var(--text);
-            padding: 0.45rem !important;
-            border-bottom: 2px solid var(--border-color);
-            font-weight: 600;
-        }
-
-        table.dataTable tbody td {
-            padding: 0.35rem 0.45rem !important;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-secondary);
-        }
-
-        .dataTables_wrapper {
-            color: var(--text);
-        }
-
-        .dataTables_filter input {
-            background: var(--bg);
-            border: 1px solid var(--border-color);
-            color: var(--text);
-            padding: 0.35rem 0.45rem;
-            border-radius: 4px;
-        }
-
-        #cart_table, #cart_table_body {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        #cart_table thead th,
-        #cart_table tfoot td {
-            background: var(--bg-secondary);
-            padding: 0.45rem;
-            text-align: left;
-            border-bottom: 2px solid var(--border-color);
-            font-weight: 600;
-            color: var(--text);
-        }
-
-        #cart_table_body tbody td {
-            padding: 0.35rem 0.45rem;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-secondary);
-        }
-
-        @media (max-width: 768px) {
-            .ticket-toolbar {
-                align-items: stretch;
-            }
-
-            .section-header-row {
-                align-items: stretch;
-            }
-
-            .ticket-toolbar-actions {
-                width: 100%;
-            }
-
-            .ticket-toolbar-actions .btn {
-                flex: 1 1 0;
-            }
-
-            .pos-top-section {
-                grid-template-columns: 1fr;
-            }
-
-            .form-fields {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=delete,edit">
+    
 </head>
 <body>
     <!-- Mobile Menu Overlay -->
@@ -291,7 +30,7 @@
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                     </svg>
                 </div>
-                LAMbda POS
+                Lawrence Antique Mall
             </a>
             <button class="mobile-menu-close" onclick="closeMobileMenu()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -317,6 +56,15 @@
                     <polyline points="10 9 9 9 8 9"/>
                 </svg>
                 Orders
+            </a>
+            <a href="../admin/admin-index.html" id="admin-controls-btn-mobile" style="display:none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+                Admin Controls
             </a>
         </nav>
         <div class="mobile-menu-footer">
@@ -362,7 +110,7 @@
                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                             </svg>
                         </div>
-                        LAMbda POS
+                        Lawrence Antique Mall
                     </a>
                     <div class="nav-menu">
                         <div class="nav-item">
@@ -413,6 +161,7 @@
                         <div class="user-avatar">S</div>
                         <span class="user-name">Sean</span>
                     </button>
+                    <a href="../admin/admin-index.html" class="btn btn-secondary" id="admin-controls-btn" style="display:none; font-size:0.8125rem;">Admin Controls</a>
                     <a href="../auth/login.html" class="btn-logout" title="Logout" id="logout-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -436,17 +185,20 @@
 
             <div class="card" style="margin-bottom: 1.5rem;">
                 <div class="ticket-toolbar">
-                    <label for="ticked_id" class="ticket-toolbar-field">
+                    <label for="ticket_id" class="ticket-toolbar-field">
                         Ticket ID
-                        <input type="text" id="ticked_id" name="ticked_id" placeholder="Enter ticket ID">
+                        <input type="text" id="ticket-id" name="ticket_id" placeholder="Enter ticket ID">
                     </label>
 
                     <div class="ticket-toolbar-actions">
-                        <button type="button" class="btn btn-secondary" id="create-ticket-btn">Create New</button>
-                        <button type="button" class="btn btn-primary" id="update-ticket-btn">Update</button>
+                        <button type="button" class="btn btn-secondary" id="secondary-btn">Search</button>
+                        <button type="button" class="btn btn-primary" id="primary-btn">Create New</button>
                     </div>
                 </div>
             </div>
+
+            <div id="error-message" style="display:none; padding: 12px; background-color: #fee; border: 1px solid #fcc; border-radius: 6px; color: #c33; margin-bottom: 1rem;"></div>
+            <div id="success-message" style="display:none; padding: 12px; background-color: #efe; border: 1px solid #cfc; border-radius: 6px; color: #3c3; margin-bottom: 1rem;"></div>
 
             <div class="pos-grid">
                 <!-- Top Section: Search and Deals -->
@@ -455,33 +207,33 @@
                     <div class="card">
                         <div class="section-header-row">
                             <h2 class="settings-title">Search & Enter</h2>
-                            <button type="submit" form="input_box" class="btn btn-primary">Create Item</button>
+                            <button class="btn btn-primary" id="create-item-btn">Create Item</button>
                         </div>
 
                         <!-- Input Form -->
                         <form id="input_box" class="item-form-grid">
                             <div class="form-fields">
-                                <label for="id">
-                                    Seller ID
-                                    <input type="text" id="id" name="id" placeholder="Enter seller ID">
+                                <label for="vendor-id">
+                                    Vendor ID
+                                    <input type="text" id="vendor-id" name="vendor-id" placeholder="Enter vendor ID">
                                 </label>
-                                <label for="inv_no">
-                                    Invoice
-                                    <input type="text" id="inv_no" name="inv_no" placeholder="Enter invoice">
+                                <label for="vendor-inventory-id">
+                                    Vendor Inventory ID
+                                    <input type="text" id="vendor-inventory-id" name="vendor-inventory-id" placeholder="Enter vendor inventory ID">
                                 </label>
-                                <label for="name">
+                                <label for="item-name">
                                     Description
-                                    <input type="text" id="name" name="name" placeholder="Enter description">
+                                    <input type="text" id="item-name" name="item-name" placeholder="Enter description">
                                 </label>
-                                <label for="price">
-                                    Item Price
-                                    <input type="text" id="price" name="price" placeholder="Enter price">
+                                <label for="vendor-price">
+                                    Tag Price
+                                    <input type="text" id="vendor-price" name="vendor-price" placeholder="Enter price">
                                 </label>
                             </div>
                         </form>
 
                         <!-- Search Table -->
-                        <div style="overflow-x: auto; margin-top: 1rem;">
+                        <div class="cart-table-wrapper" style="margin-top: 1rem;">
                             <table id="search_table" class="display responsive nowrap" style="width:100%">
                                 <thead>
                                     <tr>
@@ -521,34 +273,36 @@
                         <h2 class="settings-title">Shopping Cart</h2>
                         <p class="settings-desc">Review and checkout items</p>
 
-                        <div style="overflow-x: auto; margin-top: 1rem;">
-                            <table id="cart_table" style="width: 100%;">
+                        <div class="cart-table-wrapper" style="margin-top: 1rem;">
+                            <table id="cart_table" style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+                                <colgroup>
+                                    <col style="width: 9%">
+                                    <col style="width: 10%">
+                                    <col style="width: 20%">
+                                    <col style="width: 6%">
+                                    <col style="width: 11%">
+                                    <col style="width: 9%">
+                                    <col style="width: 11%">
+                                    <col style="width: 11%">
+                                    <col style="width: 13%">
+                                </colgroup>
                                 <thead>
                                     <tr>
-                                        <th>Vendor ID</th>
-                                        <th>Invoice</th>
-                                        <th>Description</th>
-                                        <th>Price</th>
-                                        <th>Discount %</th>
-                                        <th>Discount</th>
+                                        <th>Vendor</th>
+                                        <th>Inv. ID</th>
+                                        <th>Name</th>
+                                        <th>Qty</th>
                                         <th>Subtotal</th>
-                                        <th>Surcharge</th>
+                                        <th>Disc %</th>
+                                        <th>Disc Amt</th>
                                         <th>Total</th>
                                         <th></th>
                                     </tr>
                                 </thead>
-                            </table>
-
-                            <div class="cart-table-scroll">
-                                <table id="cart_table_body" style="width: 100%;">
-                                    <tbody id="cart_list"></tbody>
-                                </table>
-                            </div>
-
-                            <table id="cart_table" style="width: 100%;">
+                                <tbody id="cart_list"></tbody>
                                 <tfoot>
                                     <tr id="cart_total_row">
-                                        <td colspan="9" style="text-align:right;font-weight:bold;">
+                                        <td colspan="8" style="text-align:right;font-weight:bold;">
                                             Total: $<span id="cart_total_value">0.00</span>
                                         </td>
                                         <td></td>
@@ -566,8 +320,31 @@
         </main>
 
         <footer class="footer">
-            <p>&copy; 2026 LAMbda POS. Designed by <a href="https://www.templatemo.com" target="_blank" rel="nofollow">TemplateMo</a></p>
+            <p>&copy; 2026 Lawrence Antique Mall.</p>
         </footer>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div id="checkout-overlay" class="checkout-overlay" style="display:none;">
+        <div class="checkout-modal">
+            <div class="checkout-modal-top">
+                <h2 class="checkout-modal-title">Checkout</h2>
+                <button class="checkout-modal-clover-btn" id="send-to-clover-btn" disabled>
+                    Send to Clover
+                </button>
+            </div>
+            <div class="checkout-modal-bottom">
+                <button class="checkout-modal-action-btn checkout-modal-paid-btn" id="mark-paid-btn" disabled>
+                    Mark Paid
+                </button>
+                <button class="checkout-modal-action-btn checkout-modal-failed-btn" id="mark-failed-btn" disabled>
+                    Mark Failed
+                </button>
+                <button class="checkout-modal-action-btn checkout-modal-back-btn" id="checkout-go-back-btn">
+                    Go Back
+                </button>
+            </div>
+        </div>
     </div>
 
     <script src="../../style/templatemo-daynight-script.js"></script>

@@ -1,0 +1,17 @@
+# Dependencies – reinstalled inside the image
+node_modules
+
+# Build artefacts – produced inside the image
+dist
+client/dist
+
+# Environment files – injected at runtime via ECS task definition or Secrets Manager
+.env
+.env.*
+
+# Development / tooling files
+.git
+.gitignore
+README.md
+tasks.md
+*.log

@@ -26,7 +26,7 @@ interface InventoryItem {
     itemId: number;
     itemName: string;
     vendorId: number;
-    inventoryNumber: string | number;
+    inventoryCode: string | number;
     price: number;
     quantity: number;
 }
@@ -46,6 +46,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     hideSearchQueryMessage();
     loadInventoryTable();
+
+    // Logout button handlers
+    document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await logout();
+        window.location.href = '../auth/login.html';
+    });
+    document.getElementById('logout-btn-mobile')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await logout();
+        window.location.href = '../auth/login.html';
+    });
 });
 
 // Item form handler
@@ -60,12 +72,11 @@ inventoryForm?.addEventListener('submit', async (event) => {
 
     const itemName = (document.getElementById('item-name') as HTMLInputElement)?.value.trim();
     const vendorIdValue = (document.getElementById('vendor-id') as HTMLInputElement)?.value.trim();
-    const inventoryNumberValue = (document.getElementById('vendor-inventory-number') as HTMLInputElement)?.value.trim();
+    const inventoryCodeValue = (document.getElementById('vendor-inventory-code') as HTMLInputElement)?.value.trim();
     const itemPriceValue = (document.getElementById('item-price') as HTMLInputElement)?.value.trim();
     const quantityValue = (document.getElementById('item-quantity') as HTMLInputElement)?.value.trim();
 
     const vendorId = parseInt(vendorIdValue, 10);
-    const inventoryNumber = parseInt(inventoryNumberValue, 10);
     const itemPrice = parseFloat(itemPriceValue);
     const qty = parseInt(quantityValue, 10);
     const quantity = !qty || qty <= 0 ? 1 : qty; // Default to 1 if invalid quantity
@@ -75,7 +86,7 @@ inventoryForm?.addEventListener('submit', async (event) => {
         await searchItems({
             itemName,
             vendorId: vendorIdValue,
-            inventoryNumber: inventoryNumberValue,
+            inventoryCode: inventoryCodeValue,
             price: itemPriceValue,
             quantity: quantityValue
         });
@@ -87,7 +98,7 @@ inventoryForm?.addEventListener('submit', async (event) => {
             return;
         }
         try {
-            await addItem(itemName, vendorId, inventoryNumber, itemPrice, quantity);
+            await addItem(itemName, vendorId, inventoryCodeValue || null, itemPrice, quantity);
             showSuccessMessage('Item added successfully!');
             hideSearchQueryMessage();
             loadInventoryTable();
@@ -120,7 +131,7 @@ logoutBtn?.addEventListener('click', async () => {
 * PARAMS - name: string, description: string, price: number, quantity: number
 * RETURNS - void
 */
-async function addItem(itemName: string, vendorId: number, inventoryNumber: number, price: number, quantity: number): Promise<void> {
+async function addItem(itemName: string, vendorId: number, inventoryCode: string | null, price: number, quantity: number): Promise<void> {
 
     // Call the addItem route with the form data
     const response = await apiAxios('/inventory/add', {
@@ -128,7 +139,7 @@ async function addItem(itemName: string, vendorId: number, inventoryNumber: numb
             body: {
                 itemName: itemName,
                 vendorId: vendorId,
-                inventoryNumber: inventoryNumber,
+                inventoryCode: inventoryCode,
                 price: price,
                 quantity: quantity
             }
@@ -182,12 +193,19 @@ function renderInventoryTable(items: InventoryItem[], emptyMessage: string): voi
         row.innerHTML = `
             <td style="padding: 12px; color: #374151;">${item.itemName}</td>
             <td style="padding: 12px; color: #6b7280;">${item.vendorId}</td>
-            <td style="padding: 12px; color: #6b7280;">${item.inventoryNumber}</td>
+            <td style="padding: 12px; color: #6b7280;">${item.inventoryCode ?? ''}</td>
             <td style="padding: 12px; color: #6b7280;">${formattedPrice}</td>
             <td style="padding: 12px; color: #6b7280;">${item.quantity}</td>
-            <td style="padding: 12px; text-align: center; color: #9ca3af;">Edit/Delete coming soon</td>
+            <td style="padding: 12px; text-align: center;">
+                <button class="btn btn-danger delete-item-btn" data-item-id="${item.itemId}" title="Delete item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="pointer-events:none;">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                    </svg>
+                </button>
+            </td>
         `;
 
+        row.querySelector('.delete-item-btn')?.addEventListener('click', () => deleteItem(item.itemId));
         tableBody.appendChild(row);
     });
 
@@ -254,12 +272,34 @@ function destroyInventoryTablePagination(): void {
     inventoryDataTable = null;
 }
 
+/* DELETE ITEM
+* Removes an inventory item via the remove-item route
+* PARAMS - itemId: number
+* RETURNS - void
+*/
+async function deleteItem(itemId: number): Promise<void> {
+    try {
+        await apiAxios('/inventory/remove-item', {
+            method: 'POST',
+            body: { itemId }
+        });
+        showSuccessMessage('Item deleted successfully.');
+        loadInventoryTable();
+    } catch (error: any) {
+        if (error.response?.data?.message) {
+            showErrorMessage(error.response.data.message);
+        } else {
+            showErrorMessage('An error occurred while deleting the item.');
+        }
+    }
+}
+
 /* SEARCH ITEMS
 * Handles searching for inventory items based on the form fields
 * PARAMS - criteria: object
 * RETURNS - returned_items: items[]
 */
-async function searchItems(criteria: { itemName?: string; vendorId?: string; inventoryNumber?: string; price?: string; quantity?: string }): Promise<void> {
+async function searchItems(criteria: { itemName?: string; vendorId?: string; inventoryCode?: string; price?: string; quantity?: string }): Promise<void> {
     console.log('Search criteria:', criteria);
 
     const searchParams = new URLSearchParams();
@@ -291,7 +331,7 @@ async function searchItems(criteria: { itemName?: string; vendorId?: string; inv
     }
 };
 
-function showSearchQueryMessage(criteria: { itemName?: string; vendorId?: string; inventoryNumber?: string }): void {
+function showSearchQueryMessage(criteria: { itemName?: string; vendorId?: string; inventoryCode?: string }): void {
     const searchMessageDiv = document.getElementById('search-query-message');
 
     if (!searchMessageDiv) {
@@ -300,9 +340,9 @@ function showSearchQueryMessage(criteria: { itemName?: string; vendorId?: string
 
     const itemNameValue = formatSearchValue(criteria.itemName);
     const vendorIdValue = formatSearchValue(criteria.vendorId);
-    const inventoryNumberValue = formatSearchValue(criteria.inventoryNumber);
+    const inventoryCodeValue = formatSearchValue(criteria.inventoryCode);
 
-    searchMessageDiv.textContent = `Showing results for query: Item Name = ${itemNameValue}, Vendor Id = ${vendorIdValue}, Inventory Number = ${inventoryNumberValue}`;
+    searchMessageDiv.textContent = `Showing results for query: Item Name = ${itemNameValue}, Vendor Id = ${vendorIdValue}, Inventory Code = ${inventoryCodeValue}`;
     searchMessageDiv.style.display = 'block';
 }
 

@@ -13,11 +13,23 @@
 */
 
 import type { SessionUser } from "../utilities/api.js";
-import { getCurrentUser } from "../utilities/api.js";
+import { getCurrentUser, logout } from "../utilities/api.js";
 
 // Initialize dashboard on page load
 document.addEventListener('DOMContentLoaded', async () => {
     await initializeDashboard();
+
+    // Logout button handlers
+    document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await logout();
+        window.location.href = '../auth/login.html';
+    });
+    document.getElementById('logout-btn-mobile')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await logout();
+        window.location.href = '../auth/login.html';
+    });
 });
 
 /* INITIALIZE DASHBOARD

@@ -1,17 +1,56 @@
-# Use Node image
-FROM node:18
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 1 – Builder
+#   Installs all dependencies (including devDependencies), compiles the
+#   server TypeScript with tsc, and bundles the client TypeScript with webpack.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
 
-# Create app directory
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Install dependencies
+# Install dependencies first (layer-cached unless package.json changes)
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
-# Bundle app source
+# Copy the full source tree
 COPY . .
 
-# IMPORTANT: This must match your app's listening port
-EXPOSE 5000
+# Build client-side bundles → client/dist/
+RUN npx webpack --config webpack.config.js --mode production
 
-CMD [ "node", "server/config/app.js" ]
+# Compile server TypeScript → dist/
+RUN npx tsc --project tsconfig.json
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 2 – Production image
+#   Copies only the compiled output and production dependencies to keep the
+#   final image as small as possible.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:20-alpine AS production
+
+WORKDIR /app
+
+# Install production dependencies only
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+# Compiled server code
+COPY --from=builder /app/dist ./dist
+
+# Client bundles (served from /dist in the browser via express.static)
+COPY --from=builder /app/client/dist ./client/dist
+
+# Static client assets served by Express
+COPY --from=builder /app/client/src/pages  ./client/src/pages
+COPY --from=builder /app/client/src/assets ./client/src/assets
+COPY --from=builder /app/client/src/style  ./client/src/style
+COPY --from=builder /app/client/public     ./client/public
+
+# Runtime environment
+ENV NODE_ENV=production
+ENV PORT=3000
+
+EXPOSE 3000
+
+# Run the compiled server entry point
+CMD ["node", "dist/server/config/app.js"]

@@ -880,6 +880,22 @@ input, select, textarea {
     color: var(--accent);
 }
 
+.btn-danger {
+    background: #ef4444;
+    color: white;
+    border: 1px solid #dc2626;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
 .btn-ghost {
     color: var(--text-secondary);
 }

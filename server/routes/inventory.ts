@@ -22,7 +22,7 @@ const inventorySelectQuery = `
         item_id AS "itemId",
         name AS "itemName",
         vendor_id AS "vendorId",
-        inventory_number AS "inventoryNumber",
+        inventory_number AS "inventoryCode",
         price,
         qty AS quantity
     FROM inventory
@@ -55,7 +55,7 @@ router.get('/all', requireAuth, requireUserType('admin', 'vendor'), async (_req,
 * Supported params: itemId, itemName, vendorId, inventoryNumber, price, quantity
 */
 router.get('/search', requireAuth, requireUserType('admin', 'vendor'), async (req, res) => {
-    const { itemId, itemName, vendorId, inventoryNumber, price, quantity } = req.query;
+    const { itemId, itemName, vendorId, inventoryCode, price, quantity } = req.query;
 
     const conditions: string[] = [];
     const values: Array<string | number> = [];
@@ -94,10 +94,10 @@ router.get('/search', requireAuth, requireUserType('admin', 'vendor'), async (re
         addCondition('vendor_id =', parsedVendorId);
     }
 
-    if (inventoryNumber !== undefined) {
-        const sanitizedInventoryNumber = String(inventoryNumber).trim();
-        if (sanitizedInventoryNumber.length > 0) {
-            addCondition('inventory_number::text ILIKE', `%${sanitizedInventoryNumber}%`);
+    if (inventoryCode !== undefined) {
+        const sanitizedInventoryCode = String(inventoryCode).trim();
+        if (sanitizedInventoryCode.length > 0) {
+            addCondition('inventory_number::text ILIKE', `%${sanitizedInventoryCode}%`);
         }
     }
 
@@ -148,7 +148,7 @@ router.get('/search', requireAuth, requireUserType('admin', 'vendor'), async (re
 */
 
 router.post('/add', requireAuth, requireUserType('admin'), async (req, res) => {
-    const { itemName, vendorId, inventoryNumber, price, quantity } = req.body;
+    const { itemName, vendorId, inventoryCode, price, quantity } = req.body;
 
     // Validate required fields
     if (!itemName || !vendorId || price === undefined || quantity === undefined) {
@@ -184,9 +184,9 @@ router.post('/add', requireAuth, requireUserType('admin'), async (req, res) => {
         });
     }
 
-    // Sanitize itemName and inventoryNumber (trim whitespace, check length)
+    // Sanitize itemName and inventoryCode (trim whitespace, check length)
     const sanitizedItemName = itemName.toString().trim();
-    const sanitizedInventoryNumber = inventoryNumber.toString().trim();
+    const sanitizedInventoryCode = inventoryCode ? inventoryCode.toString().trim() : null;
 
     if (sanitizedItemName.length === 0 || sanitizedItemName.length > 255) {
         return res.status(400).json({
@@ -195,10 +195,10 @@ router.post('/add', requireAuth, requireUserType('admin'), async (req, res) => {
         });
     }
 
-    if (sanitizedInventoryNumber.length === 0 || sanitizedInventoryNumber.length > 100) {
+    if (sanitizedInventoryCode !== null && sanitizedInventoryCode.length > 100) {
         return res.status(400).json({
             success: false,
-            message: 'Vendor inventory number must be between 1 and 100 characters'
+            message: 'Vendor inventory code must be 100 characters or fewer'
         });
     }
 
@@ -215,7 +215,7 @@ router.post('/add', requireAuth, requireUserType('admin'), async (req, res) => {
         const result = await db.query(insertQuery, [
             sanitizedItemName,
             parsedVendorId,
-            sanitizedInventoryNumber,
+            sanitizedInventoryCode,
             parsedPrice,
             parsedQuantity,
         ]);
@@ -358,6 +358,38 @@ router.post('/vendor/add', requireAuth, requireUserType('vendor'), async (req, r
     }
 });
 
+/* ADMIN REMOVE ITEM
+* Removes an item from a ticket. Admins can remove any item from any ticket.
+* Security: Only admin users can access this route. Admins can specify any ticketId and itemId.
+*/
+router.post('/remove-item', requireAuth, requireUserType('admin'), async (req, res) => {
+    const { itemId } = req.body;
+    if (!itemId) {
+        return res.status(400).json({ error: 'Missing required fields: itemId' });
+    }
+    try {
+        const db = (await import('../config/db.js')).default;
 
+        // Insert the inventory item
+        const removeQuery = `
+            DELETE FROM inventory
+            WHERE item_id = $1
+            RETURNING item_id
+        `;
+        
+        const result = await db.query(removeQuery, [
+            itemId
+        ]);
+
+        res.status(201).json({
+            success: true,
+            message: 'Inventory item removed successfully',
+            item: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Error in remove-from-ticket route:', error);
+        res.status(500).json({ error: 'Internal server error while removing items from inventory' });
+    }
+});
 
 export default router;
