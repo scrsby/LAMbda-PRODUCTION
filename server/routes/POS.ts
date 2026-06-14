@@ -17,6 +17,7 @@
 import express from 'express';
 import db from '../config/db.js'; // Import your database connection
 import { sendEmail } from '../services/mailer.js'
+import { requireAuth, requireUserType } from '../utils/auth-middleware.js';
 
 const router = express.Router();
 
@@ -246,6 +247,45 @@ router.get('/ticket/:id', async (req, res) => {
     } catch (error) {
         console.error('Error fetching ticket:', error);
         res.status(500).json({ error: 'Failed to fetch ticket' });
+    }
+});
+
+/* DELETE TICKET
+* Removes an open ticket and all associated items. Admin only.
+*/
+router.delete('/ticket/:id', requireAuth, requireUserType('admin'), async (req, res) => {
+    const ticketId = req.params.id;
+    const client = await db.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const ticketResult = await client.query(
+            'SELECT status FROM tickets WHERE ticket_id = $1 FOR UPDATE',
+            [ticketId]
+        );
+
+        if (ticketResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Ticket not found' });
+        }
+
+        if (ticketResult.rows[0].status !== 'open') {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ error: 'Only open tickets can be deleted' });
+        }
+
+        await client.query('DELETE FROM ticket_items WHERE ticket_id = $1', [ticketId]);
+        await client.query('DELETE FROM tickets WHERE ticket_id = $1', [ticketId]);
+        await client.query('COMMIT');
+
+        res.status(200).json({ message: 'Ticket deleted successfully' });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error deleting ticket:', error);
+        res.status(500).json({ error: 'Failed to delete ticket' });
+    } finally {
+        client.release();
     }
 });
 

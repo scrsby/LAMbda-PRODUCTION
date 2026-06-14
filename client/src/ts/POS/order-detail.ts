@@ -38,6 +38,10 @@ interface TicketItem {
     quantity: number;
 }
 
+const deleteTicketButton = document.getElementById('delete-ticket-btn') as HTMLButtonElement | null;
+let activeTicket: TicketDetail | null = null;
+let isAdminUser = false;
+
 document.addEventListener('DOMContentLoaded', async () => {
     const ticketId = new URLSearchParams(window.location.search).get('ticketId');
 
@@ -46,16 +50,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    await loadOrderDetail(ticketId);
-});
-
-getCurrentUser().then(user => {
-    if (user?.userType === 'admin') {
-        const btn = document.getElementById('admin-controls-btn');
-        const btnMobile = document.getElementById('admin-controls-btn-mobile');
-        if (btn) btn.style.display = '';
-        if (btnMobile) btnMobile.style.display = '';
+    const user = await getCurrentUser();
+    isAdminUser = user?.userType === 'admin';
+    if (isAdminUser) {
+        showAdminControls();
     }
+
+    deleteTicketButton?.addEventListener('click', handleDeleteTicket);
+    await loadOrderDetail(ticketId);
 });
 
 async function loadOrderDetail(ticketId: string) {
@@ -75,6 +77,7 @@ async function loadOrderDetail(ticketId: string) {
 }
 
 function renderTicketSummary(ticket: TicketDetail) {
+    activeTicket = ticket;
     setText('ticket-detail-title', `Ticket #${ticket.ticket_id}`);
     setText('detail-ticket-id', String(ticket.ticket_id));
     setText('detail-created-at', formatDateTime(ticket.created_at));
@@ -82,6 +85,7 @@ function renderTicketSummary(ticket: TicketDetail) {
     setText('detail-cashier-id', String(ticket.cashier_id));
     setText('detail-status', ticket.ticket_status);
     setText('detail-total', `$${Number(ticket.total ?? 0).toFixed(2)}`);
+    updateDeleteTicketButton();
 }
 
 function renderTicketItems(items: TicketItem[]) {
@@ -117,6 +121,46 @@ function renderTicketItems(items: TicketItem[]) {
     });
 }
 
+async function handleDeleteTicket() {
+    if (!activeTicket || !isAdminUser) {
+        return;
+    }
+
+    if (activeTicket.ticket_status !== 'open') {
+        window.alert('Only open tickets can be deleted.');
+        return;
+    }
+
+    if (!window.confirm(`Delete ticket #${activeTicket.ticket_id}? This will also remove all ticket items.`)) {
+        return;
+    }
+
+    if (deleteTicketButton) {
+        deleteTicketButton.disabled = true;
+        deleteTicketButton.textContent = 'Deleting...';
+    }
+
+    try {
+        await apiAxios(`/POS/ticket/${activeTicket.ticket_id}`, { method: 'DELETE' });
+        window.location.href = 'orders.html';
+    } catch (error: any) {
+        console.error('Error deleting ticket:', error);
+        window.alert(error.response?.data?.error ?? 'Failed to delete ticket. Please try again.');
+        updateDeleteTicketButton();
+    }
+}
+
+function updateDeleteTicketButton() {
+    if (!deleteTicketButton) {
+        return;
+    }
+
+    const canDelete = isAdminUser && activeTicket?.ticket_status === 'open';
+    deleteTicketButton.style.display = canDelete ? '' : 'none';
+    deleteTicketButton.disabled = false;
+    deleteTicketButton.textContent = 'Delete Ticket';
+}
+
 function showOrderError(message: string) {
     const errorMessage = document.getElementById('order-detail-error');
     const content = document.getElementById('order-detail-content');
@@ -145,4 +189,11 @@ function formatDateTime(value: string) {
     }
 
     return date.toLocaleString();
+}
+
+function showAdminControls() {
+    const btn = document.getElementById('admin-controls-btn');
+    const btnMobile = document.getElementById('admin-controls-btn-mobile');
+    if (btn) btn.style.display = '';
+    if (btnMobile) btnMobile.style.display = '';
 }
