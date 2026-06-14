@@ -25,7 +25,7 @@ async function getTicketDetail(ticketId: string) {
         `SELECT t.ticket_id,
                 t.cashier_id,
                 t.created_at,
-                t.status AS ticket_status,
+                t.ticket_status,
                 COALESCE(t.total, 0)::float AS total,
                 COALESCE(
                     NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
@@ -120,7 +120,7 @@ async function getTicketSummaries(filters: {
         `SELECT t.ticket_id,
                 t.cashier_id,
                 t.created_at,
-                t.status AS ticket_status,
+                t.ticket_status,
                 COALESCE(t.total, 0)::float AS total,
                 COALESCE(
                     NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
@@ -146,7 +146,7 @@ router.post('/create-ticket', async (req, res) => {
         const cashierId = req.session.user?.id ?? 2;
         // 1. Create a new ticket in the database with status "open"
         const newTicket = await db.query(
-            'INSERT INTO tickets (status, created_at, cashier_id) VALUES ($1, NOW(), $2) RETURNING ticket_id, created_at',
+            'INSERT INTO tickets (ticket_status, created_at, cashier_id) VALUES ($1, NOW(), $2) RETURNING ticket_id, created_at',
             ['open', cashierId]
         );
         const ticketId = newTicket.rows[0].ticket_id;
@@ -155,8 +155,8 @@ router.post('/create-ticket', async (req, res) => {
             ticketId: ticketId
         });
     } catch (error) {
-        console.error('Error creating receipt:', error);
-        res.status(500).json({ error: 'Failed to create receipt' });
+        console.error('Error creating ticket:', error);
+        res.status(500).json({ error: 'Failed to create ticket' });
     }
 });
 
