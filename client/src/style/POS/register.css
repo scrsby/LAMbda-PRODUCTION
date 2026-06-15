@@ -98,6 +98,12 @@
     flex-wrap: wrap;
 }
 
+.section-header-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
 .form-fields {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -196,6 +202,16 @@
     background: #7e22ce;
 }
 
+.search-add-btn {
+    min-width: 88px;
+}
+
+.search-empty-state {
+    text-align: center;
+    padding: 1rem;
+    color: var(--text-secondary);
+}
+
 .checkout_btn:disabled,
 .btn:disabled {
     background: #e0e0e0 !important;
@@ -282,6 +298,14 @@ table.dataTable tbody td {
 
     .section-header-row {
         align-items: stretch;
+    }
+
+    .section-header-actions {
+        width: 100%;
+    }
+
+    .section-header-actions .btn {
+        flex: 1 1 0;
     }
 
     .ticket-toolbar-actions {
