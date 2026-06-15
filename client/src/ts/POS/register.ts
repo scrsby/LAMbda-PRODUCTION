@@ -15,6 +15,14 @@
 import { apiAxios } from '../utilities/api.js';
 import { getCurrentUser } from '../utilities/api.js';
 import { showSuccessMessage, showErrorMessage } from '../utilities/messages.js';
+
+declare global {
+    interface Window {
+        $?: any;
+        jQuery?: any;
+    }
+}
+
 type TicketItem = {
     ticket_item_id?: number;
     vendor_id: number;
@@ -26,9 +34,22 @@ type TicketItem = {
     discount_amount: number;
     final_price: number;
 };
+
+type InventorySearchItem = {
+    itemId: number;
+    itemName: string;
+    vendorId: number;
+    inventoryCode: string | number | null;
+    price: number;
+    quantity: number;
+};
+
 let ticket_items: TicketItem[] = [];
 let unsynced_items: TicketItem[] = [];
 let ticketActive: boolean = false;
+let searchResultsDataTable: any = null;
+let itemSearchDebounceId: number | undefined;
+let latestSearchRequestId = 0;
 
 /// BUTTON HANDLERS
 const ticketIdField = document.getElementById('ticket-id') as HTMLInputElement | null;
@@ -37,7 +58,13 @@ var primaryOption = 'create';
 const secondaryBtn = document.getElementById('secondary-btn');
 var secondaryOption = 'search';
 const createItemBtn = document.getElementById('create-item-btn') as HTMLButtonElement | null;
+const searchItemBtn = document.getElementById('search-item-btn') as HTMLButtonElement | null;
 const checkoutBtn = document.getElementById('checkout-btn') as HTMLButtonElement | null;
+const searchForm = document.getElementById('input_box') as HTMLFormElement | null;
+const vendorIdInput = document.getElementById('vendor-id') as HTMLInputElement | null;
+const vendorInventoryIdInput = document.getElementById('vendor-inventory-id') as HTMLInputElement | null;
+const itemNameInput = document.getElementById('item-name') as HTMLInputElement | null;
+const vendorPriceInput = document.getElementById('vendor-price') as HTMLInputElement | null;
 
 function setTicketActionButtons(enabled: boolean) {
     if (createItemBtn) {
@@ -101,16 +128,11 @@ secondaryBtn?.addEventListener('click', async () => {
 });
 
 createItemBtn?.addEventListener('click', () => {
-   const vendorIdInput = document.getElementById('vendor-id') as HTMLInputElement | null;
-   const vendorInventoryIdInput = document.getElementById('vendor-inventory-id') as HTMLInputElement | null;
-   const itemNameInput = document.getElementById('item-name') as HTMLInputElement | null;
-   const vendorPriceInput = document.getElementById('vendor-price') as HTMLInputElement | null;
-   const quantityInput = document.getElementById('quantity') as HTMLInputElement | null;
-
     if (!vendorIdInput || !vendorInventoryIdInput || !itemNameInput || !vendorPriceInput ) {
-        alert('Please fill in all item fields.' + vendorIdInput + vendorInventoryIdInput + itemNameInput + vendorPriceInput);
+        alert('Please provide vendor ID, vendor inventory ID, item name, and tag price.');
         return;
     } else {
+        const quantityInput = document.getElementById('quantity') as HTMLInputElement | null;
         const quantity = quantityInput ? parseInt(quantityInput.value): 1;
         const vendor_id = parseInt(vendorIdInput.value);
         const vendor_inventory_id = vendorInventoryIdInput.value.trim();
@@ -130,7 +152,32 @@ createItemBtn?.addEventListener('click', () => {
     }
 });
 
+searchItemBtn?.addEventListener('click', async () => {
+    await searchInventory(true);
+});
+
+searchForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    await searchInventory(true);
+});
+
+itemNameInput?.addEventListener('input', () => {
+    window.clearTimeout(itemSearchDebounceId);
+
+    const itemName = itemNameInput.value.trim();
+    if (itemName.length < 4) {
+        latestSearchRequestId++;
+        renderSearchResultsMessage('Type at least 4 characters in Description to search inventory.');
+        return;
+    }
+
+    itemSearchDebounceId = window.setTimeout(() => {
+        void searchInventory(false);
+    }, 300);
+});
+
 setIdleTicketState();
+renderSearchResultsMessage('Type at least 4 characters in Description to search inventory.');
 
 // Show Admin Controls button if the logged-in user is an admin
 getCurrentUser().then(user => {
@@ -256,6 +303,188 @@ function createItemLocally(vendor_id: number, vendor_inventory_id: string, name:
     const newItem: TicketItem = { vendor_id, vendor_inventory_id, name, quantity, vendor_price, discount_percent: 0, discount_amount: 0, final_price: vendor_price };
     unsynced_items.push(newItem);
     updateItemTable();
+}
+
+function initializeSearchResultsPagination() {
+    const jquery = window.$;
+    const tableSelector = '#search_table';
+
+    if (!jquery || !jquery.fn?.DataTable) {
+        return;
+    }
+
+    if (jquery.fn.DataTable.isDataTable(tableSelector)) {
+        jquery(tableSelector).DataTable().destroy();
+    }
+
+    searchResultsDataTable = jquery(tableSelector).DataTable({
+        pageLength: 5,
+        lengthChange: false,
+        searching: false,
+        ordering: false,
+        responsive: true,
+        info: true,
+        autoWidth: false,
+        language: {
+            paginate: {
+                previous: 'Prev',
+                next: 'Next'
+            }
+        }
+    });
+}
+
+function destroySearchResultsPagination() {
+    const jquery = window.$;
+    const tableSelector = '#search_table';
+
+    if (!jquery || !jquery.fn?.DataTable) {
+        return;
+    }
+
+    if (jquery.fn.DataTable.isDataTable(tableSelector)) {
+        jquery(tableSelector).DataTable().destroy();
+    }
+
+    searchResultsDataTable = null;
+}
+
+function renderSearchResultsMessage(message: string) {
+    const itemTableBody = document.getElementById('item_list');
+    if (!itemTableBody) {
+        return;
+    }
+
+    destroySearchResultsPagination();
+    itemTableBody.innerHTML = `
+        <tr>
+            <td colspan="5" class="search-empty-state">${message}</td>
+        </tr>
+    `;
+}
+
+function renderSearchResults(items: InventorySearchItem[]) {
+    const itemTableBody = document.getElementById('item_list');
+    if (!itemTableBody) {
+        return;
+    }
+
+    destroySearchResultsPagination();
+    itemTableBody.innerHTML = '';
+
+    items.forEach((item) => {
+        const row = document.createElement('tr');
+        const inventoryCode = normalizeInventoryCode(item.inventoryCode);
+
+        row.innerHTML = `
+            <td>${item.vendorId}</td>
+            <td>${inventoryCode}</td>
+            <td>${item.itemName}</td>
+            <td>$${Number(item.price).toFixed(2)}</td>
+            <td>
+                <button type="button" class="btn btn-primary search-add-btn">Add Item</button>
+            </td>
+        `;
+
+        row.querySelector('button')?.addEventListener('click', () => {
+            createItemLocally(item.vendorId, inventoryCode, item.itemName, Number(item.price), 1);
+            clearItemEntryFields();
+
+            showSuccessMessage(`${item.itemName} added to cart.`);
+        });
+
+        itemTableBody.appendChild(row);
+    });
+
+    initializeSearchResultsPagination();
+}
+
+function normalizeInventoryCode(value: string | number | null): string {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    const normalizedValue = String(value).trim();
+    if (!normalizedValue || normalizedValue.toLowerCase() === 'null') {
+        return '';
+    }
+
+    return normalizedValue;
+}
+
+function clearItemEntryFields(): void {
+    if (searchForm) {
+        searchForm.reset();
+    }
+}
+
+async function searchInventory(manualSearch: boolean) {
+    const itemName = itemNameInput?.value.trim() ?? '';
+    const vendorInventoryId = vendorInventoryIdInput?.value.trim() ?? '';
+    const vendorIdValue = vendorIdInput?.value.trim() ?? '';
+
+    if (!manualSearch && itemName.length < 4) {
+        latestSearchRequestId++;
+        renderSearchResultsMessage('Type at least 4 characters in Description to search inventory.');
+        return;
+    }
+
+    if (!itemName && !vendorInventoryId && !vendorIdValue) {
+        latestSearchRequestId++;
+        renderSearchResultsMessage('Enter a vendor ID, vendor inventory ID, or description to search inventory.');
+        return;
+    }
+
+    const params = new URLSearchParams();
+
+    if (itemName) {
+        params.set('itemName', itemName);
+    }
+
+    if (vendorInventoryId) {
+        params.set('inventoryCode', vendorInventoryId);
+    }
+
+    if (vendorIdValue) {
+        const parsedVendorId = parseInt(vendorIdValue, 10);
+        if (isNaN(parsedVendorId) || parsedVendorId <= 0) {
+            latestSearchRequestId++;
+            showErrorMessage('Vendor ID must be a valid positive number.');
+            return;
+        }
+        params.set('vendorId', String(parsedVendorId));
+    }
+
+    const searchRequestId = ++latestSearchRequestId;
+
+    try {
+        const response = await apiAxios(`/POS/inventory-search?${params.toString()}`, {
+            method: 'GET'
+        });
+
+        if (searchRequestId !== latestSearchRequestId) {
+            return;
+        }
+
+        const items = (response.items ?? []) as InventorySearchItem[];
+
+        if (items.length === 0) {
+            renderSearchResultsMessage('No inventory items matched your search.');
+            return;
+        }
+
+        renderSearchResults(items);
+    } catch (error: any) {
+        if (searchRequestId !== latestSearchRequestId) {
+            return;
+        }
+
+        if (error.response?.data?.message) {
+            showErrorMessage(error.response.data.message);
+        } else {
+            showErrorMessage('Failed to search inventory. Please try again.');
+        }
+    }
 }
 
 /* SEARCH TICKET

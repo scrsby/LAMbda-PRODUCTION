@@ -250,6 +250,79 @@ router.get('/ticket/:id', async (req, res) => {
     }
 });
 
+/* SEARCH INVENTORY
+* Searches inventory for register use by matching vendor ID, vendor inventory code,
+* or item name against any provided criteria.
+*/
+router.get('/inventory-search', async (req, res) => {
+    const { vendorId, inventoryCode, itemName } = req.query;
+    const conditions: string[] = [];
+    const values: Array<string | number> = [];
+
+    if (vendorId !== undefined) {
+        const parsedVendorId = parseInt(String(vendorId), 10);
+        if (isNaN(parsedVendorId) || parsedVendorId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'vendorId must be a valid positive integer'
+            });
+        }
+        values.push(parsedVendorId);
+        conditions.push(`vendor_id = $${values.length}`);
+    }
+
+    if (inventoryCode !== undefined) {
+        const sanitizedInventoryCode = String(inventoryCode).trim();
+        if (sanitizedInventoryCode.length > 0) {
+            values.push(`%${sanitizedInventoryCode}%`);
+            conditions.push(`inventory_number::text ILIKE $${values.length}`);
+        }
+    }
+
+    if (itemName !== undefined) {
+        const sanitizedItemName = String(itemName).trim();
+        if (sanitizedItemName.length > 0) {
+            values.push(`%${sanitizedItemName}%`);
+            conditions.push(`name ILIKE $${values.length}`);
+        }
+    }
+
+    if (conditions.length === 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'At least one search field is required'
+        });
+    }
+
+    try {
+        const result = await db.query(
+            `SELECT
+                item_id AS "itemId",
+                name AS "itemName",
+                vendor_id AS "vendorId",
+                inventory_number AS "inventoryCode",
+                price,
+                qty AS quantity
+             FROM inventory
+             WHERE ${conditions.join(' OR ')}
+             ORDER BY item_id DESC`,
+            values
+        );
+
+        res.status(200).json({
+            success: true,
+            items: result.rows,
+            count: result.rows.length
+        });
+    } catch (error) {
+        console.error('Error searching register inventory:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to search inventory'
+        });
+    }
+});
+
 /* DELETE TICKET
 * Removes an open ticket and all associated items. Admin only.
 */
@@ -270,7 +343,7 @@ router.delete('/ticket/:id', requireAuth, requireUserType('admin'), async (req, 
             return res.status(404).json({ error: 'Ticket not found' });
         }
 
-        if (ticketResult.rows[0].status !== 'open') {
+        if (ticketResult.rows[0].ticket_status !== 'open') {
             await client.query('ROLLBACK');
             return res.status(409).json({ error: 'Only open tickets can be deleted' });
         }

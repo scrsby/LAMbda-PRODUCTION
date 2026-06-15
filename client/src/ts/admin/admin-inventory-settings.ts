@@ -26,7 +26,7 @@ interface InventoryItem {
     itemId: number;
     itemName: string;
     vendorId: number;
-    inventoryCode: string | number;
+    inventoryCode: string | number | null;
     price: number;
     quantity: number;
 }
@@ -100,6 +100,7 @@ inventoryForm?.addEventListener('submit', async (event) => {
         try {
             await addItem(itemName, vendorId, inventoryCodeValue || null, itemPrice, quantity);
             showSuccessMessage('Item added successfully!');
+            clearInventoryForm();
             hideSearchQueryMessage();
             loadInventoryTable();
         } catch (error: any) {
@@ -193,7 +194,7 @@ function renderInventoryTable(items: InventoryItem[], emptyMessage: string): voi
         row.innerHTML = `
             <td style="padding: 12px; color: #374151;">${item.itemName}</td>
             <td style="padding: 12px; color: #6b7280;">${item.vendorId}</td>
-            <td style="padding: 12px; color: #6b7280;">${item.inventoryCode ?? ''}</td>
+            <td style="padding: 12px; color: #6b7280;">${formatInventoryCode(item.inventoryCode)}</td>
             <td style="padding: 12px; color: #6b7280;">${formattedPrice}</td>
             <td style="padding: 12px; color: #6b7280;">${item.quantity}</td>
             <td style="padding: 12px; text-align: center;">
@@ -365,4 +366,21 @@ function formatSearchValue(value?: string): string {
     return `"${value.trim()}"`;
 }
 
+function clearInventoryForm(): void {
+    const form = document.getElementById('inventory-form') as HTMLFormElement | null;
+    form?.reset();
+}
+
+function formatInventoryCode(value: string | number | null): string {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    const normalizedValue = String(value).trim();
+    if (!normalizedValue || normalizedValue.toLowerCase() === 'null') {
+        return '';
+    }
+
+    return normalizedValue;
+}
 
