@@ -39,7 +39,7 @@ type InventorySearchItem = {
     itemId: number;
     itemName: string;
     vendorId: number;
-    inventoryCode: string | number;
+    inventoryCode: string | number | null;
     price: number;
     quantity: number;
 };
@@ -374,9 +374,11 @@ function renderSearchResults(items: InventorySearchItem[]) {
 
     items.forEach((item) => {
         const row = document.createElement('tr');
+        const inventoryCode = normalizeInventoryCode(item.inventoryCode);
+
         row.innerHTML = `
             <td>${item.vendorId}</td>
-            <td>${item.inventoryCode}</td>
+            <td>${inventoryCode}</td>
             <td>${item.itemName}</td>
             <td>$${Number(item.price).toFixed(2)}</td>
             <td>
@@ -385,12 +387,8 @@ function renderSearchResults(items: InventorySearchItem[]) {
         `;
 
         row.querySelector('button')?.addEventListener('click', () => {
-            createItemLocally(item.vendorId, String(item.inventoryCode), item.itemName, Number(item.price), 1);
-
-            if (vendorIdInput) vendorIdInput.value = String(item.vendorId);
-            if (vendorInventoryIdInput) vendorInventoryIdInput.value = String(item.inventoryCode);
-            if (itemNameInput) itemNameInput.value = item.itemName;
-            if (vendorPriceInput) vendorPriceInput.value = Number(item.price).toFixed(2);
+            createItemLocally(item.vendorId, inventoryCode, item.itemName, Number(item.price), 1);
+            clearItemEntryFields();
 
             showSuccessMessage(`${item.itemName} added to cart.`);
         });
@@ -399,6 +397,30 @@ function renderSearchResults(items: InventorySearchItem[]) {
     });
 
     initializeSearchResultsPagination();
+}
+
+function normalizeInventoryCode(value: string | number | null): string {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    const normalizedValue = String(value).trim();
+    if (!normalizedValue || normalizedValue.toLowerCase() === 'null') {
+        return '';
+    }
+
+    return normalizedValue;
+}
+
+function clearItemEntryFields(): void {
+    if (searchForm) {
+        searchForm.reset();
+    }
+
+    if (vendorIdInput) vendorIdInput.value = '';
+    if (vendorInventoryIdInput) vendorInventoryIdInput.value = '';
+    if (itemNameInput) itemNameInput.value = '';
+    if (vendorPriceInput) vendorPriceInput.value = '';
 }
 
 async function searchInventory(manualSearch: boolean) {
