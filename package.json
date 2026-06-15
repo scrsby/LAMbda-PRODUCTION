@@ -21,7 +21,8 @@
   "homepage": "https://github.com/scrsby/LAMbda-PRODUCTION#readme",
   "description": "",
   "dependencies": {
-    "@supabase/supabase-js": "^2.99.2",
+    "@supabase/ssr": "^0.12.0",
+    "@supabase/supabase-js": "^2.108.2",
     "@types/bcrypt": "^6.0.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
