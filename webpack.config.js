@@ -14,7 +14,9 @@ export default {
         'auth/login': './client/src/ts/auth/login.ts',
         'auth/create-account': './client/src/ts/auth/create-account.ts',
         'auth/account-finalization': './client/src/ts/auth/account-finalization.ts',
-        'POS/register' : './client/src/ts/POS/register.ts'
+        'POS/register' : './client/src/ts/POS/register.ts',
+        'POS/orders': './client/src/ts/POS/orders.ts',
+        'POS/order-detail': './client/src/ts/POS/order-detail.ts'
     },
     output: {
         path: _resolve(__dirname, "client/dist"),
