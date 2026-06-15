@@ -275,8 +275,8 @@ function updateItemTable() {
         } else {
             row.innerHTML = `
                 <td>${item.vendor_id}</td>
-                <td>${item.vendor_inventory_id}</td>
-                <td>${item.name}</td>
+                <td>${escapeHtmlAttribute(item.vendor_inventory_id)}</td>
+                <td>${escapeHtmlAttribute(item.name)}</td>
                 <td>${item.quantity}</td>
                 <td>$${subtotal.toFixed(2)}</td>
                 <td>${item.discount_percent > 0 ? `${item.discount_percent}%` : ''}</td>
@@ -339,7 +339,7 @@ function bindDiscountCalculationInputs(row: HTMLTableRowElement) {
     };
 
     const syncDiscountMode = () => {
-        discountAmountInput.disabled = hasDiscountPercent();
+        discountAmountInput.readOnly = hasDiscountPercent();
         if (hasDiscountPercent()) {
             recalcFromPercent();
         } else {
@@ -486,7 +486,7 @@ function setCombinedItem(index: number, item: TicketItem): void {
 }
 
 function roundCurrency(value: number): number {
-    return Math.round((value + Number.EPSILON) * 100) / 100;
+    return Math.round(value * 100) / 100;
 }
 
 function escapeHtmlAttribute(value: string): string {
