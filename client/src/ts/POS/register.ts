@@ -416,11 +416,6 @@ function clearItemEntryFields(): void {
     if (searchForm) {
         searchForm.reset();
     }
-
-    if (vendorIdInput) vendorIdInput.value = '';
-    if (vendorInventoryIdInput) vendorInventoryIdInput.value = '';
-    if (itemNameInput) itemNameInput.value = '';
-    if (vendorPriceInput) vendorPriceInput.value = '';
 }
 
 async function searchInventory(manualSearch: boolean) {
