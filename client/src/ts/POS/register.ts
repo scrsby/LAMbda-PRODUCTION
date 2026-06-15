@@ -129,7 +129,7 @@ secondaryBtn?.addEventListener('click', async () => {
 
 createItemBtn?.addEventListener('click', () => {
     if (!vendorIdInput || !vendorInventoryIdInput || !itemNameInput || !vendorPriceInput ) {
-        alert('Please fill in all item fields.');
+        alert('Please provide vendor ID, vendor inventory ID, item name, and tag price.');
         return;
     } else {
         const quantityInput = document.getElementById('quantity') as HTMLInputElement | null;
