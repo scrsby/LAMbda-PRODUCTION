@@ -74,6 +74,9 @@ function setTicketActionButtons(enabled: boolean) {
     if (checkoutBtn) {
         checkoutBtn.disabled = !enabled;
     }
+    document.querySelectorAll<HTMLButtonElement>('.search-add-btn').forEach(btn => {
+        btn.disabled = !enabled;
+    });
 }
 
 function setActiveTicketState(ticketId: string) {
@@ -252,7 +255,7 @@ function updateItemTable() {
     itemTableBody.innerHTML = '';
     const allItems = [...ticket_items, ...unsynced_items];
     allItems.forEach((item, index) => {
-        const subtotal = item.vendor_price * item.quantity;
+        const subtotal = item.final_price + item.discount_amount;
         const isEditing = editingItemIndex === index;
         const row = document.createElement('tr');
 
@@ -608,7 +611,7 @@ function renderSearchResults(items: InventorySearchItem[]) {
             <td>${item.itemName}</td>
             <td>$${Number(item.price).toFixed(2)}</td>
             <td>
-                <button type="button" class="btn btn-primary search-add-btn">Add Item</button>
+                <button type="button" class="btn btn-primary search-add-btn"${!ticketActive ? ' disabled' : ''}>Add Item</button>
             </td>
         `;
 
