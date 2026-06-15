@@ -413,8 +413,8 @@ function saveEditedItem(index: number, row: HTMLTableRowElement) {
     const subtotal = parseFloat(subtotalInput.value);
     const discountPercentRaw = discountPercentInput.value.trim();
 
-    if (isNaN(vendor_id) || vendor_id <= 0 || !vendor_inventory_id || !name || isNaN(quantity) || quantity <= 0 || isNaN(subtotal) || subtotal < 0) {
-        showErrorMessage('Please enter valid values for all editable fields.');
+    if (isNaN(vendor_id) || vendor_id <= 0 || !name || isNaN(quantity) || quantity <= 0 || isNaN(subtotal) || subtotal < 0) {
+        alert('Please enter valid values for all editable fields.');
         return;
     }
 
