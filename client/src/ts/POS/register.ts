@@ -50,6 +50,7 @@ let ticketActive: boolean = false;
 let searchResultsDataTable: any = null;
 let itemSearchDebounceId: number | undefined;
 let latestSearchRequestId = 0;
+let editingItemIndex: number | null = null;
 
 /// BUTTON HANDLERS
 const ticketIdField = document.getElementById('ticket-id') as HTMLInputElement | null;
@@ -94,6 +95,7 @@ function setActiveTicketState(ticketId: string) {
 
 function setIdleTicketState() {
     ticketActive = false;
+    editingItemIndex = null;
 
     if (ticketIdField) {
         ticketIdField.value = '';
@@ -250,33 +252,250 @@ function updateItemTable() {
     itemTableBody.innerHTML = '';
     const allItems = [...ticket_items, ...unsynced_items];
     allItems.forEach((item, index) => {
-        const subtotal = (item.vendor_price * item.quantity) - item.discount_amount;
+        const subtotal = item.vendor_price * item.quantity;
+        const isEditing = editingItemIndex === index;
         const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${item.vendor_id}</td>
-            <td>${item.vendor_inventory_id}</td>
-            <td>${item.name}</td>
-            <td>${item.quantity}</td>
-            <td>$${subtotal.toFixed(2)}</td>
-            <td>${item.discount_percent}%</td>
-            <td>$${item.discount_amount.toFixed(2)}</td>
-            <td>$${item.final_price.toFixed(2)}</td>
-            <td style="display:flex;gap:0.25rem;align-items:center;">
-                <button type="button" class="btn btn-edit" data-action="edit" data-index="${index}">
-                    <span class="material-symbols-outlined">edit</span>
-                </button>
-                <button type="button" class="btn btn-danger" data-action="delete" data-index="${index}">
-                    <span class="material-symbols-outlined">delete</span>
-                </button>
-            </td>
-        `;
+
+        if (isEditing) {
+            row.innerHTML = `
+                <td><input class="cart-edit-input" data-field="vendor_id" type="number" value="${item.vendor_id}" min="1"></td>
+                <td><input class="cart-edit-input" data-field="vendor_inventory_id" type="text" value="${escapeHtmlAttribute(item.vendor_inventory_id)}"></td>
+                <td><input class="cart-edit-input" data-field="name" type="text" value="${escapeHtmlAttribute(item.name)}"></td>
+                <td><input class="cart-edit-input" data-field="quantity" type="number" value="${item.quantity}" min="1" step="1"></td>
+                <td><input class="cart-edit-input" data-field="subtotal" type="number" value="${subtotal.toFixed(2)}" min="0" step="0.01"></td>
+                <td><input class="cart-edit-input" data-field="discount_percent" type="number" value="${item.discount_percent > 0 ? item.discount_percent : ''}" min="0" step="0.01" placeholder="optional"></td>
+                <td><input class="cart-edit-input" data-field="discount_amount" type="number" value="${item.discount_amount.toFixed(2)}" min="0" step="0.01"></td>
+                <td><input class="cart-edit-input" data-field="final_price" type="number" value="${item.final_price.toFixed(2)}" min="0" step="0.01"></td>
+                <td style="display:flex;gap:0.25rem;align-items:center;">
+                    <button type="button" class="btn btn-edit btn-edit-saving" data-action="edit" data-index="${index}">
+                        <span class="material-symbols-outlined">check</span>
+                    </button>
+                </td>
+            `;
+        } else {
+            row.innerHTML = `
+                <td>${item.vendor_id}</td>
+                <td>${item.vendor_inventory_id}</td>
+                <td>${item.name}</td>
+                <td>${item.quantity}</td>
+                <td>$${subtotal.toFixed(2)}</td>
+                <td>${item.discount_percent > 0 ? `${item.discount_percent}%` : ''}</td>
+                <td>$${item.discount_amount.toFixed(2)}</td>
+                <td>$${item.final_price.toFixed(2)}</td>
+                <td style="display:flex;gap:0.25rem;align-items:center;">
+                    <button type="button" class="btn btn-edit" data-action="edit" data-index="${index}">
+                        <span class="material-symbols-outlined">edit</span>
+                    </button>
+                    <button type="button" class="btn btn-danger" data-action="delete" data-index="${index}">
+                        <span class="material-symbols-outlined">delete</span>
+                    </button>
+                </td>
+            `;
+        }
+
+        row.querySelector('[data-action="edit"]')?.addEventListener('click', () => toggleItemEditMode(index, row));
         row.querySelector('[data-action="delete"]')?.addEventListener('click', () => removeItem(index));
+        if (isEditing) {
+            bindDiscountCalculationInputs(row);
+        }
         itemTableBody.appendChild(row);
     });
 
     const total = allItems.reduce((sum, item) => sum + item.final_price, 0);
     const totalValueEl = document.getElementById('cart_total_value');
     if (totalValueEl) totalValueEl.textContent = total.toFixed(2);
+}
+
+function bindDiscountCalculationInputs(row: HTMLTableRowElement) {
+    const subtotalInput = row.querySelector('[data-field="subtotal"]') as HTMLInputElement | null;
+    const discountPercentInput = row.querySelector('[data-field="discount_percent"]') as HTMLInputElement | null;
+    const discountAmountInput = row.querySelector('[data-field="discount_amount"]') as HTMLInputElement | null;
+    const finalPriceInput = row.querySelector('[data-field="final_price"]') as HTMLInputElement | null;
+    if (!subtotalInput || !discountPercentInput || !discountAmountInput || !finalPriceInput) return;
+
+    const hasDiscountPercent = () => discountPercentInput.value.trim() !== '';
+
+    const recalcFromPercent = () => {
+        const subtotal = parseFloat(subtotalInput.value);
+        const discountPercent = parseFloat(discountPercentInput.value);
+        if (isNaN(subtotal) || isNaN(discountPercent)) return;
+        const discountAmount = roundCurrency((subtotal * discountPercent) / 100);
+        discountAmountInput.value = discountAmount.toFixed(2);
+        finalPriceInput.value = roundCurrency(subtotal - discountAmount).toFixed(2);
+    };
+
+    const recalcFromDiscountAmount = () => {
+        const subtotal = parseFloat(subtotalInput.value);
+        const discountAmount = parseFloat(discountAmountInput.value);
+        if (isNaN(subtotal) || isNaN(discountAmount)) return;
+        finalPriceInput.value = roundCurrency(subtotal - discountAmount).toFixed(2);
+    };
+
+    const recalcFromFinalPrice = () => {
+        const subtotal = parseFloat(subtotalInput.value);
+        const finalPrice = parseFloat(finalPriceInput.value);
+        if (isNaN(subtotal) || isNaN(finalPrice)) return;
+        discountAmountInput.value = roundCurrency(subtotal - finalPrice).toFixed(2);
+    };
+
+    const syncDiscountMode = () => {
+        discountAmountInput.disabled = hasDiscountPercent();
+        if (hasDiscountPercent()) {
+            recalcFromPercent();
+        } else {
+            recalcFromDiscountAmount();
+        }
+    };
+
+    subtotalInput.addEventListener('input', () => {
+        if (hasDiscountPercent()) {
+            recalcFromPercent();
+        } else {
+            recalcFromDiscountAmount();
+        }
+    });
+    discountPercentInput.addEventListener('input', syncDiscountMode);
+    discountAmountInput.addEventListener('input', () => {
+        if (!hasDiscountPercent()) {
+            recalcFromDiscountAmount();
+        }
+    });
+    finalPriceInput.addEventListener('input', () => {
+        if (!hasDiscountPercent()) {
+            recalcFromFinalPrice();
+        }
+    });
+
+    syncDiscountMode();
+}
+
+function toggleItemEditMode(index: number, row: HTMLTableRowElement) {
+    if (editingItemIndex === null) {
+        editingItemIndex = index;
+        updateItemTable();
+        return;
+    }
+
+    if (editingItemIndex !== index) {
+        showErrorMessage('Save the row currently being edited before editing another row.');
+        return;
+    }
+
+    saveEditedItem(index, row);
+}
+
+function saveEditedItem(index: number, row: HTMLTableRowElement) {
+    const currentItem = getCombinedItem(index);
+    if (!currentItem) {
+        editingItemIndex = null;
+        updateItemTable();
+        return;
+    }
+
+    const vendorIdInput = row.querySelector('[data-field="vendor_id"]') as HTMLInputElement | null;
+    const vendorInventoryIdInput = row.querySelector('[data-field="vendor_inventory_id"]') as HTMLInputElement | null;
+    const nameInput = row.querySelector('[data-field="name"]') as HTMLInputElement | null;
+    const quantityInput = row.querySelector('[data-field="quantity"]') as HTMLInputElement | null;
+    const subtotalInput = row.querySelector('[data-field="subtotal"]') as HTMLInputElement | null;
+    const discountPercentInput = row.querySelector('[data-field="discount_percent"]') as HTMLInputElement | null;
+    const discountAmountInput = row.querySelector('[data-field="discount_amount"]') as HTMLInputElement | null;
+    const finalPriceInput = row.querySelector('[data-field="final_price"]') as HTMLInputElement | null;
+
+    if (!vendorIdInput || !vendorInventoryIdInput || !nameInput || !quantityInput || !subtotalInput || !discountPercentInput || !discountAmountInput || !finalPriceInput) {
+        showErrorMessage('Could not save item due to missing edit fields.');
+        return;
+    }
+
+    const vendor_id = parseInt(vendorIdInput.value, 10);
+    const vendor_inventory_id = vendorInventoryIdInput.value.trim();
+    const name = nameInput.value.trim();
+    const quantity = parseInt(quantityInput.value, 10);
+    const subtotal = parseFloat(subtotalInput.value);
+    const discountPercentRaw = discountPercentInput.value.trim();
+
+    if (isNaN(vendor_id) || vendor_id <= 0 || !vendor_inventory_id || !name || isNaN(quantity) || quantity <= 0 || isNaN(subtotal) || subtotal < 0) {
+        showErrorMessage('Please enter valid values for all editable fields.');
+        return;
+    }
+
+    let discount_percent = 0;
+    let discount_amount: number;
+    let final_price: number;
+
+    if (discountPercentRaw !== '') {
+        discount_percent = parseFloat(discountPercentRaw);
+        if (isNaN(discount_percent) || discount_percent < 0) {
+            showErrorMessage('Discount percentage must be a valid non-negative number.');
+            return;
+        }
+        discount_amount = roundCurrency((subtotal * discount_percent) / 100);
+        final_price = roundCurrency(subtotal - discount_amount);
+    } else {
+        const typedDiscountAmount = parseFloat(discountAmountInput.value);
+        const typedFinalPrice = parseFloat(finalPriceInput.value);
+
+        if (isNaN(typedDiscountAmount) || typedDiscountAmount < 0 || isNaN(typedFinalPrice) || typedFinalPrice < 0) {
+            showErrorMessage('Discount amount and total must be valid non-negative numbers.');
+            return;
+        }
+
+        final_price = roundCurrency(typedFinalPrice);
+        discount_amount = roundCurrency(subtotal - final_price);
+    }
+
+    if (discount_amount < 0 || final_price < 0) {
+        showErrorMessage('Discount and total values cannot be negative.');
+        return;
+    }
+
+    const vendor_price = quantity > 0 ? roundCurrency(subtotal / quantity) : 0;
+
+    const updatedItem: TicketItem = {
+        ...currentItem,
+        vendor_id,
+        vendor_inventory_id,
+        name,
+        quantity,
+        vendor_price,
+        discount_percent,
+        discount_amount,
+        final_price
+    };
+
+    setCombinedItem(index, updatedItem);
+    editingItemIndex = null;
+    updateItemTable();
+    showSuccessMessage('Item updated.');
+}
+
+function getCombinedItem(index: number): TicketItem | null {
+    if (index < ticket_items.length) {
+        return ticket_items[index] ?? null;
+    }
+    const unsyncedIndex = index - ticket_items.length;
+    return unsynced_items[unsyncedIndex] ?? null;
+}
+
+function setCombinedItem(index: number, item: TicketItem): void {
+    if (index < ticket_items.length) {
+        ticket_items[index] = item;
+        return;
+    }
+    const unsyncedIndex = index - ticket_items.length;
+    unsynced_items[unsyncedIndex] = item;
+}
+
+function roundCurrency(value: number): number {
+    return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function escapeHtmlAttribute(value: string): string {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }
 
 /* REMOVE ITEM
@@ -286,6 +505,12 @@ function updateItemTable() {
 * Returns: None
 */
 function removeItem(index: number) {
+    if (editingItemIndex === index) {
+        editingItemIndex = null;
+    } else if (editingItemIndex !== null && editingItemIndex > index) {
+        editingItemIndex -= 1;
+    }
+
     if (index < ticket_items.length) {
         ticket_items.splice(index, 1);
     } else {
@@ -300,7 +525,8 @@ function removeItem(index: number) {
 * Returns: None
 */
 function createItemLocally(vendor_id: number, vendor_inventory_id: string, name: string, vendor_price: number, quantity: number) {
-    const newItem: TicketItem = { vendor_id, vendor_inventory_id, name, quantity, vendor_price, discount_percent: 0, discount_amount: 0, final_price: vendor_price };
+    const subtotal = vendor_price * quantity;
+    const newItem: TicketItem = { vendor_id, vendor_inventory_id, name, quantity, vendor_price, discount_percent: 0, discount_amount: 0, final_price: roundCurrency(subtotal) };
     unsynced_items.push(newItem);
     updateItemTable();
 }
@@ -507,6 +733,7 @@ async function searchTicket() {
         }
         ticket_items = response.items as TicketItem[];
         unsynced_items = [];
+        editingItemIndex = null;
         updateItemTable();
         setActiveTicketState(ticketId);
         showSuccessMessage(`Ticket #${ticketId} loaded.`);
@@ -531,6 +758,7 @@ async function clearTicket() {
     }
     ticket_items = [];
     unsynced_items = [];
+    editingItemIndex = null;
     localStorage.removeItem('currentTicketId');
     setIdleTicketState();
     updateItemTable();

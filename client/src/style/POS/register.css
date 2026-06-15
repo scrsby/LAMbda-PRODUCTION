@@ -202,6 +202,26 @@
     background: #7e22ce;
 }
 
+.btn-edit-saving {
+    background: #2e7d32;
+    border-color: #1b5e20;
+}
+
+.btn-edit-saving:hover {
+    background: #1b5e20;
+}
+
+.cart-edit-input {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.2rem 0.35rem;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.8125rem;
+}
+
 .search-add-btn {
     min-width: 88px;
 }
