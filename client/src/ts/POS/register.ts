@@ -258,14 +258,14 @@ function updateItemTable() {
 
         if (isEditing) {
             row.innerHTML = `
-                <td><input class="cart-edit-input" data-field="vendor_id" type="number" value="${item.vendor_id}" min="1"></td>
-                <td><input class="cart-edit-input" data-field="vendor_inventory_id" type="text" value="${escapeHtmlAttribute(item.vendor_inventory_id)}"></td>
-                <td><input class="cart-edit-input" data-field="name" type="text" value="${escapeHtmlAttribute(item.name)}"></td>
-                <td><input class="cart-edit-input" data-field="quantity" type="number" value="${item.quantity}" min="1" step="1"></td>
-                <td><input class="cart-edit-input" data-field="subtotal" type="number" value="${subtotal.toFixed(2)}" min="0" step="0.01"></td>
-                <td><input class="cart-edit-input" data-field="discount_percent" type="number" value="${item.discount_percent > 0 ? item.discount_percent : ''}" min="0" step="0.01" placeholder="optional"></td>
-                <td><input class="cart-edit-input" data-field="discount_amount" type="number" value="${item.discount_amount.toFixed(2)}" min="0" step="0.01"></td>
-                <td><input class="cart-edit-input" data-field="final_price" type="number" value="${item.final_price.toFixed(2)}" min="0" step="0.01"></td>
+                <td><input class="cart-edit-input" data-field="vendor_id" type="number" value="${item.vendor_id}" min="1" aria-label="Vendor ID"></td>
+                <td><input class="cart-edit-input" data-field="vendor_inventory_id" type="text" value="${escapeHtmlAttribute(item.vendor_inventory_id)}" aria-label="Vendor inventory ID"></td>
+                <td><input class="cart-edit-input" data-field="name" type="text" value="${escapeHtmlAttribute(item.name)}" aria-label="Item name"></td>
+                <td><input class="cart-edit-input" data-field="quantity" type="number" value="${item.quantity}" min="1" step="1" aria-label="Quantity"></td>
+                <td><input class="cart-edit-input" data-field="subtotal" type="number" value="${subtotal.toFixed(2)}" min="0" step="0.01" aria-label="Subtotal"></td>
+                <td><input class="cart-edit-input" data-field="discount_percent" type="number" value="${item.discount_percent > 0 ? item.discount_percent : ''}" min="0" step="0.01" placeholder="optional" aria-label="Discount percentage"></td>
+                <td><input class="cart-edit-input" data-field="discount_amount" type="number" value="${item.discount_amount.toFixed(2)}" min="0" step="0.01" aria-label="Discount amount"></td>
+                <td><input class="cart-edit-input" data-field="final_price" type="number" value="${item.final_price.toFixed(2)}" min="0" step="0.01" aria-label="Total"></td>
                 <td style="display:flex;gap:0.25rem;align-items:center;">
                     <button type="button" class="btn btn-edit btn-edit-saving" data-action="edit" data-index="${index}">
                         <span class="material-symbols-outlined">check</span>
