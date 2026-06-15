@@ -304,7 +304,7 @@ router.get('/inventory-search', async (req, res) => {
                 price,
                 qty AS quantity
              FROM inventory
-             WHERE ${conditions.join(' OR ')}
+             WHERE ${conditions.join(' AND ')}
              ORDER BY item_id DESC`,
             values
         );
