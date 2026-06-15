@@ -261,7 +261,7 @@ router.delete('/ticket/:id', requireAuth, requireUserType('admin'), async (req, 
         await client.query('BEGIN');
 
         const ticketResult = await client.query(
-            'SELECT status FROM tickets WHERE ticket_id = $1 FOR UPDATE',
+            'SELECT ticket_status FROM tickets WHERE ticket_id = $1 FOR UPDATE',
             [ticketId]
         );
 
