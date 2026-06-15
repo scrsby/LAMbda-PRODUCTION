@@ -17,8 +17,126 @@
 import express from 'express';
 import db from '../config/db.js'; // Import your database connection
 import { sendEmail } from '../services/mailer.js'
+import { requireAuth, requireUserType } from '../utils/auth-middleware.js';
 
 const router = express.Router();
+
+async function getTicketDetail(ticketId: string) {
+    const ticketResult = await db.query(
+        `SELECT t.ticket_id,
+                t.cashier_id,
+                t.created_at,
+                t.ticket_status,
+                COALESCE(t.total, 0)::float AS total,
+                COALESCE(
+                    NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
+                    u.email,
+                    CONCAT('Employee #', t.cashier_id::text)
+                ) AS employee_name
+         FROM tickets t
+         LEFT JOIN users u ON u.user_id = t.cashier_id
+         WHERE t.ticket_id = $1`,
+        [ticketId]
+    );
+
+    if (ticketResult.rows.length === 0) {
+        return null;
+    }
+
+    const itemsResult = await db.query(
+        `SELECT ticket_item_id,
+                ticket_id,
+                vendor_id,
+                inventory_code         AS vendor_inventory_id,
+                item_name              AS name,
+                base_price::float      AS vendor_price,
+                discount_percent,
+                discount_amount::float AS discount_amount,
+                final_price::float     AS final_price,
+                commission::float      AS commission,
+                payout::float          AS payout,
+                quantity
+         FROM ticket_items
+         WHERE ticket_id = $1`,
+        [ticketId]
+    );
+
+    return {
+        ticket: ticketResult.rows[0],
+        items: itemsResult.rows
+    };
+}
+
+async function getTicketSummaries(filters: {
+    orderId?: string;
+    itemSearch?: string;
+    startDate?: string;
+    endDate?: string;
+    employee?: string;
+}) {
+    const conditions: string[] = [];
+    const values: string[] = [];
+
+    if (filters.orderId) {
+        values.push(`%${filters.orderId}%`);
+        conditions.push(`CAST(t.ticket_id AS TEXT) ILIKE $${values.length}`);
+    }
+
+    if (filters.itemSearch) {
+        values.push(`%${filters.itemSearch}%`);
+        conditions.push(
+            `EXISTS (
+                SELECT 1
+                FROM ticket_items ti
+                WHERE ti.ticket_id = t.ticket_id
+                  AND ti.item_name ILIKE $${values.length}
+            )`
+        );
+    }
+
+    if (filters.startDate) {
+        values.push(filters.startDate);
+        conditions.push(`t.created_at >= $${values.length}`);
+    }
+
+    if (filters.endDate) {
+        values.push(filters.endDate);
+        conditions.push(`t.created_at <= $${values.length}`);
+    }
+
+    if (filters.employee) {
+        values.push(`%${filters.employee}%`);
+        conditions.push(
+            `COALESCE(
+                NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
+                u.email,
+                CONCAT('Employee #', t.cashier_id::text)
+            ) ILIKE $${values.length}`
+        );
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const result = await db.query(
+        `SELECT t.ticket_id,
+                t.cashier_id,
+                t.created_at,
+                t.ticket_status,
+                COALESCE(t.total, 0)::float AS total,
+                COALESCE(
+                    NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
+                    u.email,
+                    CONCAT('Employee #', t.cashier_id::text)
+                ) AS employee_name
+         FROM tickets t
+         LEFT JOIN users u ON u.user_id = t.cashier_id
+         ${whereClause}
+         ORDER BY t.created_at DESC`,
+        values
+    );
+
+    return result.rows;
+}
 
 /* CREATE TICKET
 * Endpoint to create a new receipt and process a transaction
@@ -26,10 +144,11 @@ const router = express.Router();
 */
 router.post('/create-ticket', async (req, res) => {
     try {
+        const cashierId = req.session.user?.id ?? 2;
         // 1. Create a new ticket in the database with status "open"
         const newTicket = await db.query(
-            'INSERT INTO tickets (status, created_at, cashier_id) VALUES ($1, NOW(), 2) RETURNING ticket_id, created_at',
-            ['open']
+            'INSERT INTO tickets (ticket_status, created_at, cashier_id) VALUES ($1, NOW(), $2) RETURNING ticket_id, created_at',
+            ['open', cashierId]
         );
         const ticketId = newTicket.rows[0].ticket_id;
         // 2. Return the new ticket ID and details (initially empty items)
@@ -37,8 +156,8 @@ router.post('/create-ticket', async (req, res) => {
             ticketId: ticketId
         });
     } catch (error) {
-        console.error('Error creating receipt:', error);
-        res.status(500).json({ error: 'Failed to create receipt' });
+        console.error('Error creating ticket:', error);
+        res.status(500).json({ error: 'Failed to create ticket' });
     }
 });
 
@@ -120,28 +239,11 @@ router.post('/update-ticket', async (req, res) => {
 router.get('/ticket/:id', async (req, res) => {
     const ticketId = req.params.id;
     try {
-        const ticketResult = await db.query(
-            'SELECT ticket_id, cashier_id, created_at, ticket_status, total FROM tickets WHERE ticket_id = $1',
-            [ticketId]
-        );
-        if (ticketResult.rows.length === 0) {
+        const ticketDetail = await getTicketDetail(ticketId);
+        if (!ticketDetail) {
             return res.status(404).json({ error: 'Ticket not found' });
         }
-        const itemsResult = await db.query(
-            `SELECT ticket_item_id,
-                    vendor_id,
-                    inventory_code        AS vendor_inventory_id,
-                    item_name             AS name,
-                    base_price::float     AS vendor_price,
-                    discount_percent,
-                    discount_amount::float AS discount_amount,
-                    final_price::float    AS final_price,
-                    quantity
-             FROM ticket_items
-             WHERE ticket_id = $1`,
-            [ticketId]
-        );
-        res.status(200).json({ ticket: ticketResult.rows[0], items: itemsResult.rows });
+        res.status(200).json(ticketDetail);
     } catch (error) {
         console.error('Error fetching ticket:', error);
         res.status(500).json({ error: 'Failed to fetch ticket' });
@@ -221,6 +323,70 @@ router.get('/inventory-search', async (req, res) => {
     }
 });
 
+/* DELETE TICKET
+* Removes an open ticket and all associated items. Admin only.
+*/
+router.delete('/ticket/:id', requireAuth, requireUserType('admin'), async (req, res) => {
+    const ticketId = req.params.id;
+    const client = await db.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const ticketResult = await client.query(
+            'SELECT ticket_status FROM tickets WHERE ticket_id = $1 FOR UPDATE',
+            [ticketId]
+        );
+
+        if (ticketResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Ticket not found' });
+        }
+
+        if (ticketResult.rows[0].ticket_status !== 'open') {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ error: 'Only open tickets can be deleted' });
+        }
+
+        await client.query('DELETE FROM ticket_items WHERE ticket_id = $1', [ticketId]);
+        await client.query('DELETE FROM tickets WHERE ticket_id = $1', [ticketId]);
+        await client.query('COMMIT');
+
+        res.status(200).json({ message: 'Ticket deleted successfully' });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error deleting ticket:', error);
+        res.status(500).json({ error: 'Failed to delete ticket' });
+    } finally {
+        client.release();
+    }
+});
+
+/* GET ALL TICKETS
+* Returns ticket summaries for the POS orders page, with optional filters.
+*/
+router.get('/tickets', async (req, res) => {
+    const orderId = req.query.orderId?.toString().trim();
+    const itemSearch = req.query.itemSearch?.toString().trim();
+    const startDate = req.query.startDate?.toString().trim();
+    const endDate = req.query.endDate?.toString().trim();
+    const employee = req.query.employee?.toString().trim();
+
+    try {
+        const tickets = await getTicketSummaries({
+            orderId,
+            itemSearch,
+            startDate,
+            endDate,
+            employee
+        });
+        res.status(200).json({ tickets });
+    } catch (error) {
+        console.error('Error fetching tickets:', error);
+        res.status(500).json({ error: 'Failed to fetch tickets' });
+    }
+});
+
 /* CLOSE TICKET
 * Endpoint to close a receipt and finalize the transaction
 */
@@ -234,14 +400,41 @@ router.post('/close-receipt', async (req, res) => {
 * Endpoint to retrieve all receipts for a given day or time period
 */
 router.get('/receipts', async (req, res) => {
-    const { startDate, endDate } = req.query;
+    const orderId = req.query.orderId?.toString().trim();
+    const itemSearch = req.query.itemSearch?.toString().trim();
+    const startDate = req.query.startDate?.toString().trim();
+    const endDate = req.query.endDate?.toString().trim();
+    const employee = req.query.employee?.toString().trim();
+
+    try {
+        const tickets = await getTicketSummaries({
+            orderId,
+            itemSearch,
+            startDate,
+            endDate,
+            employee
+        });
+        res.status(200).json({ tickets });
+    } catch (error) {
+        console.error('Error fetching receipts:', error);
+        res.status(500).json({ error: 'Failed to fetch receipts' });
+    }
 });
 
 /* GET TICKET DETAILS
 * Endpoint to retrieve details of a specific receipt
 */
 router.get('/receipt/:id', async (req, res) => {
-    const receiptId = req.params.id;
+    try {
+        const ticketDetail = await getTicketDetail(req.params.id);
+        if (!ticketDetail) {
+            return res.status(404).json({ error: 'Receipt not found' });
+        }
+        res.status(200).json(ticketDetail);
+    } catch (error) {
+        console.error('Error fetching receipt:', error);
+        res.status(500).json({ error: 'Failed to fetch receipt' });
+    }
 });
 
 export default router;
