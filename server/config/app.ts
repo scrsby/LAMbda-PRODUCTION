@@ -48,6 +48,9 @@ app.use(cors({
 app.use(express.json()); // To parse JSON request bodies
 
 // Session Setup (must be before routes)
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+  throw new Error('SESSION_SECRET environment variable must be set in production');
+}
 const PgSessionStore = connectPgSimple(session);
 app.use(
   session({
@@ -55,7 +58,7 @@ app.use(
       pool,
       createTableIfMissing: true,
     }),
-    secret: process.env.SESSION_SECRET || 'testtest', // Use env variable in production
+    secret: process.env.SESSION_SECRET || 'testtest', // Must be set via SESSION_SECRET env variable in production
     saveUninitialized: false, // Don't create session until a login occurs
     resave: false, // Don't save session if unmodified
     cookie: {
