@@ -26,15 +26,20 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = join(__filename, '..');
 
-// Initialize database connections (the require statement itself can trigger the connection attempt in db.js)
-import db from './db.js';
-
 // Initialize Express app
 const app = express();
 
+// Trust the first proxy (AWS ALB / reverse proxy) so req.secure reflects
+// the original HTTPS connection and Secure cookies work correctly.
+app.set('trust proxy', 1);
+
 // Set up middleware
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',')
+  : ['http://localhost:3000', 'http://localhost:9000'];
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:9000'], // Allow both production and dev server ports
+  origin: allowedOrigins,
   credentials: true
 }));
 
@@ -49,6 +54,7 @@ app.use(
     cookie: {
       secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
       httpOnly: true, // Prevent client-side JS access
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Required for cross-site cookie sending in production
       maxAge: 48 * 60 * 60 * 1000 // 2 days in milliseconds
     },
   })

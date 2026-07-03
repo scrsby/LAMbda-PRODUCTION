@@ -5,6 +5,7 @@ node_modules
 dist
 client/dist
 
+
 # Environment files – injected at runtime via ECS task definition or Secrets Manager
 .env
 .env.*

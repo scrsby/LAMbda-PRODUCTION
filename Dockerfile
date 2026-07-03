@@ -1,56 +1,51 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 1 – Builder
-#   Installs all dependencies (including devDependencies), compiles the
-#   server TypeScript with tsc, and bundles the client TypeScript with webpack.
+#   Installs all dependencies and bundles the client TypeScript with webpack.
+#   Server TypeScript is NOT compiled here — tsx runs it directly at runtime,
+#   which keeps __dirname pointing at the source tree so static file paths work.
 # ─────────────────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies first (layer-cached unless package.json changes)
 COPY package*.json ./
 RUN npm ci
 
-# Copy the full source tree
 COPY . .
 
 # Build client-side bundles → client/dist/
 RUN npx webpack --config webpack.config.js --mode production
 
-# Compile server TypeScript → dist/
-RUN npx tsc --project tsconfig.json
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 2 – Production image
-#   Copies only the compiled output and production dependencies to keep the
-#   final image as small as possible.
 # ─────────────────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS production
+FROM node:22-alpine AS production
 
 WORKDIR /app
 
-# Install production dependencies only
+# Full install — tsx is a devDependency used as the production runtime
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
-# Compiled server code
-COPY --from=builder /app/dist ./dist
+# Server TypeScript source + ipv4-preload.cjs
+COPY --from=builder /app/server ./server
 
-# Client bundles (served from /dist in the browser via express.static)
-COPY --from=builder /app/client/dist ./client/dist
-
-# Static client assets served by Express
+# Client bundles and static assets
+COPY --from=builder /app/client/dist       ./client/dist
 COPY --from=builder /app/client/src/pages  ./client/src/pages
 COPY --from=builder /app/client/src/assets ./client/src/assets
 COPY --from=builder /app/client/src/style  ./client/src/style
 COPY --from=builder /app/client/public     ./client/public
 
-# Runtime environment
+# tsconfig required by tsx at runtime
+COPY tsconfig.json ./
+
 ENV NODE_ENV=production
 ENV PORT=3000
 
 EXPOSE 3000
 
-# Run the compiled server entry point
-CMD ["node", "dist/server/config/app.js"]
+# --no-network-family-autoselection disables Node.js v20 Happy Eyeballs so IPv6
+# (unreachable in Docker Desktop) cannot race and fail before IPv4 wins.
+CMD ["sh", "-c", "exec node --no-network-family-autoselection --dns-result-order=ipv4first node_modules/.bin/tsx server/config/app.ts"]

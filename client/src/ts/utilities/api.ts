@@ -13,7 +13,6 @@
 */
 
 import axios from 'axios'; 
-const SERVER_LOCATION: String = "localhost:3000"
 
 // User session type
 export interface SessionUser {
@@ -26,7 +25,7 @@ export interface SessionUser {
 }
 
 export async function apiAxios(endpoint: string, options: any = {}) {
-    const url = `http://${SERVER_LOCATION}${endpoint}`;
+    const url = endpoint;
 
     try {
         const response = await axios({
