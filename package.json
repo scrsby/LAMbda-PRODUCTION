@@ -25,6 +25,7 @@
     "@supabase/supabase-js": "^2.108.2",
     "@types/bcrypt": "^6.0.0",
     "bcrypt": "^6.0.0",
+    "connect-pg-simple": "^10.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
@@ -37,6 +38,7 @@
     "tsconfig": "^7.0.0"
   },
   "devDependencies": {
+    "@types/connect-pg-simple": "^7.0.3",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/express-session": "^1.18.2",
