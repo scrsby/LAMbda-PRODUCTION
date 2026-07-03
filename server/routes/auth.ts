@@ -191,13 +191,6 @@ router.post('/login', async (req: any, res: any) => {
                 phone: user.phone
             };
 
-            // Log session cookie info to console
-            console.log('Session created for user:', {
-                sessionId: req.sessionID,
-                user: req.session.user,
-                cookie: req.session.cookie
-            });
-
             res.status(200).json({
                 success: true,
                 message: 'Login successful',

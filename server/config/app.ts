@@ -21,6 +21,8 @@ import path, { join } from 'path';
 import express, { type ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import session from 'express-session';
+import connectPgSimple from 'connect-pg-simple';
+import pool from './db.js';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -46,9 +48,17 @@ app.use(cors({
 app.use(express.json()); // To parse JSON request bodies
 
 // Session Setup (must be before routes)
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+  throw new Error('SESSION_SECRET environment variable must be set in production');
+}
+const PgSessionStore = connectPgSimple(session);
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || 'testtest', // Use env variable in production
+    store: new PgSessionStore({
+      pool,
+      createTableIfMissing: true,
+    }),
+    secret: process.env.SESSION_SECRET || 'testtest', // Must be set via SESSION_SECRET env variable in production
     saveUninitialized: false, // Don't create session until a login occurs
     resave: false, // Don't save session if unmodified
     cookie: {
