@@ -81,6 +81,7 @@ async function getCurrentSessionFirstName() {
         const firstName = rawFirstName.trim();
         return firstName !== '' ? firstName : null;
     } catch (error) {
+        console.warn('Unable to load session user for user pill display.', error);
         return null;
     }
 }
@@ -94,7 +95,7 @@ function applyUserPillName(firstName) {
         el.textContent = displayName;
     });
 
-    const firstLetter = displayName.charAt(0).toUpperCase();
+    const firstLetter = displayName.charAt(0).toUpperCase() || 'U';
     const userAvatarEls = document.querySelectorAll('.user-avatar');
     userAvatarEls.forEach((el) => {
         el.textContent = firstLetter;
