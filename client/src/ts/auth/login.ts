@@ -32,6 +32,31 @@ function hideError() {
     }
 }
 
+function showLoginSuccessState() {
+    const title = document.getElementById('login-title');
+    const subtitle = document.getElementById('login-subtitle');
+    const successIndicator = document.getElementById('login-success-indicator');
+    const submitButton = document.querySelector('#login-form button[type="submit"]') as HTMLButtonElement | null;
+
+    if (title) {
+        title.textContent = 'Login Successful';
+    }
+
+    if (subtitle) {
+        subtitle.textContent = 'Redirecting to dashboard...';
+    }
+
+    if (successIndicator) {
+        successIndicator.style.display = 'flex';
+        successIndicator.setAttribute('aria-hidden', 'false');
+    }
+
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Signing In...';
+    }
+}
+
 // Check if already logged in on page load
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await getCurrentUser();
@@ -111,9 +136,11 @@ async function credentialAuthorization() {
                 console.log('Profile incomplete, redirecting to finalization...');
                 window.location.href = 'account-finalization.html';
             } else {
-                // Profile has at least one field, redirect to dashboard
-                alert('Login successful! Redirecting to dashboard...');
-                redirectUser(response.user.user_type);
+                // Profile has at least one field, show success state then redirect to dashboard
+                showLoginSuccessState();
+                setTimeout(() => {
+                    redirectUser(response.user.user_type);
+                }, 1200);
             }
         }
 
