@@ -387,11 +387,34 @@ router.get('/tickets', async (req, res) => {
     }
 });
 
-/* CLOSE TICKET
+/* CLOSE RECEIPT (legacy stub — kept for backwards compatibility)
 * Endpoint to close a receipt and finalize the transaction
 */
 router.post('/close-receipt', async (req, res) => {
     const { receiptId } = req.body;
+});
+
+/* CLOSE TICKET
+* Marks an open ticket as closed (paid). Expects { ticketId } in the request body.
+*/
+router.post('/close-ticket', async (req, res) => {
+    const { ticketId } = req.body;
+    if (!ticketId) {
+        return res.status(400).json({ error: 'ticketId is required' });
+    }
+    try {
+        const result = await db.query(
+            `UPDATE tickets SET ticket_status = 'closed' WHERE ticket_id = $1 AND ticket_status = 'open' RETURNING ticket_id`,
+            [ticketId]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Ticket not found or not open' });
+        }
+        res.status(200).json({ message: 'Ticket closed successfully', ticketId: result.rows[0].ticket_id });
+    } catch (error) {
+        console.error('Error closing ticket:', error);
+        res.status(500).json({ error: 'Failed to close ticket' });
+    }
 });
 
 
