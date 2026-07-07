@@ -58,7 +58,7 @@ function getGreeting() {
 function setGreeting() {
     const greetingEl = document.getElementById('greeting');
     if (greetingEl) {
-        greetingEl.textContent = getGreeting() + ', Alex';
+        greetingEl.textContent = getGreeting();
     }
 }
 
@@ -86,14 +86,15 @@ async function getCurrentSessionFirstName() {
 }
 
 function applyUserPillName(firstName) {
-    if (!firstName) return;
+    const normalizedFirstName = typeof firstName === 'string' ? firstName.trim() : '';
+    const displayName = normalizedFirstName || 'User';
 
     const userNameEls = document.querySelectorAll('.user-name');
     userNameEls.forEach((el) => {
-        el.textContent = firstName;
+        el.textContent = displayName;
     });
 
-    const firstLetter = firstName.charAt(0).toUpperCase();
+    const firstLetter = displayName.charAt(0).toUpperCase();
     const userAvatarEls = document.querySelectorAll('.user-avatar');
     userAvatarEls.forEach((el) => {
         el.textContent = firstLetter;
@@ -101,7 +102,7 @@ function applyUserPillName(firstName) {
 
     const greetingEl = document.getElementById('greeting');
     if (greetingEl) {
-        greetingEl.textContent = `${getGreeting()}, ${firstName}`;
+        greetingEl.textContent = `${getGreeting()}, ${displayName}`;
     }
 }
 

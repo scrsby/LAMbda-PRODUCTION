@@ -92,7 +92,7 @@ function getDisplayName(user: SessionUser): string {
     }
 
     const emailPrefix = user.email?.split('@')[0]?.trim();
-    return emailPrefix || 'User';
+    return emailPrefix && emailPrefix !== '' ? emailPrefix : 'User';
 }
 
 /* GET TIME BASED GREETING
