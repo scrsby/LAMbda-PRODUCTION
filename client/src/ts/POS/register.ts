@@ -1,17 +1,3 @@
-/*
-  _               __  __ _         _       
- | |        /\   |  \/  | |       | |      
- | |       /  \  | \  / | |__   __| | __ _ 
- | |      / /\ \ | |\/| | '_ \ / _` |/ _` |
- | |____ / ____ \| |  | | |_) | (_| | (_| |
- |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
- 
- Name: Register POS Transaction
- File: register.ts
- Description: Handles all client-side logic for registering a POS transaction, including form handling and API communication.
- Last Edited: 10 June 2026
-*/
-
 import { apiAxios } from '../utilities/api.js';
 import { getCurrentUser } from '../utilities/api.js';
 import { showSuccessMessage, showErrorMessage } from '../utilities/messages.js';
@@ -519,11 +505,6 @@ function removeItem(index: number) {
     updateItemTable();
 }
 
-/* CREATE ITEM LOCALLY
-* This function creates a new item object based on the provided parameters and adds it to the unsynced_items array. It also calls the updateItemTable function to refresh the UI and display the new item in the item table.
-* Params: id (string), name (string), price (number), quantity (number)
-* Returns: None
-*/
 function createItemLocally(vendor_id: number, vendor_inventory_id: string, name: string, vendor_price: number, quantity: number) {
     const subtotal = vendor_price * quantity;
     const newItem: TicketItem = { vendor_id, vendor_inventory_id, name, quantity, vendor_price, discount_percent: 0, discount_amount: 0, final_price: roundCurrency(subtotal) };
