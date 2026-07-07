@@ -55,13 +55,6 @@ function getGreeting() {
     return 'Good evening';
 }
 
-function setGreeting() {
-    const greetingEl = document.getElementById('greeting');
-    if (greetingEl) {
-        greetingEl.textContent = getGreeting();
-    }
-}
-
 async function getCurrentSessionFirstName() {
     try {
         const response = await fetch('/auth/me', {
@@ -95,7 +88,7 @@ function applyUserPillName(firstName) {
         el.textContent = displayName;
     });
 
-    const firstLetter = displayName ? displayName.charAt(0).toUpperCase() : 'U';
+    const firstLetter = displayName.charAt(0).toUpperCase();
     const userAvatarEls = document.querySelectorAll('.user-avatar');
     userAvatarEls.forEach((el) => {
         el.textContent = firstLetter;
@@ -268,7 +261,6 @@ function closeMobileMenu() {
 // ===== Initialize =====
 document.addEventListener('DOMContentLoaded', async function() {
     initTheme();
-    setGreeting();
     const firstName = await getCurrentSessionFirstName();
     applyUserPillName(firstName);
     
