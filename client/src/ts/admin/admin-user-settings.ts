@@ -1,35 +1,18 @@
-/*
-  _               __  __ _         _
- | |        /\   |  \/  | |       | |
- | |       /  \  | \  / | |__   __| | __ _
- | |      / /\ \ | |\/| | '_ \ / _` |/ _` |
- | |____ / ____ \| |  | | |_) | (_| | (_| |
- |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
-
- Name: Admin User Settings
- File: admin-user-settings.ts
- Description: Manages user creation and displays all users with access tokens
- Last Edited: 9 February 2026
-*/
-
 import { apiAxios, requireAuth, logout } from '../utilities/api.js';
 import { showErrorMessage, showSuccessMessage } from '../utilities/messages.js';
 
-// Check authentication on page load
 document.addEventListener('DOMContentLoaded', async () => {
-    // const user = await requireAuth();
+    const user = await requireAuth();
 
-    /* 
-    if (!user) return; // Will redirect to login
-    
-    // Only allow admin users
+    if (!user) return;
+
     if (user.userType !== 'admin') {
         window.location.href = '/auth/login.html';
         return;
     }
     
     loadUsersTable();
-    */
+    
 
     // Logout button handlers
     document.getElementById('logout-btn')?.addEventListener('click', async (e) => {

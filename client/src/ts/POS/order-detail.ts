@@ -1,17 +1,3 @@
-/*
-  _               __  __ _         _
- | |        /\   |  \/  | |       | |
- | |       /  \  | \  / | |__   __| | __ _
- | |      / /\ \ | |\/| | '_ \ / _` |/ _` |
- | |____ / ____ \| |  | | |_) | (_| | (_| |
- |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
- 
- Name: POS Order Detail
- File: order-detail.ts
- Description: Handles client-side logic for viewing a POS ticket and its items.
- Last Edited: 14 June 2026
-*/
-
 import { apiAxios, getCurrentUser } from '../utilities/api.js';
 
 interface TicketDetail {
