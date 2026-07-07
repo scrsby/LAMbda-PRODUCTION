@@ -188,6 +188,7 @@ input, select, textarea {
 .nav-link.active {
     color: var(--accent);
     background: var(--accent-light);
+    pointer-events: none;
 }
 
 .nav-link svg {
