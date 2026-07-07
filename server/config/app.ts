@@ -100,7 +100,9 @@ app.use('/dist', express.static(path.join(__dirname, '..', '..', 'client', 'dist
 // Basic error handler (must be after all routes)
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   console.error(err.stack);
-  res.status(500).send('Error');
+  if (!res.headersSent) {
+    res.status(500).send('Error');
+  }
 };
 app.use(errorHandler);
 

@@ -169,6 +169,8 @@ router.post('/login', async (req: any, res: any) => {
         } catch(error) {
             console.error('Error authenticating user:', error);
             throw error;
+        } finally {
+            client.release();
         }
      } catch(error) {
         console.error('Error authenticating user:', error);
