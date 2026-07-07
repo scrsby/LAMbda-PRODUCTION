@@ -50,7 +50,6 @@ function showLoginSuccessState() {
 
     if (successIndicator) {
         successIndicator.style.display = 'flex';
-        successIndicator.setAttribute('aria-hidden', 'false');
     }
 
     if (submitButton) {
