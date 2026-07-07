@@ -75,7 +75,7 @@ async function getCurrentSessionFirstName() {
         if (!response.ok) return null;
 
         const data = await response.json();
-        const rawFirstName = data?.user?.firstName ?? data?.user?.first_name;
+        const rawFirstName = data?.user?.firstName;
         if (typeof rawFirstName !== 'string') return null;
 
         const firstName = rawFirstName.trim();
@@ -95,7 +95,7 @@ function applyUserPillName(firstName) {
         el.textContent = displayName;
     });
 
-    const firstLetter = displayName.charAt(0).toUpperCase() || 'U';
+    const firstLetter = displayName ? displayName.charAt(0).toUpperCase() : 'U';
     const userAvatarEls = document.querySelectorAll('.user-avatar');
     userAvatarEls.forEach((el) => {
         el.textContent = firstLetter;
