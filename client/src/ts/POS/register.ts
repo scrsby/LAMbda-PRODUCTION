@@ -33,6 +33,7 @@ type InventorySearchItem = {
 let ticket_items: TicketItem[] = [];
 let unsynced_items: TicketItem[] = [];
 let ticketActive: boolean = false;
+let ticketReadOnly: boolean = false;
 let searchResultsDataTable: any = null;
 let itemSearchDebounceId: number | undefined;
 let latestSearchRequestId = 0;
@@ -65,6 +66,7 @@ function setTicketActionButtons(enabled: boolean) {
 
 function setActiveTicketState(ticketId: string) {
     ticketActive = true;
+    ticketReadOnly = false;
     localStorage.setItem('currentTicketId', ticketId);
 
     if (ticketIdField) {
@@ -83,11 +85,32 @@ function setActiveTicketState(ticketId: string) {
 
 function setIdleTicketState() {
     ticketActive = false;
+    ticketReadOnly = false;
     editingItemIndex = null;
 
     if (ticketIdField) {
         ticketIdField.value = '';
         ticketIdField.disabled = false;
+    }
+
+    searchAndAddSection!.style = 'opacity: 0.6; pointer-events: none;';
+    primaryBtn!.textContent = 'Create New';
+    secondaryBtn!.textContent = 'Search Ticket';
+    primaryOption = 'create';
+    secondaryOption = 'search';
+
+    setTicketActionButtons(false);
+}
+
+function setClosedTicketState(ticketId: string) {
+    ticketActive = false;
+    ticketReadOnly = true;
+    editingItemIndex = null;
+    localStorage.removeItem('currentTicketId');
+
+    if (ticketIdField) {
+        ticketIdField.value = ticketId;
+        ticketIdField.disabled = true;
     }
 
     searchAndAddSection!.style = 'opacity: 0.6; pointer-events: none;';
@@ -261,12 +284,13 @@ function updateItemTable() {
                 <td>$${item.discount_amount.toFixed(2)}</td>
                 <td>$${item.final_price.toFixed(2)}</td>
                 <td style="display:flex;gap:0.25rem;align-items:center;">
+                    ${ticketReadOnly ? '' : `
                     <button type="button" class="btn btn-edit" data-action="edit" data-index="${index}">
                         <span class="material-symbols-outlined">edit</span>
                     </button>
                     <button type="button" class="btn btn-danger" data-action="delete" data-index="${index}">
                         <span class="material-symbols-outlined">delete</span>
-                    </button>
+                    </button>`}
                 </td>
             `;
         }
@@ -702,8 +726,13 @@ async function searchTicket() {
         unsynced_items = [];
         editingItemIndex = null;
         updateItemTable();
-        setActiveTicketState(ticketId);
-        showSuccessMessage(`Ticket #${ticketId} loaded.`);
+        if (response.ticket?.ticket_status === 'closed') {
+            setClosedTicketState(ticketId);
+            showSuccessMessage(`Successfully retrieved CLOSED Ticket #${ticketId}.`);
+        } else {
+            setActiveTicketState(ticketId);
+            showSuccessMessage(`Ticket #${ticketId} loaded.`);
+        }
     } catch (error: any) {
         if (error.response?.status === 404) {
             showErrorMessage(`Ticket #${ticketId} not found.`);
@@ -735,13 +764,55 @@ const markPaidBtn = document.getElementById('mark-paid-btn') as HTMLButtonElemen
 function openCheckoutModal() {
     if (checkoutOverlay) {
         checkoutOverlay.style.display = 'flex';
-        checkoutTotal!.textContent = '$' + (ticket_items.reduce((sum, item) => sum + item.final_price, 0) + unsynced_items.reduce((sum, item) => sum + item.final_price, 0)).toFixed(2);
+        const allItems = [...ticket_items, ...unsynced_items];
+        checkoutTotal!.textContent = '$' + allItems.reduce((sum, item) => sum + item.final_price, 0).toFixed(2);
+        if (markPaidBtn) markPaidBtn.disabled = false;
     }
 }
 
 function closeCheckoutModal() {
     if (checkoutOverlay) {
         checkoutOverlay.style.display = 'none';
+        if (markPaidBtn) markPaidBtn.disabled = true;
+    }
+}
+
+/* CLOSE TICKET
+* Syncs any pending items then marks the active ticket as closed (paid).
+*/
+async function closeTicket() {
+    const ticketId = localStorage.getItem('currentTicketId');
+    if (!ticketId) {
+        showErrorMessage('No active ticket to close.');
+        return;
+    }
+
+    if (markPaidBtn) markPaidBtn.disabled = true;
+
+    if (ticket_items.length > 0 || unsynced_items.length > 0) {
+        const updated = await updateTicket();
+        if (!updated) {
+            if (markPaidBtn) markPaidBtn.disabled = false;
+            return;
+        }
+    }
+
+    try {
+        await apiAxios('/POS/close-ticket', {
+            method: 'POST',
+            data: { ticketId }
+        });
+        closeCheckoutModal();
+        ticket_items = [];
+        unsynced_items = [];
+        editingItemIndex = null;
+        localStorage.removeItem('currentTicketId');
+        setIdleTicketState();
+        updateItemTable();
+        showSuccessMessage(`Ticket #${ticketId} marked as paid and closed.`);
+    } catch (error: any) {
+        if (markPaidBtn) markPaidBtn.disabled = false;
+        showErrorMessage(error.response?.data?.error ?? 'Failed to close ticket. Please try again.');
     }
 }
 
@@ -789,9 +860,42 @@ checkoutGoBackBtn?.addEventListener('click', () => {
     closeCheckoutModal();
 });
 
+markPaidBtn?.addEventListener('click', () => {
+    void closeTicket();
+});
+
 // Close modal when clicking the overlay background
 checkoutOverlay?.addEventListener('click', (e) => {
     if (e.target === checkoutOverlay) {
         closeCheckoutModal();
     }
+});
+
+// Warn before closing tab / navigating away when there are unsaved items on an active ticket
+window.addEventListener('beforeunload', (e) => {
+    if (ticketActive && unsynced_items.length > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+// Intercept nav-link clicks to prompt the user to save before leaving
+document.querySelectorAll<HTMLAnchorElement>('a.nav-link, .mobile-menu-nav a').forEach((link) => {
+    link.addEventListener('click', (e) => {
+        if (ticketActive && unsynced_items.length > 0) {
+            const confirmed = window.confirm(
+                'You have unsaved items on this ticket. Do you want to save before leaving?'
+            );
+            if (confirmed) {
+                e.preventDefault();
+                const href = link.href;
+                void updateTicket().then((success) => {
+                    if (success) {
+                        window.location.href = href;
+                    }
+                });
+            }
+            // If not confirmed, navigation continues normally
+        }
+    });
 });
