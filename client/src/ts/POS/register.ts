@@ -52,6 +52,7 @@ const vendorIdInput = document.getElementById('vendor-id') as HTMLInputElement |
 const vendorInventoryIdInput = document.getElementById('vendor-inventory-id') as HTMLInputElement | null;
 const itemNameInput = document.getElementById('item-name') as HTMLInputElement | null;
 const vendorPriceInput = document.getElementById('vendor-price') as HTMLInputElement | null;
+const searchAndAddSection = document.getElementById('search-and-add') as HTMLDivElement | null;
 
 function setTicketActionButtons(enabled: boolean) {
     if (createItemBtn) {
@@ -71,6 +72,7 @@ function setActiveTicketState(ticketId: string) {
         ticketIdField.disabled = true;
     }
 
+    searchAndAddSection!.style = '';
     primaryBtn!.textContent = 'Update Ticket';
     secondaryBtn!.textContent = 'Clear Ticket';
     primaryOption = 'update';
@@ -88,6 +90,7 @@ function setIdleTicketState() {
         ticketIdField.disabled = false;
     }
 
+    searchAndAddSection!.style = 'opacity: 0.6; pointer-events: none;';
     primaryBtn!.textContent = 'Create New';
     secondaryBtn!.textContent = 'Search Ticket';
     primaryOption = 'create';

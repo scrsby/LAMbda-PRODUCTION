@@ -1,19 +1,6 @@
-/*
-  _               __  __ _         _
- | |        /\   |  \/  | |       | |
- | |       /  \  | \  / | |__   __| | __ _
- | |      / /\ \ | |\/| | '_ \ / _` |/ _` |
- | |____ / ____ \| |  | | |_) | (_| | (_| |
- |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
-
- Name: Admin Inventory Settings
- File: admin-inventory-settings.ts
- Description: Manages user creation and displays all users with access tokens
- Last Edited: 27 May 2026
-*/
-
 import { apiAxios, requireAuth, logout } from '../utilities/api.js';
 import { showErrorMessage, showSuccessMessage } from '../utilities/messages.js';
+import { updateProfileCard, getDisplayName } from '../utilities/ui.js';
 
 declare global {
     interface Window {
@@ -33,16 +20,17 @@ interface InventoryItem {
 
 let inventoryDataTable: any = null;
 
-// Check authentication on page load
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAuth();
-    if (!user) return; // Will redirect to login
+    if (!user) return;
     
-    // Only allow admin users
+    updateProfileCard(user);
+    
     if (user.userType !== 'admin') {
         window.location.href = '/auth/login.html';
         return;
     }
+
 
     hideSearchQueryMessage();
     loadInventoryTable();
