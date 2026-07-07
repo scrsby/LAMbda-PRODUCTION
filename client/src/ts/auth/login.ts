@@ -38,6 +38,7 @@ function showLoginSuccessState() {
     const title = document.getElementById('login-title');
     const subtitle = document.getElementById('login-subtitle');
     const successIndicator = document.getElementById('login-success-indicator');
+    const statusAnnouncement = document.getElementById('login-status-announcement');
     const submitButton = document.querySelector('#login-form button[type="submit"]') as HTMLButtonElement | null;
 
     if (title) {
@@ -50,6 +51,10 @@ function showLoginSuccessState() {
 
     if (successIndicator) {
         successIndicator.style.display = 'flex';
+    }
+
+    if (statusAnnouncement) {
+        statusAnnouncement.textContent = 'Login successful. Redirecting to dashboard.';
     }
 
     if (submitButton) {
