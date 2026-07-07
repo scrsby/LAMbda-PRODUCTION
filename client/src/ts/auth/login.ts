@@ -15,6 +15,8 @@
 import { apiAxios, getCurrentUser } from "../utilities/api.js";
 import { isValidEmail } from "../utilities/form-validation.js";
 
+const LOGIN_SUCCESS_REDIRECT_DELAY_MS = 1200;
+
 // Error display helper
 function showError(message: string) {
     const errorDisplay = document.getElementById('error-display');
@@ -140,7 +142,7 @@ async function credentialAuthorization() {
                 showLoginSuccessState();
                 setTimeout(() => {
                     redirectUser(response.user.user_type);
-                }, 1200);
+                }, LOGIN_SUCCESS_REDIRECT_DELAY_MS);
             }
         }
 
