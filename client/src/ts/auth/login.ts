@@ -55,7 +55,7 @@ function showLoginSuccessState() {
     if (submitButton) {
         submitButton.disabled = true;
         submitButton.setAttribute('aria-disabled', 'true');
-        submitButton.textContent = 'Signing In...';
+        submitButton.textContent = 'Redirecting...';
     }
 }
 
