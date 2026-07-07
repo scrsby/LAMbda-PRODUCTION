@@ -74,13 +74,13 @@ async function getCurrentSessionFirstName() {
         const firstName = rawFirstName.trim();
         return firstName !== '' ? firstName : null;
     } catch (error) {
-        console.warn('Unable to load session user for user pill display.', error);
+        console.warn('Unable to load session user for user pill display. Falling back to default display.', error);
         return null;
     }
 }
 
-function applyUserPillName(firstName) {
-    const normalizedFirstName = typeof firstName === 'string' ? firstName.trim() : '';
+function applyUserPillName(firstNameOrNull) {
+    const normalizedFirstName = typeof firstNameOrNull === 'string' ? firstNameOrNull.trim() : '';
     const displayName = normalizedFirstName || 'User';
 
     const userNameEls = document.querySelectorAll('.user-name');
