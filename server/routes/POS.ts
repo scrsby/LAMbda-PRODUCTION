@@ -1,19 +1,3 @@
-/*
-  _               __  __ _         _       
- | |        /\   |  \/  | |       | |      
- | |       /  \  | \  / | |__   __| | __ _ 
- | |      / /\ \ | |\/| | '_ \ / _` |/ _` |
- | |____ / ____ \| |  | | |_) | (_| | (_| |
- |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
- 
- PREFIX: POS/
- Name: POS Routes
- File: POS.ts
- Description: Handles routes for POS operations, including creating receipts and processing transactions.
- Functions: 
- Last Edited: 10 February 2026
-*/ 
-
 import express from 'express';
 import db from '../config/db.js'; // Import your database connection
 import { sendEmail } from '../services/mailer.js'
@@ -138,10 +122,6 @@ async function getTicketSummaries(filters: {
     return result.rows;
 }
 
-/* CREATE TICKET
-* Endpoint to create a new receipt and process a transaction
-* Request body is empty, return the new receipt ID and details for items to be added
-*/
 router.post('/create-ticket', async (req, res) => {
     try {
         const cashierId = req.session.user?.id ?? 2;
@@ -161,11 +141,6 @@ router.post('/create-ticket', async (req, res) => {
     }
 });
 
-/* UPDATE TICKET
-* Takes ticket_items (previously synced, may have price/discount changes) and unsynced_items (new).
-* Updates existing rows by ticket_item_id, inserts new rows, then recalculates the ticket total.
-* Returns the inserted items with their new ticket_item_ids.
-*/
 router.post('/update-ticket', async (req, res) => {
     const { ticketId, ticket_items, unsynced_items } = req.body;
     try {
@@ -232,28 +207,17 @@ router.post('/update-ticket', async (req, res) => {
     }
 });
 
-/* GET TICKET
-* Fetches a ticket and all its associated items by ticket_id.
-* Column aliases map DB names to the TicketItem shape expected by the client.
-*/
-router.get('/ticket/:id', async (req, res) => {
-    const ticketId = req.params.id;
+router.post('/close-ticket', async (req, res) => {
+    const { receiptId } = req.body;
     try {
-        const ticketDetail = await getTicketDetail(ticketId);
-        if (!ticketDetail) {
-            return res.status(404).json({ error: 'Ticket not found' });
-        }
-        res.status(200).json(ticketDetail);
+        await db.query('UPDATE tickets SET ticket_status = $1 WHERE ticket_id = $2', ['closed', receiptId]);
     } catch (error) {
-        console.error('Error fetching ticket:', error);
-        res.status(500).json({ error: 'Failed to fetch ticket' });
+        console.error('Error closing receipt:', error);
+        return res.status(500).json({ error: 'Failed to close receipt' });
     }
 });
 
-/* SEARCH INVENTORY
-* Searches inventory for register use by matching vendor ID, vendor inventory code,
-* or item name against any provided criteria.
-*/
+
 router.get('/inventory-search', async (req, res) => {
     const { vendorId, inventoryCode, itemName } = req.query;
     const conditions: string[] = [];
@@ -323,9 +287,20 @@ router.get('/inventory-search', async (req, res) => {
     }
 });
 
-/* DELETE TICKET
-* Removes an open ticket and all associated items. Admin only.
-*/
+router.get('/ticket/:id', async (req, res) => {
+    const ticketId = req.params.id;
+    try {
+        const ticketDetail = await getTicketDetail(ticketId);
+        if (!ticketDetail) {
+            return res.status(404).json({ error: 'Ticket not found' });
+        }
+        res.status(200).json(ticketDetail);
+    } catch (error) {
+        console.error('Error fetching ticket:', error);
+        res.status(500).json({ error: 'Failed to fetch ticket' });
+    }
+});
+
 router.delete('/ticket/:id', requireAuth, requireUserType('admin'), async (req, res) => {
     const ticketId = req.params.id;
     const client = await db.connect();
@@ -362,9 +337,6 @@ router.delete('/ticket/:id', requireAuth, requireUserType('admin'), async (req, 
     }
 });
 
-/* GET ALL TICKETS
-* Returns ticket summaries for the POS orders page, with optional filters.
-*/
 router.get('/tickets', async (req, res) => {
     const orderId = req.query.orderId?.toString().trim();
     const itemSearch = req.query.itemSearch?.toString().trim();
@@ -384,56 +356,6 @@ router.get('/tickets', async (req, res) => {
     } catch (error) {
         console.error('Error fetching tickets:', error);
         res.status(500).json({ error: 'Failed to fetch tickets' });
-    }
-});
-
-/* CLOSE TICKET
-* Endpoint to close a receipt and finalize the transaction
-*/
-router.post('/close-receipt', async (req, res) => {
-    const { receiptId } = req.body;
-});
-
-
-
-/* GET ALL TICKETS
-* Endpoint to retrieve all receipts for a given day or time period
-*/
-router.get('/receipts', async (req, res) => {
-    const orderId = req.query.orderId?.toString().trim();
-    const itemSearch = req.query.itemSearch?.toString().trim();
-    const startDate = req.query.startDate?.toString().trim();
-    const endDate = req.query.endDate?.toString().trim();
-    const employee = req.query.employee?.toString().trim();
-
-    try {
-        const tickets = await getTicketSummaries({
-            orderId,
-            itemSearch,
-            startDate,
-            endDate,
-            employee
-        });
-        res.status(200).json({ tickets });
-    } catch (error) {
-        console.error('Error fetching receipts:', error);
-        res.status(500).json({ error: 'Failed to fetch receipts' });
-    }
-});
-
-/* GET TICKET DETAILS
-* Endpoint to retrieve details of a specific receipt
-*/
-router.get('/receipt/:id', async (req, res) => {
-    try {
-        const ticketDetail = await getTicketDetail(req.params.id);
-        if (!ticketDetail) {
-            return res.status(404).json({ error: 'Receipt not found' });
-        }
-        res.status(200).json(ticketDetail);
-    } catch (error) {
-        console.error('Error fetching receipt:', error);
-        res.status(500).json({ error: 'Failed to fetch receipt' });
     }
 });
 

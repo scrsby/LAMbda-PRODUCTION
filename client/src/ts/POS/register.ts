@@ -197,12 +197,6 @@ async function createTicket() {
     }
 }
 
-/* UPDATE TICKET
-* Sends ticket_items (previously synced) and unsynced_items (new) to the backend.
-* On success, moves unsynced items (now with ticket_item_ids) into ticket_items and shows a success message.
-* Params: None
-* Returns: Promise<boolean> — true if update succeeded
-*/
 async function updateTicket(): Promise<boolean> {
     const ticketId = localStorage.getItem('currentTicketId');
     if (!ticketId) {
@@ -230,11 +224,6 @@ async function updateTicket(): Promise<boolean> {
     }
 }
 
-/* UPDATE ITEM TABLE
-* Takes both the ticket_items array and the unsynced_items array, and updates the item table in the UI to reflect the current state of the ticket. It ensures that all items are displayed correctly, including any new items that have been added but not yet synced with the backend.
-* Params: None
-* Returns: None
-*/
 function updateItemTable() {
     const itemTableBody = document.getElementById('cart_list');
     if (!itemTableBody) return;
@@ -697,12 +686,6 @@ async function searchInventory(manualSearch: boolean) {
     }
 }
 
-/* SEARCH TICKET
-* Fetches an existing ticket by ID from the backend, populates ticket_items with the
-* returned items, and puts the register into active ticket state.
-* Params: None (reads ticket-id input field)
-* Returns: None
-*/
 async function searchTicket() {
     const ticketId = ticketIdField?.value.trim();
     if (!ticketId) {
@@ -730,11 +713,6 @@ async function searchTicket() {
     }
 }
 
-/* CLEAR TICKET
-* Saves any pending items via updateTicket, then resets the register to idle state.
-* Params: None
-* Returns: None
-*/
 async function clearTicket() {
     if (ticket_items.length > 0 || unsynced_items.length > 0) {
         const success = await updateTicket();
@@ -752,11 +730,12 @@ async function clearTicket() {
 const checkoutOverlay = document.getElementById('checkout-overlay') as HTMLDivElement | null;
 const checkoutTotal = document.getElementById('checkout-modal-total') as HTMLSpanElement | null;
 const checkoutGoBackBtn = document.getElementById('checkout-go-back-btn') as HTMLButtonElement | null;
+const markPaidBtn = document.getElementById('mark-paid-btn') as HTMLButtonElement | null;
 
 function openCheckoutModal() {
     if (checkoutOverlay) {
         checkoutOverlay.style.display = 'flex';
-        checkoutTotal!.textContent = '$' + ticket_items.reduce((sum, item) => sum + item.final_price, 0).toFixed(2);
+        checkoutTotal!.textContent = '$' + (ticket_items.reduce((sum, item) => sum + item.final_price, 0) + unsynced_items.reduce((sum, item) => sum + item.final_price, 0)).toFixed(2);
     }
 }
 
@@ -766,8 +745,44 @@ function closeCheckoutModal() {
     }
 }
 
+async function markTicketAsPaid(ticketId: string) {
+    if (!ticketId) {
+        showErrorMessage('No active ticket to mark as paid.');
+        return;
+    }
+
+    try {
+        await apiAxios('/POS/close-ticket', {
+            method: 'POST',
+            data: { ticketId }
+        });
+        showSuccessMessage(`Ticket #${ticketId} marked as paid.`);
+        closeCheckoutModal();
+        await clearTicket();
+    } catch (error) {
+        console.error('Error marking ticket as paid:', error);
+        showErrorMessage('Failed to mark ticket as paid. Please try again.');
+    }
+}
+
 checkoutBtn?.addEventListener('click', () => {
     openCheckoutModal();
+});
+
+markPaidBtn?.addEventListener('click', async () => {
+    updateTicket();
+
+    const ticketId = localStorage.getItem('currentTicketId');
+    console.log('Marking ticket as paid for ticket ID:', ticketId);
+    
+    if (!ticketId) {
+        showErrorMessage('No active ticket to mark as paid.');
+        return;
+    }   
+
+    await markTicketAsPaid(ticketId);
+
+    console.log('Ticket marked as paid and cleared.');
 });
 
 checkoutGoBackBtn?.addEventListener('click', () => {
