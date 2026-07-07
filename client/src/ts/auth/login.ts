@@ -15,6 +15,8 @@
 import { apiAxios, getCurrentUser } from "../utilities/api.js";
 import { isValidEmail } from "../utilities/form-validation.js";
 
+const LOGIN_SUCCESS_REDIRECT_DELAY_MS = 1200;
+
 // Error display helper
 function showError(message: string) {
     const errorDisplay = document.getElementById('error-display');
@@ -29,6 +31,36 @@ function hideError() {
     const errorDisplay = document.getElementById('error-display');
     if (errorDisplay) {
         errorDisplay.style.display = 'none';
+    }
+}
+
+function showLoginSuccessState() {
+    const title = document.getElementById('login-title');
+    const subtitle = document.getElementById('login-subtitle');
+    const successIndicator = document.getElementById('login-success-indicator');
+    const statusAnnouncement = document.getElementById('login-status-announcement');
+    const submitButton = document.querySelector('#login-form button[type="submit"]') as HTMLButtonElement | null;
+
+    if (title) {
+        title.textContent = 'Login Successful';
+    }
+
+    if (subtitle) {
+        subtitle.textContent = 'Redirecting to dashboard...';
+    }
+
+    if (successIndicator) {
+        successIndicator.style.display = 'flex';
+    }
+
+    if (statusAnnouncement) {
+        statusAnnouncement.textContent = 'Login successful. Redirecting to dashboard.';
+    }
+
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.setAttribute('aria-disabled', 'true');
+        submitButton.textContent = 'Redirecting...';
     }
 }
 
@@ -111,9 +143,11 @@ async function credentialAuthorization() {
                 console.log('Profile incomplete, redirecting to finalization...');
                 window.location.href = 'account-finalization.html';
             } else {
-                // Profile has at least one field, redirect to dashboard
-                alert('Login successful! Redirecting to dashboard...');
-                redirectUser(response.user.user_type);
+                // Profile has at least one field, show success state then redirect to dashboard
+                showLoginSuccessState();
+                setTimeout(() => {
+                    redirectUser(response.user.user_type);
+                }, LOGIN_SUCCESS_REDIRECT_DELAY_MS);
             }
         }
 

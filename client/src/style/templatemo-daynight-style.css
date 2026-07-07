@@ -1577,6 +1577,35 @@ tr:hover td {
     color: var(--text-secondary);
 }
 
+.login-success-indicator {
+    width: 3rem;
+    height: 3rem;
+    margin: 0 auto 1rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--success) 18%, transparent);
+    color: var(--success);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-success-indicator svg {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .login-form {
     margin-bottom: 1.5rem;
 }
