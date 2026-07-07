@@ -1,17 +1,3 @@
-/*
-  _               __  __ _         _
- | |        /\   |  \/  | |       | |
- | |       /  \  | \  / | |__   __| | __ _
- | |      / /\ \ | |\/| | '_ \ / _` |/ _` |
- | |____ / ____ \| |  | | |_) | (_| | (_| |
- |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
-
- Name: Authentication Routes
- File: auth.ts
- Description: Handles user authentication and account creation
- Last Edited: 9 February 2026
-*/
-
 import { Router } from 'express';
 import db from '../config/db.js';
 import { sendEmail } from '../services/mailer.js';
@@ -19,15 +5,9 @@ import bcrypt from 'bcrypt';
 
 const router = Router();
 
-/* CREATE ACCOUNT
-*  Route to create a new user account with access token validation
-*  PARAMETERS: email, accessToken, password
-*  RETURNS: Success message or error
-*/
 router.post('/createAccount', async (req: any, res: any) => {
     const { email, accessToken, password } = req.body;
 
-    // Validate required fields
     if (!email || !accessToken || !password) {
         return res.status(400).json({
             success: false,
@@ -36,13 +16,11 @@ router.post('/createAccount', async (req: any, res: any) => {
     }
 
     try {
-        // Start a transaction
         const client = await db.connect();
 
         try {
             await client.query('BEGIN');
 
-            // Validate access token and check if it matches the email
             const tokenQuery = `
                 SELECT email, expires_at, user_type
                 FROM access_tokens
@@ -61,7 +39,6 @@ router.post('/createAccount', async (req: any, res: any) => {
 
             const tokenData = tokenResult.rows[0];
 
-            // Check if token has expired
             if (new Date(tokenData.expires_at) < new Date()) {
                 await client.query('ROLLBACK');
                 return res.status(400).json({
@@ -70,7 +47,6 @@ router.post('/createAccount', async (req: any, res: any) => {
                 });
             }
 
-            // Check if user already exists
             const userCheckQuery = `
                 SELECT user_id FROM users WHERE email = $1
             `;
@@ -84,10 +60,8 @@ router.post('/createAccount', async (req: any, res: any) => {
                 });
             }
 
-            // Hash the password using bcrypt before storing
             const hashedPassword = await bcrypt.hash(password, 10);
 
-            // Create the user account
             const createUserQuery = `
                 INSERT INTO users (email, password_hash, user_type)
                 VALUES ($1, $2, $3)
@@ -99,7 +73,6 @@ router.post('/createAccount', async (req: any, res: any) => {
                 tokenData.user_type
             ]);
 
-            // Delete or mark the access token as used
             const deleteTokenQuery = `
                 DELETE FROM access_tokens WHERE access_token = $1
             `;
@@ -133,15 +106,9 @@ router.post('/createAccount', async (req: any, res: any) => {
     }
 });
 
-/* LOGIN
-*  Params: email, password
-*  Returns: Success message or error
-*  Desc: Authenticates a user with their email and password. This is a placeholder route and should be expanded with proper session handling or JWT token generation for production use.
-*/
 router.post('/login', async (req: any, res: any) => {
     const { email, password } = req.body;
 
-    // Validate fields
     if (!email || !password) {
         return res.status(400).json({
             success: false,
@@ -150,11 +117,9 @@ router.post('/login', async (req: any, res: any) => {
     }
 
      try {
-        // Connect to database to begin transaction
         const client = await db.connect();
 
         try {
-            // Fetch user by email (include profile fields for completeness check)
             const loginQuery = `
                 SELECT user_id, email, password_hash, user_type, first_name, last_name, phone
                 FROM users
@@ -170,8 +135,6 @@ router.post('/login', async (req: any, res: any) => {
             }
 
             const user = loginResult.rows[0];
-
-            // Verify password using bcrypt
             const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
             if (!isPasswordValid) {
@@ -181,7 +144,6 @@ router.post('/login', async (req: any, res: any) => {
                 });
             }
 
-            // Store user data in session
             req.session.user = {
                 id: user.user_id,
                 email: user.email,
@@ -205,12 +167,10 @@ router.post('/login', async (req: any, res: any) => {
             });
 
         } catch(error) {
-            // Query error
             console.error('Error authenticating user:', error);
             throw error;
         }
      } catch(error) {
-        // Connection error
         console.error('Error authenticating user:', error);
         res.status(500).json({
             success: false,
@@ -220,11 +180,6 @@ router.post('/login', async (req: any, res: any) => {
 
 });
 
-/* LOGOUT
-*  Params: none
-*  Returns: Success message or error
-*  Desc: Destroys the user's session and clears the session cookie
-*/
 router.post('/logout', (req: any, res: any) => {
     req.session.destroy((err: Error) => {
         if (err) {
@@ -242,11 +197,6 @@ router.post('/logout', (req: any, res: any) => {
     });
 });
 
-/* GET CURRENT USER
-*  Params: none
-*  Returns: Current session user data or unauthorized error
-*  Desc: Returns the currently logged in user's information from their session
-*/
 router.get('/me', (req: any, res: any) => {
     if (!req.session.user) {
         return res.status(401).json({
@@ -260,13 +210,7 @@ router.get('/me', (req: any, res: any) => {
     });
 });
 
-/* UPDATE PROFILE
-*  Params: firstName, lastName, phone (all optional)
-*  Returns: Success message or error
-*  Desc: Updates the user's profile information (first name, last name, phone)
-*/
 router.post('/update-profile', async (req: any, res: any) => {
-    // Check if user is authenticated
     if (!req.session.user) {
         return res.status(401).json({
             success: false,
@@ -277,7 +221,6 @@ router.post('/update-profile', async (req: any, res: any) => {
     const { firstName, lastName, phone } = req.body;
     const userId = req.session.user.id;
 
-    // Validate that at least one field is provided
     if (!firstName && !lastName && !phone) {
         return res.status(400).json({
             success: false,
@@ -289,7 +232,6 @@ router.post('/update-profile', async (req: any, res: any) => {
         const client = await db.connect();
 
         try {
-            // Build dynamic update query based on provided fields
             const updates: string[] = [];
             const values: any[] = [];
             let paramIndex = 1;
@@ -312,7 +254,6 @@ router.post('/update-profile', async (req: any, res: any) => {
                 paramIndex++;
             }
 
-            // Add user_id as the last parameter
             values.push(userId);
 
             const updateQuery = `
@@ -333,7 +274,6 @@ router.post('/update-profile', async (req: any, res: any) => {
 
             const updatedUser = result.rows[0];
 
-            // Update session with new info
             req.session.user = {
                 ...req.session.user,
                 firstName: updatedUser.first_name,

@@ -1,43 +1,14 @@
-/*
-  _               __  __ _         _       
- | |        /\   |  \/  | |       | |      
- | |       /  \  | \  / | |__   __| | __ _ 
- | |      / /\ \ | |\/| | '_ \ / _` |/ _` |
- | |____ / ____ \| |  | | |_) | (_| | (_| |
- |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
- 
- PREFIX: admin/
- Name: Authentication Routes
- File: auth.ts
- Description: Handles the admin routes for creating new users and regenerating access tokens. This file is imported into app.js and mounted at the /admin path.
- Functions: 
- Last Edited: 10 February 2026
-*/ 
-
 import express from 'express';
-import db from '../config/db.js'; // Import your database connection
+import db from '../config/db.js';
 import { sendEmail } from '../services/mailer.js'
 
 const router = express.Router();
 
-/// HELPER FUNCTIONS
-
-/* CREATE MAGIC LINK
-*  Params: email, access_token
-*  Returns: magic_link
-*  Desc: Creates a magic link URL for the user to click in their email, which will direct them to the account creation page with their access token as a query parameter
-*/
 function createMagicLink(email: string, access_token: string, baseUrl: string) {
     const magicLink = `${baseUrl}/auth/create-account?token=${access_token}&email=${encodeURIComponent(email)}`;
     return magicLink;
 }
 
-
-/* SEND ACCESS TOKEN EMAIL
-*  Params: email, access_token
-*  Returns: void
-*  Desc: Sends an email to the user with their access token and a link to create their account. This function is called after a new access token is generated in the database.
-*/
 async function sendAccessTokenEmail(email: string, accessToken: string, baseUrl: string) {
     const mailOptions = {
         from: '"LAMbda Team" <no-reply@terminalvelocitydevelopment.com>',
@@ -98,19 +69,13 @@ async function sendAccessTokenEmail(email: string, accessToken: string, baseUrl:
         console.log('Access token email sent successfully to:', email);
     } catch (error) {
         console.error('Error sending access token email to', email, ':', error);
-        throw error; // Re-throw so transaction can be rolled back
+        throw error;
     }
 
 }
 
-/* GET ALL ACCESS TOKENS
-*  Route to fetch all users with access tokens from the database
-*  PARAMETERS: None
-*  RETURNS: Array of access token records
-*/
 router.get('/getAllAccessTokens', async (req: any, res: any) => {
     try {
-        // Query to get all access tokens with their status
         const query = `
             SELECT
                 email,
@@ -142,10 +107,6 @@ router.get('/getAllAccessTokens', async (req: any, res: any) => {
     }
 });
 
-/// USER CREATION SEQUENCE
-//  Route handling the insertion of new users into the database, generation of access keys, and inital email to user containing access key
-//  PARAMETERS: email
-//  RETURNS: 
 router.post('/createNewUser', async (req: any, res: any) => {
     const { email, baseUrl, user_type, vendor_id } = req.body;
     console.log('Received request to create new user with email:', email, 'user_type:', user_type, 'vendor_id:', vendor_id);
@@ -242,13 +203,6 @@ router.post('/createNewUser', async (req: any, res: any) => {
     }
 });
 
-/* REGENERATE ACCESS TOKEN
-*  The Regenerate Access Token flow consists of two distinct transactions: 1) Deletion of the old token, and 2) Creation of the new token and email sending.
-*  The first transaction handles the deletion of the old token. If this transaction fails, the whole process fails and a new token shouldn't be generated.
-*  The second transaction handles the creation of the new token and emailing to the user. If this transaction fails due to an insertion or SMTP error, just rollback the creation of the new token and notify the admin that the new token could not be sent.
-*  PARAMETERS: email, baseUrl
-*  RETURNS: New access token and email send status
-*/
 router.post('/regenerateAccessToken', async (req: any, res: any) => {
     const { email, baseUrl } = req.body;
 

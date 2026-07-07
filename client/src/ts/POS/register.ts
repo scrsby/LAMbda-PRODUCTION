@@ -766,11 +766,13 @@ async function clearTicket() {
 
 /// CHECKOUT MODAL
 const checkoutOverlay = document.getElementById('checkout-overlay') as HTMLDivElement | null;
+const checkoutTotal = document.getElementById('checkout-modal-total') as HTMLSpanElement | null;
 const checkoutGoBackBtn = document.getElementById('checkout-go-back-btn') as HTMLButtonElement | null;
 
 function openCheckoutModal() {
     if (checkoutOverlay) {
         checkoutOverlay.style.display = 'flex';
+        checkoutTotal!.textContent = '$' + ticket_items.reduce((sum, item) => sum + item.final_price, 0).toFixed(2);
     }
 }
 
