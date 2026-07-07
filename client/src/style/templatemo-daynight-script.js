@@ -62,6 +62,49 @@ function setGreeting() {
     }
 }
 
+async function getCurrentSessionFirstName() {
+    try {
+        const response = await fetch('/auth/me', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) return null;
+
+        const data = await response.json();
+        const rawFirstName = data?.user?.firstName ?? data?.user?.first_name;
+        if (typeof rawFirstName !== 'string') return null;
+
+        const firstName = rawFirstName.trim();
+        return firstName !== '' ? firstName : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function applyUserPillName(firstName) {
+    if (!firstName) return;
+
+    const userNameEls = document.querySelectorAll('.user-name');
+    userNameEls.forEach((el) => {
+        el.textContent = firstName;
+    });
+
+    const firstLetter = firstName.charAt(0).toUpperCase();
+    const userAvatarEls = document.querySelectorAll('.user-avatar');
+    userAvatarEls.forEach((el) => {
+        el.textContent = firstLetter;
+    });
+
+    const greetingEl = document.getElementById('greeting');
+    if (greetingEl) {
+        greetingEl.textContent = `${getGreeting()}, ${firstName}`;
+    }
+}
+
 // ===== Date Range Picker =====
 function setDateRange(range, btn) {
     const btns = document.querySelectorAll('.date-btn');
@@ -221,9 +264,11 @@ function closeMobileMenu() {
 }
 
 // ===== Initialize =====
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     initTheme();
     setGreeting();
+    const firstName = await getCurrentSessionFirstName();
+    applyUserPillName(firstName);
     
     if (document.querySelector('.kanban-board')) {
         initKanban();

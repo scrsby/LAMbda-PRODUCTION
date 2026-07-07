@@ -88,10 +88,11 @@ function displayUserName(user: SessionUser) {
 function getDisplayName(user: SessionUser): string {
     // Use first name if available
     if (user.firstName && user.firstName.trim() !== '') {
-        return user.firstName;
-    } else {
-        return '';
-    };
+        return user.firstName.trim();
+    }
+
+    const emailPrefix = user.email?.split('@')[0]?.trim();
+    return emailPrefix || 'User';
 }
 
 /* GET TIME BASED GREETING
