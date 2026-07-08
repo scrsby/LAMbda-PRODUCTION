@@ -770,6 +770,8 @@ async function searchTicket() {
 async function clearTicket() {
     if (ticketDirty) {
         if (!ticketActive) {
+            console.warn('Resetting unsaved ticket state because no active ticket is available.');
+            ticketDirty = false;
             showErrorMessage('Cannot clear unsaved changes without an active ticket.');
             return;
         }

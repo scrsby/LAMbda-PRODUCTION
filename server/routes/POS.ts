@@ -1,81 +1,29 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import db from '../config/db.js'; // Import your database connection
 import { sendEmail } from '../services/mailer.js'
 import { requireAuth, requireUserType } from '../utils/auth-middleware.js';
 
 const router = express.Router();
-const POS_ROUTE_RATE_LIMIT_WINDOW_MS = 60_000;
-const POS_ROUTE_RATE_LIMIT_MAX_REQUESTS = 240;
-const POS_WRITE_RATE_LIMIT_WINDOW_MS = 10_000;
-const POS_WRITE_RATE_LIMIT_MAX_REQUESTS = 30;
-const posRouteRateLimitStore = new Map<string, { count: number; resetAt: number }>();
-const posWriteRateLimitStore = new Map<string, { count: number; resetAt: number }>();
+const rateLimitHandler = (message: string) => (_req: express.Request, res: express.Response) => {
+    res.status(429).json({ error: message });
+};
 
-function pruneExpiredRateLimitEntries(store: Map<string, { count: number; resetAt: number }>, now: number) {
-    for (const [key, entry] of store.entries()) {
-        if (now >= entry.resetAt) {
-            store.delete(key);
-        }
-    }
-}
+const posRouteRateLimit = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 240,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: rateLimitHandler('Too many POS requests. Please wait a moment and try again.')
+});
 
-function applyRateLimit(
-    req: express.Request,
-    res: express.Response,
-    next: express.NextFunction,
-    store: Map<string, { count: number; resetAt: number }>,
-    maxRequests: number,
-    windowMs: number,
-    errorMessage: string
-) {
-    const actorKey = req.session.user?.id ? `user:${req.session.user.id}` : `ip:${req.ip}`;
-    const routeKey = `${req.method}:${req.baseUrl}${req.path}`;
-    const key = `${actorKey}:${routeKey}`;
-    const now = Date.now();
-    pruneExpiredRateLimitEntries(store, now);
-    const existingEntry = store.get(key);
-
-    if (!existingEntry || now >= existingEntry.resetAt) {
-        store.set(key, {
-            count: 1,
-            resetAt: now + windowMs
-        });
-        return next();
-    }
-
-    if (existingEntry.count >= maxRequests) {
-        return res.status(429).json({
-            error: errorMessage
-        });
-    }
-
-    existingEntry.count += 1;
-    next();
-}
-
-function rateLimitPosRoutes(req: express.Request, res: express.Response, next: express.NextFunction) {
-    return applyRateLimit(
-        req,
-        res,
-        next,
-        posRouteRateLimitStore,
-        POS_ROUTE_RATE_LIMIT_MAX_REQUESTS,
-        POS_ROUTE_RATE_LIMIT_WINDOW_MS,
-        'Too many POS requests. Please wait a moment and try again.'
-    );
-}
-
-function rateLimitPosWrites(req: express.Request, res: express.Response, next: express.NextFunction) {
-    return applyRateLimit(
-        req,
-        res,
-        next,
-        posWriteRateLimitStore,
-        POS_WRITE_RATE_LIMIT_MAX_REQUESTS,
-        POS_WRITE_RATE_LIMIT_WINDOW_MS,
-        'Too many POS write requests. Please wait a moment and try again.'
-    );
-}
+const posWriteRateLimit = rateLimit({
+    windowMs: 10 * 1000,
+    limit: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: rateLimitHandler('Too many POS write requests. Please wait a moment and try again.')
+});
 
 async function getTicketDetail(ticketId: string) {
     const ticketResult = await db.query(
@@ -194,11 +142,15 @@ async function getTicketSummaries(filters: {
     return result.rows;
 }
 
-router.use(requireAuth, requireUserType('employee', 'admin'), rateLimitPosRoutes);
+router.use(requireAuth, requireUserType('employee', 'admin'), posRouteRateLimit);
 
-router.post('/create-ticket', rateLimitPosWrites, async (req, res) => {
+router.post('/create-ticket', posWriteRateLimit, async (req, res) => {
     try {
-        const cashierId = req.session.user!.id;
+        const cashierId = req.session.user?.id;
+        if (!cashierId) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
         // 1. Create a new ticket in the database with status "open"
         const newTicket = await db.query(
             'INSERT INTO tickets (ticket_status, created_at, cashier_id) VALUES ($1, NOW(), $2) RETURNING ticket_id, created_at',
@@ -215,7 +167,7 @@ router.post('/create-ticket', rateLimitPosWrites, async (req, res) => {
     }
 });
 
-router.post('/update-ticket', rateLimitPosWrites, async (req, res) => {
+router.post('/update-ticket', posWriteRateLimit, async (req, res) => {
     const { ticketId } = req.body;
     const ticketItems = Array.isArray(req.body?.ticket_items) ? req.body.ticket_items : [];
     const unsyncedItems = Array.isArray(req.body?.unsynced_items) ? req.body.unsynced_items : [];
@@ -225,9 +177,11 @@ router.post('/update-ticket', rateLimitPosWrites, async (req, res) => {
     }
 
     const client = await db.connect();
+    let transactionStarted = false;
 
     try {
         await client.query('BEGIN');
+        transactionStarted = true;
 
         const ticketResult = await client.query(
             'SELECT ticket_status FROM tickets WHERE ticket_id = $1 FOR UPDATE',
@@ -300,10 +254,17 @@ router.post('/update-ticket', rateLimitPosWrites, async (req, res) => {
         const total = parseFloat(totalResult.rows[0].total);
         await client.query('UPDATE tickets SET total = $1 WHERE ticket_id = $2', [total, ticketId]);
         await client.query('COMMIT');
+        transactionStarted = false;
 
         res.status(200).json({ message: 'Ticket updated successfully', insertedItems });
     } catch (error) {
-        await client.query('ROLLBACK');
+        if (transactionStarted) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (rollbackError) {
+                console.error('Error rolling back ticket update transaction:', rollbackError);
+            }
+        }
         console.error('Error updating ticket:', error);
         res.status(500).json({ error: 'Failed to update ticket' });
     } finally {
@@ -466,7 +427,7 @@ router.post('/close-receipt', async (req, res) => {
 /* CLOSE TICKET
 * Marks an open ticket as closed (paid). Expects { ticketId } in the request body.
 */
-router.post('/close-ticket', rateLimitPosWrites, async (req, res) => {
+router.post('/close-ticket', posWriteRateLimit, async (req, res) => {
     const { ticketId } = req.body;
     if (!ticketId) {
         return res.status(400).json({ error: 'ticketId is required' });
