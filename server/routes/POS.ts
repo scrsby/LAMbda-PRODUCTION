@@ -142,29 +142,55 @@ router.post('/create-ticket', async (req, res) => {
 });
 
 router.post('/update-ticket', async (req, res) => {
-    const { ticketId, ticket_items, unsynced_items } = req.body;
+    const { ticketId } = req.body;
+    const ticketItems = Array.isArray(req.body?.ticket_items) ? req.body.ticket_items : [];
+    const unsyncedItems = Array.isArray(req.body?.unsynced_items) ? req.body.unsynced_items : [];
+
+    if (!ticketId) {
+        return res.status(400).json({ error: 'ticketId is required' });
+    }
+
+    const client = await db.connect();
+
     try {
+        await client.query('BEGIN');
+
+        const ticketResult = await client.query(
+            'SELECT ticket_status FROM tickets WHERE ticket_id = $1 FOR UPDATE',
+            [ticketId]
+        );
+
+        if (ticketResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Ticket not found' });
+        }
+
+        if (ticketResult.rows[0].ticket_status !== 'open') {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ error: 'Only open tickets can be updated' });
+        }
+
         // 1. Fetch current DB rows for this ticket
-        const currentResult = await db.query(
+        const currentResult = await client.query(
             'SELECT ticket_item_id FROM ticket_items WHERE ticket_id = $1',
             [ticketId]
         );
         const dbIds: number[] = currentResult.rows.map((r: any) => r.ticket_item_id);
-        const frontendIds: number[] = ticket_items
+        const frontendIds: number[] = ticketItems
             .filter((i: any) => i.ticket_item_id != null)
             .map((i: any) => i.ticket_item_id);
         const idsToDelete = dbIds.filter(id => !frontendIds.includes(id));
 
         // 2. Delete rows removed on the frontend
         for (const id of idsToDelete) {
-            await db.query('DELETE FROM ticket_items WHERE ticket_item_id = $1', [id]);
+            await client.query('DELETE FROM ticket_items WHERE ticket_item_id = $1', [id]);
         }
 
         // 3. Update previously synced items (price, discount, or quantity changes)
-        for (const item of ticket_items) {
+        for (const item of ticketItems) {
             const commission = parseFloat((item.final_price * 0.10).toFixed(2));
             const payout = parseFloat((item.final_price * 0.90).toFixed(2));
-            await db.query(
+            await client.query(
                 `UPDATE ticket_items
                  SET discount_percent = $1, discount_amount = $2,
                      final_price = $3, commission = $4, payout = $5, quantity = $6
@@ -174,12 +200,12 @@ router.post('/update-ticket', async (req, res) => {
             );
         }
 
-        // 2. Insert new unsynced items, capturing generated ticket_item_ids
+        // 4. Insert new unsynced items, capturing generated ticket_item_ids
         const insertedItems: any[] = [];
-        for (const item of unsynced_items) {
+        for (const item of unsyncedItems) {
             const commission = parseFloat((item.final_price * 0.10).toFixed(2));
             const payout = parseFloat((item.final_price * 0.90).toFixed(2));
-            const result = await db.query(
+            const result = await client.query(
                 `INSERT INTO ticket_items
                     (ticket_id, vendor_id, inventory_code, item_name, base_price,
                      discount_percent, discount_amount, final_price, commission, payout, quantity)
@@ -192,28 +218,22 @@ router.post('/update-ticket', async (req, res) => {
             insertedItems.push({ ...item, ticket_item_id: result.rows[0].ticket_item_id });
         }
 
-        // 3. Recalculate and update ticket total (final_price * quantity per row)
-        const totalResult = await db.query(
+        // 5. Recalculate and update ticket total
+        const totalResult = await client.query(
             'SELECT COALESCE(SUM(final_price * quantity), 0) AS total FROM ticket_items WHERE ticket_id = $1',
             [ticketId]
         );
         const total = parseFloat(totalResult.rows[0].total);
-        await db.query('UPDATE tickets SET total = $1 WHERE ticket_id = $2', [total, ticketId]);
+        await client.query('UPDATE tickets SET total = $1 WHERE ticket_id = $2', [total, ticketId]);
+        await client.query('COMMIT');
 
         res.status(200).json({ message: 'Ticket updated successfully', insertedItems });
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('Error updating ticket:', error);
         res.status(500).json({ error: 'Failed to update ticket' });
-    }
-});
-
-router.post('/close-ticket', async (req, res) => {
-    const { receiptId } = req.body;
-    try {
-        await db.query('UPDATE tickets SET ticket_status = $1 WHERE ticket_id = $2', ['closed', receiptId]);
-    } catch (error) {
-        console.error('Error closing receipt:', error);
-        return res.status(500).json({ error: 'Failed to close receipt' });
+    } finally {
+        client.release();
     }
 });
 
@@ -363,7 +383,7 @@ router.get('/tickets', async (req, res) => {
 * Endpoint to close a receipt and finalize the transaction
 */
 router.post('/close-receipt', async (req, res) => {
-    const { receiptId } = req.body;
+    res.status(501).json({ error: 'close-receipt is no longer supported. Use /POS/close-ticket instead.' });
 });
 
 /* CLOSE TICKET
