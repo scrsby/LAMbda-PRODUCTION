@@ -122,9 +122,11 @@ async function getTicketSummaries(filters: {
     return result.rows;
 }
 
+router.use(requireAuth, requireUserType('employee', 'admin'));
+
 router.post('/create-ticket', async (req, res) => {
     try {
-        const cashierId = req.session.user?.id ?? 2;
+        const cashierId = req.session.user!.id;
         // 1. Create a new ticket in the database with status "open"
         const newTicket = await db.query(
             'INSERT INTO tickets (ticket_status, created_at, cashier_id) VALUES ($1, NOW(), $2) RETURNING ticket_id, created_at',
@@ -383,7 +385,7 @@ router.get('/tickets', async (req, res) => {
 * Endpoint to close a receipt and finalize the transaction
 */
 router.post('/close-receipt', async (req, res) => {
-    res.status(501).json({ error: 'close-receipt is no longer supported. Use /POS/close-ticket instead.' });
+    res.status(410).json({ error: 'close-receipt is no longer supported. Use /POS/close-ticket instead.' });
 });
 
 /* CLOSE TICKET

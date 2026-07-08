@@ -768,7 +768,7 @@ async function searchTicket() {
 }
 
 async function clearTicket() {
-    if (ticketActive && ticketDirty) {
+    if (ticketDirty && localStorage.getItem('currentTicketId')) {
         const success = await updateTicket();
         if (!success) return;
     }
