@@ -49,6 +49,7 @@ let ticket_items: TicketItem[] = [];
 let unsynced_items: TicketItem[] = [];
 let ticketActive: boolean = false;
 let ticketReadOnly: boolean = false;
+let ticketDirty: boolean = false;
 let searchResultsDataTable: any = null;
 let itemSearchDebounceId: number | undefined;
 let latestSearchRequestId = 0;
@@ -82,6 +83,7 @@ function setTicketActionButtons(enabled: boolean) {
 function setActiveTicketState(ticketId: string) {
     ticketActive = true;
     ticketReadOnly = false;
+    ticketDirty = false;
     localStorage.setItem('currentTicketId', ticketId);
 
     if (ticketIdField) {
@@ -101,6 +103,7 @@ function setActiveTicketState(ticketId: string) {
 function setIdleTicketState() {
     ticketActive = false;
     ticketReadOnly = false;
+    ticketDirty = false;
     editingItemIndex = null;
 
     if (ticketIdField) {
@@ -120,6 +123,7 @@ function setIdleTicketState() {
 function setClosedTicketState(ticketId: string) {
     ticketActive = false;
     ticketReadOnly = true;
+    ticketDirty = false;
     editingItemIndex = null;
     localStorage.removeItem('currentTicketId');
 
@@ -252,12 +256,14 @@ async function updateTicket(): Promise<boolean> {
         });
         ticket_items = [...ticket_items, ...(response.insertedItems as TicketItem[])];
         unsynced_items = [];
+        ticketDirty = false;
         updateItemTable();
         showSuccessMessage('Ticket updated successfully.');
         return true;
     } catch (error) {
         console.error('Error updating ticket:', error);
-        showErrorMessage('Failed to update ticket. Please try again.');
+        const message = (error as any)?.response?.data?.error ?? 'Failed to update ticket. Please try again.';
+        showErrorMessage(message);
         return false;
     }
 }
@@ -480,6 +486,7 @@ function saveEditedItem(index: number, row: HTMLTableRowElement) {
     };
 
     setCombinedItem(index, updatedItem);
+    ticketDirty = true;
     editingItemIndex = null;
     updateItemTable();
     showSuccessMessage('Item updated.');
@@ -533,6 +540,7 @@ function removeItem(index: number) {
     } else {
         unsynced_items.splice(index - ticket_items.length, 1);
     }
+    ticketDirty = true;
     updateItemTable();
 }
 
@@ -540,6 +548,7 @@ function createItemLocally(vendor_id: number, vendor_inventory_id: string, name:
     const subtotal = vendor_price * quantity;
     const newItem: TicketItem = { vendor_id, vendor_inventory_id, name, quantity, vendor_price, discount_percent: 0, discount_amount: 0, final_price: roundCurrency(subtotal) };
     unsynced_items.push(newItem);
+    ticketDirty = true;
     updateItemTable();
 }
 
@@ -739,6 +748,7 @@ async function searchTicket() {
         }
         ticket_items = response.items as TicketItem[];
         unsynced_items = [];
+        ticketDirty = false;
         editingItemIndex = null;
         updateItemTable();
         if (response.ticket?.ticket_status === 'closed') {
@@ -758,7 +768,14 @@ async function searchTicket() {
 }
 
 async function clearTicket() {
-    if (ticket_items.length > 0 || unsynced_items.length > 0) {
+    if (ticketDirty) {
+        if (!ticketActive) {
+            console.warn('Resetting unsaved ticket state because no active ticket is available.');
+            ticketDirty = false;
+            showErrorMessage('Cannot clear unsaved changes without an active ticket.');
+            return;
+        }
+
         const success = await updateTicket();
         if (!success) return;
     }
@@ -804,7 +821,7 @@ async function closeTicket() {
 
     if (markPaidBtn) markPaidBtn.disabled = true;
 
-    if (ticket_items.length > 0 || unsynced_items.length > 0) {
+    if (ticketDirty) {
         const updated = await updateTicket();
         if (!updated) {
             if (markPaidBtn) markPaidBtn.disabled = false;
@@ -831,52 +848,16 @@ async function closeTicket() {
     }
 }
 
-async function markTicketAsPaid(ticketId: string) {
-    if (!ticketId) {
-        showErrorMessage('No active ticket to mark as paid.');
-        return;
-    }
-
-    try {
-        await apiAxios('/POS/close-ticket', {
-            method: 'POST',
-            data: { ticketId }
-        });
-        showSuccessMessage(`Ticket #${ticketId} marked as paid.`);
-        closeCheckoutModal();
-        await clearTicket();
-    } catch (error) {
-        console.error('Error marking ticket as paid:', error);
-        showErrorMessage('Failed to mark ticket as paid. Please try again.');
-    }
-}
-
 checkoutBtn?.addEventListener('click', () => {
     openCheckoutModal();
 });
 
-markPaidBtn?.addEventListener('click', async () => {
-    await updateTicket();
-
-    const ticketId = localStorage.getItem('currentTicketId');
-    console.log('Marking ticket as paid for ticket ID:', ticketId);
-    
-    if (!ticketId) {
-        showErrorMessage('No active ticket to mark as paid.');
-        return;
-    }   
-
-    await markTicketAsPaid(ticketId);
-
-    console.log('Ticket marked as paid and cleared.');
+markPaidBtn?.addEventListener('click', () => {
+    void closeTicket();
 });
 
 checkoutGoBackBtn?.addEventListener('click', () => {
     closeCheckoutModal();
-});
-
-markPaidBtn?.addEventListener('click', () => {
-    void closeTicket();
 });
 
 // Close modal when clicking the overlay background
@@ -888,7 +869,7 @@ checkoutOverlay?.addEventListener('click', (e) => {
 
 // Warn before closing tab / navigating away when there are unsaved items on an active ticket
 window.addEventListener('beforeunload', (e) => {
-    if (ticketActive && unsynced_items.length > 0) {
+    if (ticketActive && ticketDirty) {
         e.preventDefault();
         e.returnValue = '';
     }
@@ -897,7 +878,7 @@ window.addEventListener('beforeunload', (e) => {
 // Intercept nav-link clicks to prompt the user to save before leaving
 document.querySelectorAll<HTMLAnchorElement>('a.nav-link, .mobile-menu-nav a').forEach((link) => {
     link.addEventListener('click', (e) => {
-        if (ticketActive && unsynced_items.length > 0) {
+        if (ticketActive && ticketDirty) {
             const confirmed = window.confirm(
                 'You have unsaved items on this ticket. Do you want to save before leaving?'
             );
