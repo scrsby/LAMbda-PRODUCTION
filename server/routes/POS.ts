@@ -4,33 +4,77 @@ import { sendEmail } from '../services/mailer.js'
 import { requireAuth, requireUserType } from '../utils/auth-middleware.js';
 
 const router = express.Router();
+const POS_ROUTE_RATE_LIMIT_WINDOW_MS = 60_000;
+const POS_ROUTE_RATE_LIMIT_MAX_REQUESTS = 240;
 const POS_WRITE_RATE_LIMIT_WINDOW_MS = 10_000;
 const POS_WRITE_RATE_LIMIT_MAX_REQUESTS = 30;
+const posRouteRateLimitStore = new Map<string, { count: number; resetAt: number }>();
 const posWriteRateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
-function rateLimitPosWrites(req: express.Request, res: express.Response, next: express.NextFunction) {
+function pruneExpiredRateLimitEntries(store: Map<string, { count: number; resetAt: number }>, now: number) {
+    for (const [key, entry] of store.entries()) {
+        if (now >= entry.resetAt) {
+            store.delete(key);
+        }
+    }
+}
+
+function applyRateLimit(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+    store: Map<string, { count: number; resetAt: number }>,
+    maxRequests: number,
+    windowMs: number,
+    errorMessage: string
+) {
     const actorKey = req.session.user?.id ? `user:${req.session.user.id}` : `ip:${req.ip}`;
     const routeKey = `${req.method}:${req.baseUrl}${req.path}`;
     const key = `${actorKey}:${routeKey}`;
     const now = Date.now();
-    const existingEntry = posWriteRateLimitStore.get(key);
+    pruneExpiredRateLimitEntries(store, now);
+    const existingEntry = store.get(key);
 
     if (!existingEntry || now >= existingEntry.resetAt) {
-        posWriteRateLimitStore.set(key, {
+        store.set(key, {
             count: 1,
-            resetAt: now + POS_WRITE_RATE_LIMIT_WINDOW_MS
+            resetAt: now + windowMs
         });
         return next();
     }
 
-    if (existingEntry.count >= POS_WRITE_RATE_LIMIT_MAX_REQUESTS) {
+    if (existingEntry.count >= maxRequests) {
         return res.status(429).json({
-            error: 'Too many POS write requests. Please wait a moment and try again.'
+            error: errorMessage
         });
     }
 
     existingEntry.count += 1;
     next();
+}
+
+function rateLimitPosRoutes(req: express.Request, res: express.Response, next: express.NextFunction) {
+    return applyRateLimit(
+        req,
+        res,
+        next,
+        posRouteRateLimitStore,
+        POS_ROUTE_RATE_LIMIT_MAX_REQUESTS,
+        POS_ROUTE_RATE_LIMIT_WINDOW_MS,
+        'Too many POS requests. Please wait a moment and try again.'
+    );
+}
+
+function rateLimitPosWrites(req: express.Request, res: express.Response, next: express.NextFunction) {
+    return applyRateLimit(
+        req,
+        res,
+        next,
+        posWriteRateLimitStore,
+        POS_WRITE_RATE_LIMIT_MAX_REQUESTS,
+        POS_WRITE_RATE_LIMIT_WINDOW_MS,
+        'Too many POS write requests. Please wait a moment and try again.'
+    );
 }
 
 async function getTicketDetail(ticketId: string) {
@@ -150,7 +194,7 @@ async function getTicketSummaries(filters: {
     return result.rows;
 }
 
-router.use(requireAuth, requireUserType('employee', 'admin'));
+router.use(requireAuth, requireUserType('employee', 'admin'), rateLimitPosRoutes);
 
 router.post('/create-ticket', rateLimitPosWrites, async (req, res) => {
     try {
@@ -413,7 +457,10 @@ router.get('/tickets', async (req, res) => {
 * Endpoint to close a receipt and finalize the transaction
 */
 router.post('/close-receipt', async (req, res) => {
-    res.status(410).json({ error: 'close-receipt is no longer supported. Use /POS/close-ticket instead.' });
+    res.status(410).json({
+        error: 'close-receipt is no longer supported. Use /POS/close-ticket instead.',
+        receiptId: req.body?.receiptId ?? null
+    });
 });
 
 /* CLOSE TICKET
