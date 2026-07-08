@@ -768,7 +768,12 @@ async function searchTicket() {
 }
 
 async function clearTicket() {
-    if (ticketDirty && localStorage.getItem('currentTicketId')) {
+    if (ticketDirty) {
+        if (!ticketActive || !localStorage.getItem('currentTicketId')) {
+            showErrorMessage('Cannot clear unsaved changes without an active ticket.');
+            return;
+        }
+
         const success = await updateTicket();
         if (!success) return;
     }

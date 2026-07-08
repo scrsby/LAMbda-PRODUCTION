@@ -4,6 +4,34 @@ import { sendEmail } from '../services/mailer.js'
 import { requireAuth, requireUserType } from '../utils/auth-middleware.js';
 
 const router = express.Router();
+const POS_WRITE_RATE_LIMIT_WINDOW_MS = 10_000;
+const POS_WRITE_RATE_LIMIT_MAX_REQUESTS = 30;
+const posWriteRateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+function rateLimitPosWrites(req: express.Request, res: express.Response, next: express.NextFunction) {
+    const actorKey = req.session.user?.id ? `user:${req.session.user.id}` : `ip:${req.ip}`;
+    const routeKey = `${req.method}:${req.baseUrl}${req.path}`;
+    const key = `${actorKey}:${routeKey}`;
+    const now = Date.now();
+    const existingEntry = posWriteRateLimitStore.get(key);
+
+    if (!existingEntry || now >= existingEntry.resetAt) {
+        posWriteRateLimitStore.set(key, {
+            count: 1,
+            resetAt: now + POS_WRITE_RATE_LIMIT_WINDOW_MS
+        });
+        return next();
+    }
+
+    if (existingEntry.count >= POS_WRITE_RATE_LIMIT_MAX_REQUESTS) {
+        return res.status(429).json({
+            error: 'Too many POS write requests. Please wait a moment and try again.'
+        });
+    }
+
+    existingEntry.count += 1;
+    next();
+}
 
 async function getTicketDetail(ticketId: string) {
     const ticketResult = await db.query(
@@ -124,7 +152,7 @@ async function getTicketSummaries(filters: {
 
 router.use(requireAuth, requireUserType('employee', 'admin'));
 
-router.post('/create-ticket', async (req, res) => {
+router.post('/create-ticket', rateLimitPosWrites, async (req, res) => {
     try {
         const cashierId = req.session.user!.id;
         // 1. Create a new ticket in the database with status "open"
@@ -143,7 +171,7 @@ router.post('/create-ticket', async (req, res) => {
     }
 });
 
-router.post('/update-ticket', async (req, res) => {
+router.post('/update-ticket', rateLimitPosWrites, async (req, res) => {
     const { ticketId } = req.body;
     const ticketItems = Array.isArray(req.body?.ticket_items) ? req.body.ticket_items : [];
     const unsyncedItems = Array.isArray(req.body?.unsynced_items) ? req.body.unsynced_items : [];
@@ -391,7 +419,7 @@ router.post('/close-receipt', async (req, res) => {
 /* CLOSE TICKET
 * Marks an open ticket as closed (paid). Expects { ticketId } in the request body.
 */
-router.post('/close-ticket', async (req, res) => {
+router.post('/close-ticket', rateLimitPosWrites, async (req, res) => {
     const { ticketId } = req.body;
     if (!ticketId) {
         return res.status(400).json({ error: 'ticketId is required' });
