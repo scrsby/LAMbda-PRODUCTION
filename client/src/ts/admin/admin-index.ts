@@ -1,9 +1,17 @@
 import type { SessionUser } from "../utilities/api.js";
-import { getCurrentUser, logout } from "../utilities/api.js";
+import { getCurrentUser, logout, requireAuth } from "../utilities/api.js";
 import { getDisplayName, updateProfileCard } from "../utilities/ui.js";
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await initializeDashboard();
+    const user = await requireAuth();
+    if (!user) return;
+      
+    if (user.userType !== 'admin') {
+        window.location.href = '/auth/login.html';
+        return;
+    }
+
+    await initializeDashboard();    
 
     document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();

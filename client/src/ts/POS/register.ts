@@ -1,6 +1,21 @@
 import { apiAxios } from '../utilities/api.js';
 import { getCurrentUser } from '../utilities/api.js';
 import { showSuccessMessage, showErrorMessage } from '../utilities/messages.js';
+import { updateProfileCard } from "../utilities/ui.js";
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const user = await getCurrentUser();
+    if (!user) {
+        window.location.href = '/auth/login.html';
+        return;
+    }
+    if (user.userType !== 'employee' && user.userType !== 'admin' ) {
+        window.location.href = '/auth/login.html';
+        return;
+    }
+
+    updateProfileCard(user);
+});
 
 declare global {
     interface Window {
@@ -841,7 +856,7 @@ checkoutBtn?.addEventListener('click', () => {
 });
 
 markPaidBtn?.addEventListener('click', async () => {
-    updateTicket();
+    await updateTicket();
 
     const ticketId = localStorage.getItem('currentTicketId');
     console.log('Marking ticket as paid for ticket ID:', ticketId);

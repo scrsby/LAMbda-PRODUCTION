@@ -31,11 +31,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-
     hideSearchQueryMessage();
     loadInventoryTable();
 
-    // Logout button handlers
     document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
         await logout();

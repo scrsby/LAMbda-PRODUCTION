@@ -1,5 +1,6 @@
 import { apiAxios, requireAuth, logout } from '../utilities/api.js';
 import { showErrorMessage, showSuccessMessage } from '../utilities/messages.js';
+import { updateProfileCard } from "../utilities/ui.js";
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAuth();
@@ -12,7 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     loadUsersTable();
-    
+    updateProfileCard(user);
 
     // Logout button handlers
     document.getElementById('logout-btn')?.addEventListener('click', async (e) => {

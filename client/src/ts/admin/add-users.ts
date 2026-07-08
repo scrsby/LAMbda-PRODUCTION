@@ -1,30 +1,28 @@
-/*
-  _               __  __ _         _       
- | |        /\   |  \/  | |       | |      
- | |       /  \  | \  / | |__   __| | __ _ 
- | |      / /\ \ | |\/| | '_ \ / _` |/ _` |
- | |____ / ____ \| |  | | |_) | (_| | (_| |
- |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
- 
- Name: Add Users
- File: add-users.ts
- Description: Handles user creation and the initial access code email
- Last Edited: 4 February 2026
-*/
-
 import { apiAxios, requireAuth, logout } from '../utilities/api.js';
 import { showErrorMessage, showSuccessMessage } from '../utilities/messages.js';
+import { updateProfileCard } from "../utilities/ui.js";
 
-// Check authentication on page load
 document.addEventListener('DOMContentLoaded', async () => {
   const user = await requireAuth();
-  if (!user) return; // Will redirect to login
+  if (!user) return;
   
-  // Only allow admin users
   if (user.userType !== 'admin') {
     window.location.href = '/auth/login.html';
     return;
   }
+
+  updateProfileCard(user);
+
+  document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await logout();
+        window.location.href = '../auth/login.html';
+    });
+    document.getElementById('logout-btn-mobile')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await logout();
+        window.location.href = '../auth/login.html';
+    });
 });
 
 const form = document.getElementById('add-user-form');
