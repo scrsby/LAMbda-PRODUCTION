@@ -1,4 +1,5 @@
 import { apiAxios, getCurrentUser } from '../utilities/api.js';
+import { updateProfileCard } from "../utilities/ui.js";
 
 interface TicketDetail {
     ticket_id: number;
@@ -38,10 +39,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const user = await getCurrentUser();
     isAdminUser = user?.userType === 'admin';
+
+    if (!user) {
+        window.location.href = '/auth/login.html';
+        return;
+    }
+    if (user.userType !== 'employee' && user.userType !== 'admin' ) {
+        window.location.href = '/auth/login.html';
+        return;
+    }
     if (isAdminUser) {
         showAdminControls();
     }
 
+    updateProfileCard(user);
     deleteTicketButton?.addEventListener('click', handleDeleteTicket);
     await loadOrderDetail(ticketId);
 });

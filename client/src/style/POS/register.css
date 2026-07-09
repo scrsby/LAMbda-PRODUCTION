@@ -455,3 +455,13 @@ table.dataTable tbody td {
 .checkout-modal-back-btn:hover {
     background: #616161;
 }
+
+.checkout-modal-total {
+    font-size: 5rem;
+    font-weight: 650;
+    color: var(--text);
+    border: solid var(--accent, #9333ea) 6px;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    background: rgba(173, 216, 230, 0.3);
+}

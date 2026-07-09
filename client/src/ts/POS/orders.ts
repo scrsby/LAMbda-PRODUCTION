@@ -1,18 +1,20 @@
-/*
-  _               __  __ _         _
- | |        /\   |  \/  | |       | |
- | |       /  \  | \  / | |__   __| | __ _
- | |      / /\ \ | |\/| | '_ \ / _` |/ _` |
- | |____ / ____ \| |  | | |_) | (_| | (_| |
- |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
- 
- Name: POS Orders
- File: orders.ts
- Description: Handles client-side logic for the POS orders page.
- Last Edited: 14 June 2026
-*/
-
 import { apiAxios, getCurrentUser } from '../utilities/api.js';
+import { updateProfileCard } from "../utilities/ui.js";
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const user = await getCurrentUser();
+    if (!user) {
+        window.location.href = '/auth/login.html';
+        return;
+    }
+    if (user.userType !== 'employee' && user.userType !== 'admin' ) {
+        window.location.href = '/auth/login.html';
+        return;
+    }
+
+    updateProfileCard(user);
+    await loadOrders();
+});
 
 declare global {
     interface Window {
@@ -40,10 +42,6 @@ const filterEndInput = document.getElementById('filter-end') as HTMLInputElement
 const filterEmployeeInput = document.getElementById('filter-employee') as HTMLInputElement | null;
 const searchBtn = document.getElementById('search-btn');
 const clearBtn = document.getElementById('clear-btn');
-
-document.addEventListener('DOMContentLoaded', async () => {
-    await loadOrders();
-});
 
 searchBtn?.addEventListener('click', async () => {
     await loadOrders();
