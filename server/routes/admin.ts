@@ -1,8 +1,20 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import db from '../config/db.js';
 import { sendEmail } from '../services/mailer.js'
+import { requireAuth, requireUserType } from '../utils/auth-middleware.js';
 
 const router = express.Router();
+
+const adminRouteRateLimit = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (_req: express.Request, res: express.Response) => {
+        res.status(429).json({ error: 'Too many admin requests. Please wait a moment and try again.' });
+    }
+});
 
 function createMagicLink(email: string, access_token: string, baseUrl: string) {
     const magicLink = `${baseUrl}/auth/create-account?token=${access_token}&email=${encodeURIComponent(email)}`;
@@ -298,5 +310,103 @@ router.post('/regenerateAccessToken', async (req: any, res: any) => {
     }
 });
 
+
+/* GET CLOSED TICKETS (SALES)
+ * Returns all closed tickets for the admin sales report, with optional filters.
+ * Also returns today's daily sales total and commission.
+ */
+router.get('/sales', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req, res) => {
+    const orderId = req.query.orderId?.toString().trim();
+    const itemSearch = req.query.itemSearch?.toString().trim();
+    const startDate = req.query.startDate?.toString().trim();
+    const endDate = req.query.endDate?.toString().trim();
+    const employee = req.query.employee?.toString().trim();
+
+    const conditions: string[] = [`t.ticket_status = 'closed'`];
+    const values: string[] = [];
+
+    if (orderId) {
+        values.push(`%${orderId}%`);
+        conditions.push(`CAST(t.ticket_id AS TEXT) ILIKE $${values.length}`);
+    }
+
+    if (itemSearch) {
+        values.push(`%${itemSearch}%`);
+        conditions.push(
+            `EXISTS (
+                SELECT 1
+                FROM ticket_items ti
+                WHERE ti.ticket_id = t.ticket_id
+                  AND ti.item_name ILIKE $${values.length}
+            )`
+        );
+    }
+
+    if (startDate) {
+        values.push(startDate);
+        conditions.push(`t.created_at >= $${values.length}`);
+    }
+
+    if (endDate) {
+        values.push(endDate);
+        conditions.push(`t.created_at <= $${values.length}`);
+    }
+
+    if (employee) {
+        values.push(`%${employee}%`);
+        conditions.push(
+            `COALESCE(
+                NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
+                u.email,
+                CONCAT('Employee #', t.cashier_id::text)
+            ) ILIKE $${values.length}`
+        );
+    }
+
+    try {
+        const ticketsResult = await db.query(
+            `SELECT t.ticket_id,
+                    t.cashier_id,
+                    t.created_at,
+                    t.ticket_status,
+                    COALESCE(t.total, 0)::float AS total,
+                    COALESCE(
+                        NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
+                        u.email,
+                        CONCAT('Employee #', t.cashier_id::text)
+                    ) AS employee_name
+             FROM tickets t
+             LEFT JOIN users u ON u.user_id = t.cashier_id
+             WHERE ${conditions.join(' AND ')}
+             ORDER BY t.created_at DESC`,
+            values
+        );
+
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+        const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+
+        const dailyResult = await db.query(
+            `SELECT COALESCE(SUM(total), 0)::float AS daily_total
+             FROM tickets
+             WHERE ticket_status = 'closed'
+               AND created_at >= $1
+               AND created_at <= $2`,
+            [startOfDay, endOfDay]
+        );
+
+        const dailySalesTotal = dailyResult.rows[0].daily_total as number;
+        const dailyCommission = parseFloat((dailySalesTotal * 0.10).toFixed(2));
+
+        res.status(200).json({
+            tickets: ticketsResult.rows,
+            dailySalesTotal,
+            dailyCommission
+        });
+    } catch (error) {
+        console.error('Error fetching sales data:', error);
+        res.status(500).json({ error: 'Failed to fetch sales data' });
+    }
+});
 
 export default router;
