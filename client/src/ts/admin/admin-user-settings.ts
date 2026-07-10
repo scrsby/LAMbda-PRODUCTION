@@ -2,6 +2,20 @@ import { apiAxios, requireAuth, logout } from '../utilities/api.js';
 import { showErrorMessage, showSuccessMessage } from '../utilities/messages.js';
 import { updateProfileCard } from "../utilities/ui.js";
 
+interface User {
+    user_id: number;
+    first_name: string | null;
+    last_name: string | null;
+    vendor_id: number | null;
+    email: string;
+    phone: string | null;
+    user_type: string;
+}
+
+let allUsers: User[] = [];
+let pendingDeleteId: number | null = null;
+let deleteConfirmHandler: (() => void) | null = null;
+
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAuth();
 
@@ -11,9 +25,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '/auth/login.html';
         return;
     }
-    
-    loadUsersTable();
+
     updateProfileCard(user);
+    loadUsersTable();
+
+    // Search field – filter table on input
+    document.getElementById('search-field')?.addEventListener('input', (e) => {
+        const query = (e.target as HTMLInputElement).value.trim().toLowerCase();
+        renderTable(query ? allUsers.filter(u => matchesSearch(u, query)) : allUsers);
+    });
+
+    // Delete modal buttons
+    document.getElementById('delete-modal-back')?.addEventListener('click', closeDeleteModal);
+    document.getElementById('delete-modal-confirm')?.addEventListener('click', () => {
+        deleteConfirmHandler?.();
+    });
 
     // Logout button handlers
     document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
@@ -28,204 +54,126 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
-// Form submission for adding users
-const form = document.getElementById('add-user-form');
-form?.addEventListener('submit', function(event) {
-    event.preventDefault();
-    formSubmit();
-});
-
-// Logout button handler
-const logoutBtn = document.getElementById('logout-btn');
-logoutBtn?.addEventListener('click', async () => {
-    const success = await logout();
-    if (success) {
-        window.location.href = '/auth/login.html';
-    }
-});
-
-/* FORM SUBMIT
-* Handles form submission for creating new users
-*/
-function formSubmit(): void {
-    const email = (document.getElementById('email-field') as HTMLInputElement)?.value;
-    const role = (document.getElementById('role') as HTMLSelectElement)?.value;
-    const vendorId = (document.getElementById('vendorId') as HTMLInputElement)?.value;
-    
-    console.log("Submitted email: ", email);
-    createUser(email, role, vendorId);
-}
-
-/* CREATE USER
-* Params: email
-* Creates a new user and sends an access token email
-*/
-async function createUser(email: string, role: string, vendorId: string) {
-    try {
-        const baseUrl = window.location.origin;
-        const response = await apiAxios('/admin/createNewUser', {
-            method: 'POST',
-            body: {
-                email: email,
-                user_type: role,
-                vendor_id: vendorId,
-                baseUrl: baseUrl
-            }
-        });
-
-        showSuccessMessage(`User created successfully! Access token: ${response.access_token}`);
-
-        // Clear the form
-        (document.getElementById('email-field') as HTMLInputElement).value = '';
-        (document.getElementById('role') as HTMLSelectElement).value = '';
-        (document.getElementById('vendorId') as HTMLInputElement).value = '';
-
-        // Reload the users table to show the new user
-        loadUsersTable();
-
-    } catch (error: any) {
-        console.log('Full error object:', error);
-
-        if (error.response?.status === 400) {
-            showErrorMessage(error.response.data.message);
-        } else if (error.response?.data?.message) {
-            showErrorMessage(error.response.data.message);
-        } else if (error.message) {
-            showErrorMessage(error.message);
-        } else {
-            showErrorMessage('An error occurred while creating the user');
-        }
-    }
+function matchesSearch(user: User, query: string): boolean {
+    const name = `${user.first_name ?? ''} ${user.last_name ?? ''}`.toLowerCase();
+    return (
+        name.includes(query) ||
+        user.email.toLowerCase().includes(query) ||
+        (user.phone ?? '').toLowerCase().includes(query) ||
+        (user.vendor_id?.toString() ?? '').includes(query) ||
+        user.user_type.toLowerCase().includes(query)
+    );
 }
 
 /* LOAD USERS TABLE
-* Fetches all access tokens from the database and displays them in the table
-*/
+ * Fetches all users from the database and stores them for filtering
+ */
 async function loadUsersTable() {
     const tableBody = document.getElementById('users-table-body');
-
     if (!tableBody) return;
 
     try {
-        const response = await apiAxios('/admin/getAllAccessTokens', { method: 'GET' });
+        const response = await apiAxios('/admin/getUsers', { method: 'GET' });
 
-        if (response.success && response.data.length > 0) {
-            tableBody.innerHTML = '';
-
-            response.data.forEach((user: any) => {
-                const row = document.createElement('tr');
-                row.style.borderBottom = '1px solid #e5e7eb';
-
-                // Determine status badge color
-                const statusColor = user.status === 'active' ? '#10b981' : '#ef4444';
-                const statusBg = user.status === 'active' ? '#d1fae5' : '#fee2e2';
-
-                // Format dates
-                const createdAt = new Date(user.created_at).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-
-                const expiresAt = new Date(user.expires_at).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-
-                row.innerHTML = `
-                    <td style="padding: 12px; color: #374151;">${user.email}</td>
-                    <td style="padding: 12px; color: #6b7280; font-family: 'Courier New', monospace; font-size: 0.875rem;">${user.access_token}</td>
-                    <td style="padding: 12px;">
-                        <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; color: ${statusColor}; background-color: ${statusBg};">
-                            ${user.status.toUpperCase()}
-                        </span>
-                    </td>
-                    <td style="padding: 12px; color: #6b7280;">${user.created_by}</td>
-                    <td style="padding: 12px; color: #6b7280;">${createdAt}</td>
-                    <td style="padding: 12px; color: #6b7280;">${expiresAt}</td>
-                    <td style="padding: 12px; text-align: center;">
-                        <button
-                            class="regenerate-token-btn"
-                            data-email="${user.email}"
-                            style="padding: 6px 12px; background-color: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;"
-                            onmouseover="this.style.backgroundColor='#2563eb'"
-                            onmouseout="this.style.backgroundColor='#3b82f6'"
-                        >
-                            Regenerate Token
-                        </button>
-                    </td>
-                `;
-
-                // Add click event listener to the regenerate button
-                const regenerateBtn = row.querySelector('.regenerate-token-btn');
-                regenerateBtn?.addEventListener('click', () => {
-                    regenerateToken(user.email);
-                });
-
-                tableBody.appendChild(row);
-            });
+        if (response.success) {
+            allUsers = response.data as User[];
+            renderTable(allUsers);
         } else {
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="7" style="text-align: center; padding: 20px; color: #9ca3af;">
-                        No users found
-                    </td>
-                </tr>
-            `;
+            tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: #9ca3af;">No users found</td></tr>`;
         }
     } catch (error) {
         console.error('Error loading users table:', error);
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align: center; padding: 20px; color: #ef4444;">
-                    Error loading users. Please refresh the page.
-                </td>
-            </tr>
-        `;
+        tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: #ef4444;">Error loading users. Please refresh the page.</td></tr>`;
     }
 }
 
-/* REGENERATE TOKEN
-* Deletes the existing access token and creates a new one for the user
-*/
-async function regenerateToken(email: string) {
-    if (!confirm(`Are you sure you want to regenerate the access token for ${email}?`)) {
+/* RENDER TABLE
+ * Renders a list of users into the table body
+ */
+function renderTable(users: User[]) {
+    const tableBody = document.getElementById('users-table-body');
+    if (!tableBody) return;
+
+    if (users.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: #9ca3af;">No users found</td></tr>`;
         return;
     }
 
-    try {
-        const baseUrl = window.location.origin;
-        const response = await apiAxios('/admin/regenerateAccessToken', {
-            method: 'POST',
-            body: {
-                email,
-                baseUrl: baseUrl
-            }
+    tableBody.innerHTML = '';
+
+    users.forEach((user: User) => {
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid #e5e7eb';
+
+        const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || '—';
+        const vendorId = user.vendor_id ?? '—';
+        const phone = user.phone ?? '—';
+
+        row.innerHTML = `
+            <td style="padding: 12px; color: #374151;">${name}</td>
+            <td style="padding: 12px; color: #6b7280;">${vendorId}</td>
+            <td style="padding: 12px; color: #374151;">${user.email}</td>
+            <td style="padding: 12px; color: #6b7280;">${phone}</td>
+            <td style="padding: 12px; color: #6b7280;">${user.user_type}</td>
+            <td style="padding: 12px; text-align: center;">
+                <button
+                    class="delete-user-btn"
+                    data-userid="${user.user_id}"
+                    data-name="${name}"
+                    style="padding: 6px 12px; background-color: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;"
+                    onmouseover="this.style.backgroundColor='#dc2626'"
+                    onmouseout="this.style.backgroundColor='#ef4444'"
+                >
+                    Delete
+                </button>
+            </td>
+        `;
+
+        const deleteBtn = row.querySelector('.delete-user-btn');
+        deleteBtn?.addEventListener('click', () => {
+            openDeleteModal(user.user_id, name);
         });
 
-        if (response.success) {
-            showSuccessMessage(`Access token regenerated successfully for ${email}. New token email sent.`);
-            // Reload the users table to show the updated token
-            loadUsersTable();
-        }
-    } catch (error: any) {
-        console.error('Token regeneration error:', error);
+        tableBody.appendChild(row);
+    });
+}
 
+/* DELETE MODAL */
+function openDeleteModal(userId: number, userName: string) {
+    pendingDeleteId = userId;
+    const modal = document.getElementById('delete-modal');
+    const message = document.getElementById('delete-modal-message');
+    if (message) message.textContent = `This will permanently delete the account for "${userName}". This action cannot be undone.`;
+    if (modal) modal.style.display = 'flex';
+
+    deleteConfirmHandler = confirmDelete;
+}
+
+function closeDeleteModal() {
+    pendingDeleteId = null;
+    deleteConfirmHandler = null;
+    const modal = document.getElementById('delete-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function confirmDelete() {
+    if (pendingDeleteId === null) return;
+    const userId = pendingDeleteId;
+    closeDeleteModal();
+
+    try {
+        await apiAxios(`/admin/deleteUser/${userId}`, { method: 'DELETE' });
+        showSuccessMessage('User deleted successfully.');
+        allUsers = allUsers.filter(u => u.user_id !== userId);
+        const query = ((document.getElementById('search-field') as HTMLInputElement)?.value ?? '').trim().toLowerCase();
+        renderTable(query ? allUsers.filter(u => matchesSearch(u, query)) : allUsers);
+    } catch (error: any) {
+        console.error('Error deleting user:', error);
         if (error.response?.data?.message) {
             showErrorMessage(error.response.data.message);
-        } else if (error.message) {
-            showErrorMessage(error.message);
         } else {
-            showErrorMessage('An error occurred while regenerating the access token');
+            showErrorMessage('An error occurred while deleting the user.');
         }
-
-        // Reload the table even on error since tokens may have been deleted
-        loadUsersTable();
     }
 }
 
