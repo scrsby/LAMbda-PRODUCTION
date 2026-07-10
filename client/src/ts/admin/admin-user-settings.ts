@@ -2,7 +2,19 @@ import { apiAxios, requireAuth, logout } from '../utilities/api.js';
 import { showErrorMessage, showSuccessMessage } from '../utilities/messages.js';
 import { updateProfileCard } from "../utilities/ui.js";
 
-let allUsers: any[] = [];
+interface User {
+    user_id: number;
+    first_name: string | null;
+    last_name: string | null;
+    vendor_id: number | null;
+    email: string;
+    phone: string | null;
+    user_type: string;
+}
+
+let allUsers: User[] = [];
+let pendingDeleteId: number | null = null;
+let deleteConfirmHandler: (() => void) | null = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAuth();
@@ -25,6 +37,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Delete modal buttons
     document.getElementById('delete-modal-back')?.addEventListener('click', closeDeleteModal);
+    document.getElementById('delete-modal-confirm')?.addEventListener('click', () => {
+        deleteConfirmHandler?.();
+    });
 
     // Logout button handlers
     document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
@@ -39,14 +54,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
-function matchesSearch(user: any, query: string): boolean {
+function matchesSearch(user: User, query: string): boolean {
     const name = `${user.first_name ?? ''} ${user.last_name ?? ''}`.toLowerCase();
     return (
         name.includes(query) ||
-        (user.email ?? '').toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query) ||
         (user.phone ?? '').toLowerCase().includes(query) ||
         (user.vendor_id?.toString() ?? '').includes(query) ||
-        (user.user_type ?? '').toLowerCase().includes(query)
+        user.user_type.toLowerCase().includes(query)
     );
 }
 
@@ -61,7 +76,7 @@ async function loadUsersTable() {
         const response = await apiAxios('/admin/getUsers', { method: 'GET' });
 
         if (response.success) {
-            allUsers = response.data;
+            allUsers = response.data as User[];
             renderTable(allUsers);
         } else {
             tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: #9ca3af;">No users found</td></tr>`;
@@ -75,7 +90,7 @@ async function loadUsersTable() {
 /* RENDER TABLE
  * Renders a list of users into the table body
  */
-function renderTable(users: any[]) {
+function renderTable(users: User[]) {
     const tableBody = document.getElementById('users-table-body');
     if (!tableBody) return;
 
@@ -86,7 +101,7 @@ function renderTable(users: any[]) {
 
     tableBody.innerHTML = '';
 
-    users.forEach((user: any) => {
+    users.forEach((user: User) => {
         const row = document.createElement('tr');
         row.style.borderBottom = '1px solid #e5e7eb';
 
@@ -124,39 +139,32 @@ function renderTable(users: any[]) {
 }
 
 /* DELETE MODAL */
-let pendingDeleteId: string | null = null;
-
-function openDeleteModal(userId: string, userName: string) {
+function openDeleteModal(userId: number, userName: string) {
     pendingDeleteId = userId;
     const modal = document.getElementById('delete-modal');
     const message = document.getElementById('delete-modal-message');
     if (message) message.textContent = `This will permanently delete the account for "${userName}". This action cannot be undone.`;
     if (modal) modal.style.display = 'flex';
 
-    // Wire confirm button fresh each open to avoid duplicate listeners
-    const confirmBtn = document.getElementById('delete-modal-confirm');
-    if (confirmBtn) {
-        const newBtn = confirmBtn.cloneNode(true) as HTMLElement;
-        confirmBtn.parentNode?.replaceChild(newBtn, confirmBtn);
-        newBtn.addEventListener('click', confirmDelete);
-    }
+    deleteConfirmHandler = confirmDelete;
 }
 
 function closeDeleteModal() {
     pendingDeleteId = null;
+    deleteConfirmHandler = null;
     const modal = document.getElementById('delete-modal');
     if (modal) modal.style.display = 'none';
 }
 
 async function confirmDelete() {
-    if (!pendingDeleteId) return;
+    if (pendingDeleteId === null) return;
     const userId = pendingDeleteId;
     closeDeleteModal();
 
     try {
         await apiAxios(`/admin/deleteUser/${userId}`, { method: 'DELETE' });
         showSuccessMessage('User deleted successfully.');
-        allUsers = allUsers.filter(u => u.user_id.toString() !== userId.toString());
+        allUsers = allUsers.filter(u => u.user_id !== userId);
         const query = ((document.getElementById('search-field') as HTMLInputElement)?.value ?? '').trim().toLowerCase();
         renderTable(query ? allUsers.filter(u => matchesSearch(u, query)) : allUsers);
     } catch (error: any) {

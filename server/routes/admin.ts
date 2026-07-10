@@ -329,13 +329,17 @@ router.get('/getUsers', requireAuth, requireUserType('admin'), adminRouteRateLim
 });
 
 /* DELETE USER
- * Deletes a user by user_id.
+ * Deletes a user by user_id. Prevents an admin from deleting their own account.
  */
-router.delete('/deleteUser/:userId', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req, res) => {
+router.delete('/deleteUser/:userId', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
     const { userId } = req.params;
 
     if (!userId) {
         return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+
+    if (req.session?.user?.id?.toString() === userId.toString()) {
+        return res.status(400).json({ success: false, message: 'You cannot delete your own account' });
     }
 
     try {
