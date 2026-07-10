@@ -311,6 +311,47 @@ router.post('/regenerateAccessToken', async (req: any, res: any) => {
 });
 
 
+/* GET ALL USERS
+ * Returns all existing users from the users table.
+ */
+router.get('/getUsers', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (_req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT user_id, last_name, first_name, vendor_id, email, phone, user_type
+            FROM users
+            ORDER BY last_name ASC, first_name ASC
+        `);
+        res.status(200).json({ success: true, data: result.rows });
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ success: false, message: 'Internal server error while fetching users' });
+    }
+});
+
+/* DELETE USER
+ * Deletes a user by user_id.
+ */
+router.delete('/deleteUser/:userId', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req, res) => {
+    const { userId } = req.params;
+
+    if (!userId) {
+        return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+
+    try {
+        const result = await db.query('DELETE FROM users WHERE user_id = $1 RETURNING user_id', [userId]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        res.status(200).json({ success: true, message: 'User deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({ success: false, message: 'Internal server error while deleting user' });
+    }
+});
+
 /* GET CLOSED TICKETS (SALES)
  * Returns all closed tickets for the admin sales report, with optional filters.
  * Also returns today's daily sales total and commission.
