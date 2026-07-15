@@ -348,9 +348,9 @@ async function generateReport() {
                                     <th>Inventory ID</th>
                                     <th>Item</th>
                                     <th>Price</th>
-                                    <th>Discount</th>
+                                    <th>Disc.</th>
                                     <th>Final Price</th>
-                                    <th>Commission</th>
+                                    <th>Comm.</th>
                                     <th>Payout</th>
                                 </tr>
                             </thead>
