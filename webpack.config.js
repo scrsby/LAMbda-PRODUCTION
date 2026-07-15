@@ -9,6 +9,7 @@ export default {
     entry: {
         'admin/add-users': './client/src/ts/admin/add-users.ts',
         'admin/admin-user-settings': './client/src/ts/admin/admin-user-settings.ts',
+        'admin/admin-invite-settings': './client/src/ts/admin/admin-invite-settings.ts',
         'admin/admin-index': './client/src/ts/admin/admin-index.ts',
         'admin/admin-inventory-settings': './client/src/ts/admin/admin-inventory-settings.ts',
         'admin/admin-sales-manager': './client/src/ts/admin/admin-sales-manager.ts',

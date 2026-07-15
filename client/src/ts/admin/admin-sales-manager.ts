@@ -1,17 +1,3 @@
-/*
-  _               __  __ _         _
- | |        /\   |  \/  | |       | |
- | |       /  \  | \  / | |__   __| | __ _
- | |      / /\ \ | |\/| | '_ \ / _` |/ _` |
- | |____ / ____ \| |  | | |_) | (_| | (_| |
- |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
-
- Name: Admin Sales Manager
- File: admin-sales-manager.ts
- Description: Handles client-side logic for the admin sales page.
- Last Edited: 08 July 2026
-*/
-
 import { apiAxios, requireAuth, logout } from '../utilities/api.js';
 import { updateProfileCard } from '../utilities/ui.js';
 
@@ -47,6 +33,7 @@ const filterEndInput = document.getElementById('filter-end') as HTMLInputElement
 const filterEmployeeInput = document.getElementById('filter-employee') as HTMLInputElement | null;
 const searchBtn = document.getElementById('search-btn');
 const clearBtn = document.getElementById('clear-btn');
+const generateReportBtn = document.getElementById('generate-report-btn') as HTMLButtonElement | null;
 const dailySalesTotalEl = document.getElementById('daily-sales-total');
 const dailyCommissionEl = document.getElementById('daily-commission');
 
@@ -128,6 +115,10 @@ async function loadSales() {
         renderSales([]);
         renderSalesMessage('Unable to load sales data right now.');
     }
+}
+
+function generateReport() {
+
 }
 
 function renderDailyStats(salesTotal: number, commission: number) {
