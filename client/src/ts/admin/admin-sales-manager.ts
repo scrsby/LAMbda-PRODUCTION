@@ -277,6 +277,7 @@ async function generateReport() {
                     <td><strong>${formatCurrency(vendorCommissionTotal)}</strong></td>
                     <td><strong>${formatCurrency(vendorPayoutTotal)}</strong></td>
                 </tr>
+                <tr><td colspan="8" style="height: 0.25in;"></td></tr>
             `);
         });
 
@@ -293,7 +294,7 @@ async function generateReport() {
                         body {
                             font-family: Arial, sans-serif;
                             margin: 0;
-                            padding: 0.25in;
+                            padding: 0.2in;
                             color: #111;
                             background: #fff;
                         }
@@ -368,7 +369,7 @@ async function generateReport() {
                             </colgroup>
                             <thead>
                                 <tr>
-                                    <th>Vendor ID</th>
+                                    <th style="white-space: nowrap">Vendor</th>
                                     <th>Inventory ID</th>
                                     <th>Item</th>
                                     <th>Price</th>
