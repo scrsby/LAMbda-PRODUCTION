@@ -327,6 +327,20 @@ async function generateReport() {
                             vertical-align: top;
                             word-break: break-word;
                         }
+                        th:nth-child(4),
+                        th:nth-child(5),
+                        th:nth-child(6),
+                        th:nth-child(7),
+                        th:nth-child(8),
+                        td:nth-child(4),
+                        td:nth-child(5),
+                        td:nth-child(6),
+                        td:nth-child(7),
+                        td:nth-child(8) {
+                            padding-left: 4px;
+                            padding-right: 4px;
+                            white-space: nowrap;
+                        }
                         @media print {
                             body {
                                 padding: 0.1in;
@@ -342,6 +356,16 @@ async function generateReport() {
                         <h1>${reportType}</h1>
                         <p>Generated ${escapeHtml(generatedAt)}</p>
                         <table>
+                            <colgroup>
+                                <col style="width: 8%;">
+                                <col style="width: 14%;">
+                                <col style="width: 30%;">
+                                <col style="width: 9.6%;">
+                                <col style="width: 9.6%;">
+                                <col style="width: 9.6%;">
+                                <col style="width: 9.6%;">
+                                <col style="width: 9.6%;">
+                            </colgroup>
                             <thead>
                                 <tr>
                                     <th>Vendor ID</th>
