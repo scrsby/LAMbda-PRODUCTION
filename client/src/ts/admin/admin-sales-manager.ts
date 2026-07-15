@@ -23,7 +23,22 @@ interface SalesResponse {
     dailyCommission: number;
 }
 
+interface TicketDetailItem {
+    vendor_id: number | string;
+    vendor_inventory_id: string;
+    name: string;
+    vendor_price: number;
+    discount_amount: number;
+    quantity: number;
+}
+
+interface TicketDetailResponse {
+    ticket: TicketSummary;
+    items: TicketDetailItem[];
+}
+
 let salesDataTable: any = null;
+let hasActiveSearchFilters = false;
 
 const salesTableBody = document.getElementById('sales_list');
 const filterIdInput = document.getElementById('filter-id') as HTMLInputElement | null;
@@ -60,6 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '../auth/login.html';
     });
 
+    updateReportButtonLabel();
     await loadSales();
 });
 
@@ -81,7 +97,11 @@ clearBtn?.addEventListener('click', async () => {
     });
 });
 
-async function loadSales() {
+generateReportBtn?.addEventListener('click', () => {
+    void generateReport();
+});
+
+function buildSalesQueryParams() {
     const params = new URLSearchParams();
 
     if (filterIdInput?.value.trim()) {
@@ -104,6 +124,14 @@ async function loadSales() {
         params.set('employee', filterEmployeeInput.value.trim());
     }
 
+    return params;
+}
+
+async function loadSales() {
+    const params = buildSalesQueryParams();
+    hasActiveSearchFilters = params.size > 0;
+    updateReportButtonLabel();
+
     const endpoint = params.size > 0 ? `/admin/sales?${params.toString()}` : '/admin/sales';
 
     try {
@@ -117,8 +145,245 @@ async function loadSales() {
     }
 }
 
-function generateReport() {
+async function generateReport() {
+    try {
+            let params = new URLSearchParams();
+            let reportType = 'Daily Report';
 
+            if (hasActiveSearchFilters) {
+                params = buildSalesQueryParams();
+                reportType = 'Queried Report';
+            } else {
+                const now = new Date();
+                const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+                const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+                params.set('startDate', startOfDay);
+                params.set('endDate', endOfDay);
+            }
+
+            const salesEndpoint = `/admin/sales?${params.toString()}`;
+            const salesResponse = await apiAxios(salesEndpoint, { method: 'GET' }) as SalesResponse;
+            const tickets = salesResponse.tickets ?? [];
+
+            if (tickets.length === 0) {
+                alert('No sales found for this report.');
+                return;
+            }
+
+            const ticketDetails = await Promise.all(
+                tickets.map(async (ticket) => {
+                    return await apiAxios(`/POS/ticket/${ticket.ticket_id}`, { method: 'GET' }) as TicketDetailResponse;
+                })
+            );
+
+            type ReportItem = {
+                vendorId: string;
+                vendorInventoryId: string;
+                itemName: string;
+                itemPrice: number;
+                discount: number;
+                finalPrice: number;
+                commission: number;
+                payout: number;
+            };
+
+            const reportItems: ReportItem[] = [];
+
+            ticketDetails.forEach(detail => {
+                (detail.items ?? []).forEach(item => {
+                    const quantityRaw = Number(item.quantity ?? 1);
+                    const quantity = Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1;
+                    const itemPrice = Number(item.vendor_price ?? 0) * quantity;
+                    const discount = Number(item.discount_amount ?? 0) * quantity;
+                    const finalPrice = itemPrice - discount;
+                    const commission = finalPrice * 0.10;
+                    const payout = finalPrice - commission;
+
+                    reportItems.push({
+                        vendorId: String(item.vendor_id ?? ''),
+                        vendorInventoryId: String(item.vendor_inventory_id ?? ''),
+                        itemName: String(item.name ?? ''),
+                        itemPrice,
+                        discount,
+                        finalPrice,
+                        commission,
+                        payout
+                    });
+                });
+            });
+
+            if (reportItems.length === 0) {
+                alert('No sale items found for this report.');
+                return;
+            }
+
+            const sortedItems = [...reportItems].sort((a, b) => {
+                const aNum = Number(a.vendorId);
+                const bNum = Number(b.vendorId);
+                const bothNumeric = Number.isFinite(aNum) && Number.isFinite(bNum);
+
+                if (bothNumeric) {
+                    return aNum - bNum;
+                }
+
+                return a.vendorId.localeCompare(b.vendorId);
+            });
+
+            const groupedByVendor = new Map<string, ReportItem[]>();
+            sortedItems.forEach(item => {
+                const existing = groupedByVendor.get(item.vendorId) ?? [];
+                existing.push(item);
+                groupedByVendor.set(item.vendorId, existing);
+            });
+
+            const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
+            const escapeHtml = (value: string) => value
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+
+            const rows: string[] = [];
+
+            Array.from(groupedByVendor.entries()).forEach(([vendorId, items]) => {
+                let vendorFinalTotal = 0;
+                let vendorCommissionTotal = 0;
+                let vendorPayoutTotal = 0;
+
+                items.forEach((item, index) => {
+                    vendorFinalTotal += item.finalPrice;
+                    vendorCommissionTotal += item.commission;
+                    vendorPayoutTotal += item.payout;
+
+                    rows.push(`
+                        <tr>
+                            <td>${index === 0 ? escapeHtml(vendorId) : ''}</td>
+                            <td>${escapeHtml(item.vendorInventoryId)}</td>
+                            <td>${escapeHtml(item.itemName)}</td>
+                            <td>${formatCurrency(item.itemPrice)}</td>
+                            <td>${formatCurrency(item.discount)}</td>
+                            <td>${formatCurrency(item.finalPrice)}</td>
+                            <td>${formatCurrency(item.commission)}</td>
+                            <td>${formatCurrency(item.payout)}</td>
+                        </tr>
+                    `);
+                });
+
+                rows.push(`
+                    <tr class="vendor-total-row">
+                        <td colspan="5"></td>
+                        <td><strong>${formatCurrency(vendorFinalTotal)}</strong></td>
+                        <td><strong>${formatCurrency(vendorCommissionTotal)}</strong></td>
+                        <td><strong>${formatCurrency(vendorPayoutTotal)}</strong></td>
+                    </tr>
+                `);
+            });
+
+            const generatedAt = new Date().toLocaleString();
+
+            const reportHtml = `
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>${reportType}</title>
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            margin: 0;
+                            padding: 0.25in;
+                            color: #111;
+                            background: #fff;
+                        }
+                        .report-container {
+                            width: 100%;
+                            max-width: 8.5in;
+                            margin: 0 auto;
+                        }
+                        h1 {
+                            margin: 0 0 0.125in;
+                            font-size: 1.3rem;
+                        }
+                        p {
+                            margin: 0 0 0.2in;
+                            color: #444;
+                            font-size: 0.9rem;
+                        }
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            table-layout: fixed;
+                        }
+                        th, td {
+                            border: 1px solid #d8d8d8;
+                            padding: 6px 8px;
+                            text-align: left;
+                            font-size: 0.82rem;
+                            vertical-align: top;
+                            word-break: break-word;
+                        }
+                        th {
+                            background: #f2f2f2;
+                        }
+                        .vendor-total-row td {
+                            background: #fafafa;
+                        }
+                        @media print {
+                            body {
+                                padding: 0.1in;
+                            }
+                            .report-container {
+                                max-width: none;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="report-container">
+                        <h1>${reportType}</h1>
+                        <p>Generated ${escapeHtml(generatedAt)}</p>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Vendor Id</th>
+                                    <th>Vendor Inventory Id</th>
+                                    <th>Item Name</th>
+                                    <th>Item Price</th>
+                                    <th>Discount</th>
+                                    <th>Final Price</th>
+                                    <th>Commission</th>
+                                    <th>Payout</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows.join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </body>
+                </html>
+            `;
+
+            const reportWindow = window.open('', '_blank', 'noopener,noreferrer');
+            if (!reportWindow) {
+                alert('Unable to open report window. Please allow pop-ups and try again.');
+                return;
+            }
+
+            reportWindow.document.open();
+            reportWindow.document.write(reportHtml);
+            reportWindow.document.close();
+    } catch (error) {
+        console.error('Error generating report:', error);
+        alert('Unable to generate report right now.');
+    }
+}
+
+function updateReportButtonLabel() {
+    if (!generateReportBtn) return;
+    generateReportBtn.textContent = hasActiveSearchFilters ? 'Generate Queried Report' : 'Generate Daily Report';
 }
 
 function renderDailyStats(salesTotal: number, commission: number) {
