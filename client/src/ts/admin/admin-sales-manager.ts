@@ -150,7 +150,7 @@ async function loadSales() {
 async function generateReport() {
     try {
         const isQueriedReport = lastAppliedSearchParams.size > 0;
-        const reportType = isQueriedReport ? 'Queried Report' : 'Daily Report';
+        const reportType = 'Sales Report';
         const params = isQueriedReport
             ? new URLSearchParams(lastAppliedSearchParams.toString())
             : new URLSearchParams();
@@ -315,20 +315,17 @@ async function generateReport() {
                             width: 100%;
                             border-collapse: collapse;
                             table-layout: fixed;
+                            border: none;
+                            background: transparent;
                         }
                         th, td {
-                            border: 1px solid #d8d8d8;
+                            border: none;
+                            background: transparent;
                             padding: 6px 8px;
                             text-align: left;
                             font-size: 0.82rem;
                             vertical-align: top;
                             word-break: break-word;
-                        }
-                        th {
-                            background: #f2f2f2;
-                        }
-                        .vendor-total-row td {
-                            background: #fafafa;
                         }
                         @media print {
                             body {
