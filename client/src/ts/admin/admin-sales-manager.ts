@@ -38,7 +38,9 @@ interface TicketDetailResponse {
 }
 
 let salesDataTable: any = null;
-let hasActiveSearchFilters = false;
+let lastAppliedSearchParams = new URLSearchParams();
+const COMMISSION_RATE = 0.10;
+const URL_REVOKE_DELAY_MS = 60_000;
 
 const salesTableBody = document.getElementById('sales_list');
 const filterIdInput = document.getElementById('filter-id') as HTMLInputElement | null;
@@ -129,7 +131,7 @@ function buildSalesQueryParams() {
 
 async function loadSales() {
     const params = buildSalesQueryParams();
-    hasActiveSearchFilters = params.size > 0;
+    lastAppliedSearchParams = new URLSearchParams(params.toString());
     updateReportButtonLabel();
 
     const endpoint = params.size > 0 ? `/admin/sales?${params.toString()}` : '/admin/sales';
@@ -147,142 +149,140 @@ async function loadSales() {
 
 async function generateReport() {
     try {
-            let params = new URLSearchParams();
-            let reportType = 'Daily Report';
+        const isQueriedReport = lastAppliedSearchParams.size > 0;
+        const reportType = isQueriedReport ? 'Queried Report' : 'Daily Report';
+        const params = isQueriedReport
+            ? new URLSearchParams(lastAppliedSearchParams.toString())
+            : new URLSearchParams();
 
-            if (hasActiveSearchFilters) {
-                params = buildSalesQueryParams();
-                reportType = 'Queried Report';
-            } else {
-                const now = new Date();
-                const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-                const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
-                params.set('startDate', startOfDay);
-                params.set('endDate', endOfDay);
-            }
+        if (!isQueriedReport) {
+            const now = new Date();
+            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+            const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+            params.set('startDate', startOfDay);
+            params.set('endDate', endOfDay);
+        }
 
-            const salesEndpoint = `/admin/sales?${params.toString()}`;
-            const salesResponse = await apiAxios(salesEndpoint, { method: 'GET' }) as SalesResponse;
-            const tickets = salesResponse.tickets ?? [];
+        const salesEndpoint = `/admin/sales?${params.toString()}`;
+        const salesResponse = await apiAxios(salesEndpoint, { method: 'GET' }) as SalesResponse;
+        const tickets = salesResponse.tickets ?? [];
 
-            if (tickets.length === 0) {
-                alert('No sales found for this report.');
-                return;
-            }
+        if (tickets.length === 0) {
+            alert(isQueriedReport ? 'No sales match your search criteria.' : 'No sales found for today.');
+            return;
+        }
 
-            const ticketDetails = await Promise.all(
-                tickets.map(async (ticket) => {
-                    return await apiAxios(`/POS/ticket/${ticket.ticket_id}`, { method: 'GET' }) as TicketDetailResponse;
-                })
-            );
+        const ticketDetails = await Promise.all(
+            tickets.map(async (ticket) => {
+                return await apiAxios(`/POS/ticket/${ticket.ticket_id}`, { method: 'GET' }) as TicketDetailResponse;
+            })
+        );
 
-            type ReportItem = {
-                vendorId: string;
-                vendorInventoryId: string;
-                itemName: string;
-                itemPrice: number;
-                discount: number;
-                finalPrice: number;
-                commission: number;
-                payout: number;
-            };
+        type ReportItem = {
+            vendorId: string;
+            vendorInventoryId: string;
+            itemName: string;
+            itemPrice: number;
+            discount: number;
+            finalPrice: number;
+            commission: number;
+            payout: number;
+        };
 
-            const reportItems: ReportItem[] = [];
+        const reportItems: ReportItem[] = [];
 
-            ticketDetails.forEach(detail => {
-                (detail.items ?? []).forEach(item => {
-                    const quantityRaw = Number(item.quantity ?? 1);
-                    const quantity = Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1;
-                    const itemPrice = Number(item.vendor_price ?? 0) * quantity;
-                    const discount = Number(item.discount_amount ?? 0) * quantity;
-                    const finalPrice = itemPrice - discount;
-                    const commission = finalPrice * 0.10;
-                    const payout = finalPrice - commission;
-
-                    reportItems.push({
-                        vendorId: String(item.vendor_id ?? ''),
-                        vendorInventoryId: String(item.vendor_inventory_id ?? ''),
-                        itemName: String(item.name ?? ''),
-                        itemPrice,
-                        discount,
-                        finalPrice,
-                        commission,
-                        payout
-                    });
-                });
-            });
-
-            if (reportItems.length === 0) {
-                alert('No sale items found for this report.');
-                return;
-            }
-
-            const sortedItems = [...reportItems].sort((a, b) => {
-                const aNum = Number(a.vendorId);
-                const bNum = Number(b.vendorId);
-                const bothNumeric = Number.isFinite(aNum) && Number.isFinite(bNum);
-
-                if (bothNumeric) {
-                    return aNum - bNum;
+        ticketDetails.forEach(detail => {
+            (detail.items ?? []).forEach(item => {
+                const quantityRaw = Number(item.quantity ?? 1);
+                const hasInvalidQuantity = !Number.isFinite(quantityRaw) || quantityRaw <= 0;
+                const quantity = hasInvalidQuantity ? 1 : quantityRaw;
+                if (hasInvalidQuantity) {
+                    console.warn('Invalid ticket item quantity. Defaulting to 1.', { item });
                 }
+                const itemPrice = Number(item.vendor_price ?? 0) * quantity;
+                const discount = Number(item.discount_amount ?? 0) * quantity;
+                const finalPrice = itemPrice - discount;
+                const commission = finalPrice * COMMISSION_RATE;
+                const payout = finalPrice - commission;
 
-                return a.vendorId.localeCompare(b.vendorId);
-            });
-
-            const groupedByVendor = new Map<string, ReportItem[]>();
-            sortedItems.forEach(item => {
-                const existing = groupedByVendor.get(item.vendorId) ?? [];
-                existing.push(item);
-                groupedByVendor.set(item.vendorId, existing);
-            });
-
-            const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
-            const escapeHtml = (value: string) => value
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-
-            const rows: string[] = [];
-
-            Array.from(groupedByVendor.entries()).forEach(([vendorId, items]) => {
-                let vendorFinalTotal = 0;
-                let vendorCommissionTotal = 0;
-                let vendorPayoutTotal = 0;
-
-                items.forEach((item, index) => {
-                    vendorFinalTotal += item.finalPrice;
-                    vendorCommissionTotal += item.commission;
-                    vendorPayoutTotal += item.payout;
-
-                    rows.push(`
-                        <tr>
-                            <td>${index === 0 ? escapeHtml(vendorId) : ''}</td>
-                            <td>${escapeHtml(item.vendorInventoryId)}</td>
-                            <td>${escapeHtml(item.itemName)}</td>
-                            <td>${formatCurrency(item.itemPrice)}</td>
-                            <td>${formatCurrency(item.discount)}</td>
-                            <td>${formatCurrency(item.finalPrice)}</td>
-                            <td>${formatCurrency(item.commission)}</td>
-                            <td>${formatCurrency(item.payout)}</td>
-                        </tr>
-                    `);
+                reportItems.push({
+                    vendorId: normalizeVendorId(item.vendor_id),
+                    vendorInventoryId: String(item.vendor_inventory_id ?? ''),
+                    itemName: String(item.name ?? ''),
+                    itemPrice,
+                    discount,
+                    finalPrice,
+                    commission,
+                    payout
                 });
+            });
+        });
+
+        if (reportItems.length === 0) {
+            alert('No sale items found for this report.');
+            return;
+        }
+
+        const sortedItems = [...reportItems].sort((a, b) => {
+            const aNum = Number(a.vendorId);
+            const bNum = Number(b.vendorId);
+            const bothNumeric = Number.isFinite(aNum) && Number.isFinite(bNum);
+
+            if (bothNumeric) {
+                return aNum - bNum;
+            }
+
+            return a.vendorId.localeCompare(b.vendorId);
+        });
+
+        const groupedByVendor = new Map<string, ReportItem[]>();
+        sortedItems.forEach(item => {
+            const existing = groupedByVendor.get(item.vendorId) ?? [];
+            existing.push(item);
+            groupedByVendor.set(item.vendorId, existing);
+        });
+
+        const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
+
+        const rows: string[] = [];
+
+        Array.from(groupedByVendor.entries()).forEach(([vendorId, items]) => {
+            let vendorFinalTotal = 0;
+            let vendorCommissionTotal = 0;
+            let vendorPayoutTotal = 0;
+
+            items.forEach((item, index) => {
+                vendorFinalTotal += item.finalPrice;
+                vendorCommissionTotal += item.commission;
+                vendorPayoutTotal += item.payout;
 
                 rows.push(`
-                    <tr class="vendor-total-row">
-                        <td colspan="5"></td>
-                        <td><strong>${formatCurrency(vendorFinalTotal)}</strong></td>
-                        <td><strong>${formatCurrency(vendorCommissionTotal)}</strong></td>
-                        <td><strong>${formatCurrency(vendorPayoutTotal)}</strong></td>
+                    <tr>
+                        <td>${index === 0 ? escapeHtml(vendorId) : ''}</td>
+                        <td>${escapeHtml(item.vendorInventoryId)}</td>
+                        <td>${escapeHtml(item.itemName)}</td>
+                        <td>${formatCurrency(item.itemPrice)}</td>
+                        <td>${formatCurrency(item.discount)}</td>
+                        <td>${formatCurrency(item.finalPrice)}</td>
+                        <td>${formatCurrency(item.commission)}</td>
+                        <td>${formatCurrency(item.payout)}</td>
                     </tr>
                 `);
             });
 
-            const generatedAt = new Date().toLocaleString();
+            rows.push(`
+                <tr class="vendor-total-row">
+                    <td colspan="5"></td>
+                    <td><strong>${formatCurrency(vendorFinalTotal)}</strong></td>
+                    <td><strong>${formatCurrency(vendorCommissionTotal)}</strong></td>
+                    <td><strong>${formatCurrency(vendorPayoutTotal)}</strong></td>
+                </tr>
+            `);
+        });
 
-            const reportHtml = `
+        const generatedAt = new Date().toLocaleString();
+
+        const reportHtml = `
                 <!DOCTYPE html>
                 <html lang="en">
                 <head>
@@ -347,8 +347,8 @@ async function generateReport() {
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Vendor Id</th>
-                                    <th>Vendor Inventory Id</th>
+                                    <th>Vendor ID</th>
+                                    <th>Vendor Inventory ID</th>
                                     <th>Item Name</th>
                                     <th>Item Price</th>
                                     <th>Discount</th>
@@ -364,26 +364,56 @@ async function generateReport() {
                     </div>
                 </body>
                 </html>
-            `;
+        `;
 
-            const reportWindow = window.open('', '_blank', 'noopener,noreferrer');
-            if (!reportWindow) {
-                alert('Unable to open report window. Please allow pop-ups and try again.');
-                return;
+        const reportBlob = new Blob([reportHtml], { type: 'text/html' });
+        const reportUrl = URL.createObjectURL(reportBlob);
+        const reportWindow = window.open(reportUrl, '_blank', 'noopener,noreferrer');
+        if (!reportWindow) {
+            URL.revokeObjectURL(reportUrl);
+            alert('Unable to open report window. Please allow pop-ups and try again.');
+            return;
+        }
+
+        const revokeBlobUrl = () => URL.revokeObjectURL(reportUrl);
+        const windowClosedCheck = window.setInterval(() => {
+            if (reportWindow.closed) {
+                window.clearInterval(windowClosedCheck);
+                revokeBlobUrl();
             }
+        }, 1000);
 
-            reportWindow.document.open();
-            reportWindow.document.write(reportHtml);
-            reportWindow.document.close();
+        window.setTimeout(() => {
+            window.clearInterval(windowClosedCheck);
+            revokeBlobUrl();
+        }, URL_REVOKE_DELAY_MS);
     } catch (error) {
         console.error('Error generating report:', error);
-        alert('Unable to generate report right now.');
+        alert('Unable to generate report right now. Please check your connection and try again.');
     }
 }
 
 function updateReportButtonLabel() {
     if (!generateReportBtn) return;
-    generateReportBtn.textContent = hasActiveSearchFilters ? 'Generate Queried Report' : 'Generate Daily Report';
+    generateReportBtn.textContent = lastAppliedSearchParams.size > 0 ? 'Generate Queried Report' : 'Generate Daily Report';
+}
+
+function normalizeVendorId(value: number | string | null | undefined) {
+    if (value === null || value === undefined) {
+        return 'UNKNOWN';
+    }
+
+    const normalized = String(value).trim();
+    return normalized === '' ? 'UNKNOWN' : normalized;
+}
+
+function escapeHtml(value: string) {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function renderDailyStats(salesTotal: number, commission: number) {
