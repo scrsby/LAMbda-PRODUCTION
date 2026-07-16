@@ -103,16 +103,6 @@ inventoryForm?.addEventListener('submit', async (event) => {
     }
 });
 
-// Logout button handler
-const logoutBtn = document.getElementById('logout-btn');
-logoutBtn?.addEventListener('click', async () => {
-    const success = await logout();
-    if (success) {
-        window.location.href = '/auth/login.html';
-    }
-});
-
-
 /* ADD ITEM
 * Handles form submission for creating new inventory items with an admin account
 * PARAMS - name: string, description: string, price: number, quantity: number
@@ -369,4 +359,3 @@ function formatInventoryCode(value: string | number | null): string {
 
     return normalizedValue;
 }
-

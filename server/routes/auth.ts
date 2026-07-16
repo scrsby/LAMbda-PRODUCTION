@@ -1,9 +1,47 @@
 import { Router } from 'express';
 import db from '../config/db.js';
-import { sendEmail } from '../services/mailer.js';
 import bcrypt from 'bcrypt'; 
 
 const router = Router();
+const SESSION_COOKIE_NAME = 'connect.sid';
+
+function getSessionCookieOptions() {
+    return {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const
+    };
+}
+
+function destroySession(req: any): Promise<void> {
+    return new Promise((resolve, reject) => {
+        if (!req.session) {
+            resolve();
+            return;
+        }
+
+        req.session.destroy((err: Error) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve();
+        });
+    });
+}
+
+function regenerateSession(req: any): Promise<void> {
+    return new Promise((resolve, reject) => {
+        req.session.regenerate((err: Error) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve();
+        });
+    });
+}
 
 router.post('/createAccount', async (req: any, res: any) => {
     const { email, accessToken, password } = req.body;
@@ -20,6 +58,19 @@ router.post('/createAccount', async (req: any, res: any) => {
         return res.status(400).json({
             success: false,
             message: 'Invalid access token'
+        });
+    }
+
+    try {
+        if (req.session?.user?.email && req.session.user.email !== email) {
+            await destroySession(req);
+            res.clearCookie(SESSION_COOKIE_NAME, getSessionCookieOptions());
+        }
+    } catch (error) {
+        console.error('Error resetting existing session during account setup:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error while creating account'
         });
     }
 
@@ -152,6 +203,8 @@ router.post('/login', async (req: any, res: any) => {
                 });
             }
 
+            await regenerateSession(req);
+
             req.session.user = {
                 id: user.user_id,
                 email: user.email,
@@ -161,7 +214,7 @@ router.post('/login', async (req: any, res: any) => {
                 phone: user.phone
             };
 
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 message: 'Login successful',
                 user: {
@@ -191,20 +244,22 @@ router.post('/login', async (req: any, res: any) => {
 });
 
 router.post('/logout', (req: any, res: any) => {
-    req.session.destroy((err: Error) => {
-        if (err) {
+    destroySession(req)
+        .then(() => {
+            res.clearCookie(SESSION_COOKIE_NAME, getSessionCookieOptions());
+            res.status(200).json({
+                success: true,
+                message: 'Logged out successfully'
+            });
+        })
+        .catch((err: Error) => {
             console.error('Error destroying session:', err);
-            return res.status(500).json({
+            res.clearCookie(SESSION_COOKIE_NAME, getSessionCookieOptions());
+            res.status(500).json({
                 success: false,
                 message: 'Error logging out'
             });
-        }
-        res.clearCookie('connect.sid'); // Default session cookie name
-        res.status(200).json({
-            success: true,
-            message: 'Logged out successfully'
         });
-    });
 });
 
 router.get('/me', (req: any, res: any) => {

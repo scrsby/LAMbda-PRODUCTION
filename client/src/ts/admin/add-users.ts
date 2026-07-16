@@ -31,15 +31,6 @@ form?.addEventListener('submit', function(event) {
   formSumbit();
 });
 
-// Logout button handler
-const logoutBtn = document.getElementById('logout-btn');
-logoutBtn?.addEventListener('click', async () => {
-  const success = await logout();
-  if (success) {
-    window.location.href = '/auth/login.html';
-  }
-});
-
 function formSumbit(): void {
   const email = (document.getElementById('email-field') as HTMLInputElement)?.value;
   const role = (document.getElementById('role') as HTMLSelectElement)?.value;
@@ -92,4 +83,3 @@ async function createUser(email: string, role: string, vendorId: string) {
         }
     }
 }
-

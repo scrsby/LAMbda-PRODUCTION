@@ -35,15 +35,6 @@ form?.addEventListener('submit', function(event) {
     formSubmit();
 });
 
-// Logout button handler
-const logoutBtn = document.getElementById('logout-btn');
-logoutBtn?.addEventListener('click', async () => {
-    const success = await logout();
-    if (success) {
-        window.location.href = '/auth/login.html';
-    }
-});
-
 /* FORM SUBMIT
 * Handles form submission for creating new users
 */
@@ -228,4 +219,3 @@ async function regenerateToken(email: string) {
         loadUsersTable();
     }
 }
-
