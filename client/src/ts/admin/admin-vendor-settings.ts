@@ -2,6 +2,13 @@ import { apiAxios, requireAuth, logout } from '../utilities/api.js';
 import { showErrorMessage, showSuccessMessage } from '../utilities/messages.js';
 import { updateProfileCard } from '../utilities/ui.js';
 
+declare global {
+    interface Window {
+        $?: any;
+        jQuery?: any;
+    }
+}
+
 interface Vendor {
     vendor_id: number;
     created_at: string;
@@ -10,6 +17,7 @@ interface Vendor {
 let allVendors: Vendor[] = [];
 let pendingDeleteId: number | null = null;
 let deleteConfirmHandler: (() => void) | null = null;
+let vendorsDataTable: any = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAuth();
@@ -24,9 +32,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateProfileCard(user);
     loadVendorsTable();
 
-    // Search field – filter table on input
-    document.getElementById('search-field')?.addEventListener('input', (e) => {
-        const query = (e.target as HTMLInputElement).value.trim().toLowerCase();
+    // Search button – filter table by vendor ID field value
+    document.getElementById('vendor-search-btn')?.addEventListener('click', () => {
+        const query = (document.getElementById('vendor-id-field') as HTMLInputElement).value.trim().toLowerCase();
         renderTable(query ? allVendors.filter(v => v.vendor_id.toString().includes(query)) : allVendors);
     });
 
@@ -100,13 +108,14 @@ async function loadVendorsTable() {
 
         if (response.success) {
             allVendors = response.data as Vendor[];
-            const query = ((document.getElementById('search-field') as HTMLInputElement)?.value ?? '').trim().toLowerCase();
-            renderTable(query ? allVendors.filter(v => v.vendor_id.toString().includes(query)) : allVendors);
+            renderTable(allVendors);
         } else {
+            destroyVendorsDataTable();
             tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center; padding: 20px; color: #9ca3af;">No vendors found</td></tr>`;
         }
     } catch (error) {
         console.error('Error loading vendors table:', error);
+        destroyVendorsDataTable();
         tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center; padding: 20px; color: #ef4444;">Error loading vendors. Please refresh the page.</td></tr>`;
     }
 }
@@ -118,6 +127,8 @@ function renderTable(vendors: Vendor[]) {
     const tableBody = document.getElementById('vendors-table-body');
     if (!tableBody) return;
 
+    destroyVendorsDataTable();
+
     if (vendors.length === 0) {
         tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center; padding: 20px; color: #9ca3af;">No vendors found</td></tr>`;
         return;
@@ -127,7 +138,6 @@ function renderTable(vendors: Vendor[]) {
 
     vendors.forEach((vendor: Vendor) => {
         const row = document.createElement('tr');
-        row.style.borderBottom = '1px solid #e5e7eb';
 
         const createdAt = new Date(vendor.created_at).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -138,9 +148,9 @@ function renderTable(vendors: Vendor[]) {
         });
 
         row.innerHTML = `
-            <td style="padding: 12px; color: #374151;">${vendor.vendor_id}</td>
-            <td style="padding: 12px; color: #6b7280;">${createdAt}</td>
-            <td style="padding: 12px; text-align: center;">
+            <td>${vendor.vendor_id}</td>
+            <td>${createdAt}</td>
+            <td style="text-align: center;">
                 <button
                     class="delete-vendor-btn"
                     data-vendorid="${vendor.vendor_id}"
@@ -160,6 +170,49 @@ function renderTable(vendors: Vendor[]) {
 
         tableBody.appendChild(row);
     });
+
+    initializeVendorsDataTable();
+}
+
+function initializeVendorsDataTable() {
+    const jquery = window.$;
+    const tableSelector = '#vendors-table';
+
+    if (!jquery || !jquery.fn?.DataTable) return;
+
+    if (jquery.fn.DataTable.isDataTable(tableSelector)) {
+        jquery(tableSelector).DataTable().destroy();
+    }
+
+    vendorsDataTable = jquery(tableSelector).DataTable({
+        pageLength: 25,
+        lengthChange: false,
+        searching: false,
+        ordering: true,
+        responsive: true,
+        info: true,
+        autoWidth: false,
+        order: [[0, 'asc']],
+        columnDefs: [
+            { orderable: false, targets: 2 }
+        ],
+        language: {
+            paginate: { previous: 'Prev', next: 'Next' }
+        }
+    });
+}
+
+function destroyVendorsDataTable() {
+    const jquery = window.$;
+    const tableSelector = '#vendors-table';
+
+    if (!jquery || !jquery.fn?.DataTable) return;
+
+    if (jquery.fn.DataTable.isDataTable(tableSelector)) {
+        jquery(tableSelector).DataTable().destroy();
+    }
+
+    vendorsDataTable = null;
 }
 
 /* DELETE MODAL */
@@ -189,7 +242,7 @@ async function confirmDelete() {
         await apiAxios(`/admin/deleteVendor/${vendorId}`, { method: 'DELETE' });
         showSuccessMessage('Vendor deleted successfully.');
         allVendors = allVendors.filter(v => v.vendor_id !== vendorId);
-        const query = ((document.getElementById('search-field') as HTMLInputElement)?.value ?? '').trim().toLowerCase();
+        const query = ((document.getElementById('vendor-id-field') as HTMLInputElement)?.value ?? '').trim().toLowerCase();
         renderTable(query ? allVendors.filter(v => v.vendor_id.toString().includes(query)) : allVendors);
     } catch (error: any) {
         console.error('Error deleting vendor:', error);

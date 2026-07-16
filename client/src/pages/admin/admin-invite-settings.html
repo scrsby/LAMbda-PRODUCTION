@@ -10,6 +10,9 @@
         }
     </script>
     <link rel="stylesheet" href="../../style/templatemo-daynight-style.css">
+    <link rel="stylesheet" href="../../style/POS/orders.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.dataTables.min.css">
 </head>
 <body>
     <!-- Mobile Menu Overlay -->
@@ -125,16 +128,16 @@
                     <p class="settings-desc">View and manage all users with access tokens</p>
 
                     <div style="overflow-x: auto; margin-top: 1.5rem;">
-                        <table style="width: 100%; border-collapse: collapse;">
+                        <table id="invites-table" class="display responsive nowrap" style="width: 100%;">
                             <thead>
-                                <tr style="border-bottom: 2px solid #e5e7eb;">
-                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Email</th>
-                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Access Token</th>
-                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Status</th>
-                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Created By</th>
-                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Created At</th>
-                                    <th style="text-align: left; padding: 12px; font-weight: 600; color: #4b5563;">Expires At</th>
-                                    <th style="text-align: center; padding: 12px; font-weight: 600; color: #4b5563;">Actions</th>
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Access Token</th>
+                                    <th>Status</th>
+                                    <th>Created By</th>
+                                    <th>Created At</th>
+                                    <th>Expires At</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="users-table-body">
@@ -151,6 +154,9 @@
         <footer class="footer"><p>&copy; 2026 Lawrence Antique Mall</p></footer>
     </div>
     <script src="../../style/templatemo-daynight-script.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
     <script src="/dist/admin/admin-invite-settings.bundle.js"></script>
 </body>
 </html>

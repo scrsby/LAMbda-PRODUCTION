@@ -2,6 +2,13 @@ import { apiAxios, requireAuth, logout } from '../utilities/api.js';
 import { showErrorMessage, showSuccessMessage } from '../utilities/messages.js';
 import { updateProfileCard } from "../utilities/ui.js";
 
+declare global {
+    interface Window {
+        $?: any;
+        jQuery?: any;
+    }
+}
+
 interface User {
     user_id: number;
     first_name: string | null;
@@ -15,6 +22,7 @@ interface User {
 let allUsers: User[] = [];
 let pendingDeleteId: number | null = null;
 let deleteConfirmHandler: (() => void) | null = null;
+let usersDataTable: any = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAuth();
@@ -29,7 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateProfileCard(user);
     loadUsersTable();
 
-    // Search field – filter table on input
+    // Search field – filter table using DataTables search or re-render
     document.getElementById('search-field')?.addEventListener('input', (e) => {
         const query = (e.target as HTMLInputElement).value.trim().toLowerCase();
         renderTable(query ? allUsers.filter(u => matchesSearch(u, query)) : allUsers);
@@ -79,10 +87,12 @@ async function loadUsersTable() {
             allUsers = response.data as User[];
             renderTable(allUsers);
         } else {
+            destroyUsersDataTable();
             tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: #9ca3af;">No users found</td></tr>`;
         }
     } catch (error) {
         console.error('Error loading users table:', error);
+        destroyUsersDataTable();
         tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: #ef4444;">Error loading users. Please refresh the page.</td></tr>`;
     }
 }
@@ -94,6 +104,8 @@ function renderTable(users: User[]) {
     const tableBody = document.getElementById('users-table-body');
     if (!tableBody) return;
 
+    destroyUsersDataTable();
+
     if (users.length === 0) {
         tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: #9ca3af;">No users found</td></tr>`;
         return;
@@ -103,19 +115,18 @@ function renderTable(users: User[]) {
 
     users.forEach((user: User) => {
         const row = document.createElement('tr');
-        row.style.borderBottom = '1px solid #e5e7eb';
 
         const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || '—';
         const vendorId = user.vendor_id ?? '—';
         const phone = user.phone ?? '—';
 
         row.innerHTML = `
-            <td style="padding: 12px; color: #374151;">${name}</td>
-            <td style="padding: 12px; color: #6b7280;">${vendorId}</td>
-            <td style="padding: 12px; color: #374151;">${user.email}</td>
-            <td style="padding: 12px; color: #6b7280;">${phone}</td>
-            <td style="padding: 12px; color: #6b7280;">${user.user_type}</td>
-            <td style="padding: 12px; text-align: center;">
+            <td>${name}</td>
+            <td>${vendorId}</td>
+            <td>${user.email}</td>
+            <td>${phone}</td>
+            <td>${user.user_type}</td>
+            <td style="text-align: center;">
                 <button
                     class="delete-user-btn"
                     data-userid="${user.user_id}"
@@ -136,6 +147,49 @@ function renderTable(users: User[]) {
 
         tableBody.appendChild(row);
     });
+
+    initializeUsersDataTable();
+}
+
+function initializeUsersDataTable() {
+    const jquery = window.$;
+    const tableSelector = '#users-table';
+
+    if (!jquery || !jquery.fn?.DataTable) return;
+
+    if (jquery.fn.DataTable.isDataTable(tableSelector)) {
+        jquery(tableSelector).DataTable().destroy();
+    }
+
+    usersDataTable = jquery(tableSelector).DataTable({
+        pageLength: 25,
+        lengthChange: false,
+        searching: false,
+        ordering: true,
+        responsive: true,
+        info: true,
+        autoWidth: false,
+        order: [[0, 'asc']],
+        columnDefs: [
+            { orderable: false, targets: 5 }
+        ],
+        language: {
+            paginate: { previous: 'Prev', next: 'Next' }
+        }
+    });
+}
+
+function destroyUsersDataTable() {
+    const jquery = window.$;
+    const tableSelector = '#users-table';
+
+    if (!jquery || !jquery.fn?.DataTable) return;
+
+    if (jquery.fn.DataTable.isDataTable(tableSelector)) {
+        jquery(tableSelector).DataTable().destroy();
+    }
+
+    usersDataTable = null;
 }
 
 /* DELETE MODAL */

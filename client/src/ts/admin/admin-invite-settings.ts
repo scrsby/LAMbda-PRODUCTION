@@ -2,6 +2,15 @@ import { apiAxios, requireAuth, logout } from '../utilities/api.js';
 import { showErrorMessage, showSuccessMessage } from '../utilities/messages.js';
 import { updateProfileCard } from "../utilities/ui.js";
 
+declare global {
+    interface Window {
+        $?: any;
+        jQuery?: any;
+    }
+}
+
+let invitesDataTable: any = null;
+
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAuth();
 
@@ -102,11 +111,11 @@ async function loadUsersTable() {
         const response = await apiAxios('/admin/getAllAccessTokens', { method: 'GET' });
 
         if (response.success && response.data.length > 0) {
+            destroyInvitesDataTable();
             tableBody.innerHTML = '';
 
             response.data.forEach((user: any) => {
                 const row = document.createElement('tr');
-                row.style.borderBottom = '1px solid #e5e7eb';
 
                 // Determine status badge color
                 const statusColor = user.status === 'active' ? '#10b981' : '#ef4444';
@@ -130,17 +139,17 @@ async function loadUsersTable() {
                 });
 
                 row.innerHTML = `
-                    <td style="padding: 12px; color: #374151;">${user.email}</td>
-                    <td style="padding: 12px; color: #6b7280; font-family: 'Courier New', monospace; font-size: 0.875rem;">${user.access_token}</td>
-                    <td style="padding: 12px;">
+                    <td>${user.email}</td>
+                    <td style="font-family: 'Courier New', monospace; font-size: 0.875rem;">${user.access_token}</td>
+                    <td>
                         <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; color: ${statusColor}; background-color: ${statusBg};">
                             ${user.status.toUpperCase()}
                         </span>
                     </td>
-                    <td style="padding: 12px; color: #6b7280;">${user.created_by}</td>
-                    <td style="padding: 12px; color: #6b7280;">${createdAt}</td>
-                    <td style="padding: 12px; color: #6b7280;">${expiresAt}</td>
-                    <td style="padding: 12px; text-align: center;">
+                    <td>${user.created_by}</td>
+                    <td>${createdAt}</td>
+                    <td>${expiresAt}</td>
+                    <td style="text-align: center;">
                         <button
                             class="regenerate-token-btn"
                             data-email="${user.email}"
@@ -161,7 +170,10 @@ async function loadUsersTable() {
 
                 tableBody.appendChild(row);
             });
+
+            initializeInvitesDataTable();
         } else {
+            destroyInvitesDataTable();
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="7" style="text-align: center; padding: 20px; color: #9ca3af;">
@@ -172,6 +184,7 @@ async function loadUsersTable() {
         }
     } catch (error) {
         console.error('Error loading users table:', error);
+        destroyInvitesDataTable();
         tableBody.innerHTML = `
             <tr>
                 <td colspan="7" style="text-align: center; padding: 20px; color: #ef4444;">
@@ -180,6 +193,47 @@ async function loadUsersTable() {
             </tr>
         `;
     }
+}
+
+function initializeInvitesDataTable() {
+    const jquery = window.$;
+    const tableSelector = '#invites-table';
+
+    if (!jquery || !jquery.fn?.DataTable) return;
+
+    if (jquery.fn.DataTable.isDataTable(tableSelector)) {
+        jquery(tableSelector).DataTable().destroy();
+    }
+
+    invitesDataTable = jquery(tableSelector).DataTable({
+        pageLength: 25,
+        lengthChange: false,
+        searching: false,
+        ordering: true,
+        responsive: true,
+        info: true,
+        autoWidth: false,
+        order: [[4, 'desc']],
+        columnDefs: [
+            { orderable: false, targets: 6 }
+        ],
+        language: {
+            paginate: { previous: 'Prev', next: 'Next' }
+        }
+    });
+}
+
+function destroyInvitesDataTable() {
+    const jquery = window.$;
+    const tableSelector = '#invites-table';
+
+    if (!jquery || !jquery.fn?.DataTable) return;
+
+    if (jquery.fn.DataTable.isDataTable(tableSelector)) {
+        jquery(tableSelector).DataTable().destroy();
+    }
+
+    invitesDataTable = null;
 }
 
 /* REGENERATE TOKEN
