@@ -2,6 +2,7 @@ import { apiAxios } from '../utilities/api.js';
 import { getCurrentUser } from '../utilities/api.js';
 import { showSuccessMessage, showErrorMessage } from '../utilities/messages.js';
 import { updateProfileCard } from "../utilities/ui.js";
+import { openItemizedReceipt, escapeHtml } from '../utilities/receipt.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await getCurrentUser();
@@ -64,12 +65,14 @@ var secondaryOption = 'search';
 const createItemBtn = document.getElementById('create-item-btn') as HTMLButtonElement | null;
 const searchItemBtn = document.getElementById('search-item-btn') as HTMLButtonElement | null;
 const checkoutBtn = document.getElementById('checkout-btn') as HTMLButtonElement | null;
+const createReceiptBtn = document.getElementById('create-receipt-btn') as HTMLButtonElement | null;
 const searchForm = document.getElementById('input_box') as HTMLFormElement | null;
 const vendorIdInput = document.getElementById('vendor-id') as HTMLInputElement | null;
 const vendorInventoryIdInput = document.getElementById('vendor-inventory-id') as HTMLInputElement | null;
 const itemNameInput = document.getElementById('item-name') as HTMLInputElement | null;
 const vendorPriceInput = document.getElementById('vendor-price') as HTMLInputElement | null;
 const searchAndAddSection = document.getElementById('search-and-add') as HTMLDivElement | null;
+const posTopSection = document.querySelector('.pos-top-section') as HTMLElement | null;
 
 function setTicketActionButtons(enabled: boolean) {
     if (createItemBtn) {
@@ -92,6 +95,7 @@ function setActiveTicketState(ticketId: string) {
     }
 
     searchAndAddSection!.style = '';
+    if (posTopSection) posTopSection.style.cssText = '';
     primaryBtn!.textContent = 'Update Ticket';
     secondaryBtn!.textContent = 'Clear Ticket';
     primaryOption = 'update';
@@ -112,6 +116,7 @@ function setIdleTicketState() {
     }
 
     searchAndAddSection!.style = 'opacity: 0.6; pointer-events: none;';
+    if (posTopSection) posTopSection.style.cssText = '';
     primaryBtn!.textContent = 'Create New';
     secondaryBtn!.textContent = 'Search Ticket';
     primaryOption = 'create';
@@ -132,7 +137,9 @@ function setClosedTicketState(ticketId: string) {
         ticketIdField.disabled = true;
     }
 
-    searchAndAddSection!.style = 'opacity: 0.6; pointer-events: none;';
+    // Dim only the search/add area so the cart and receipt button remain accessible
+    searchAndAddSection!.style = '';
+    if (posTopSection) posTopSection.style.cssText = 'opacity: 0.6; pointer-events: none;';
     primaryBtn!.textContent = 'Create New';
     secondaryBtn!.textContent = 'Search Ticket';
     primaryOption = 'create';
@@ -145,7 +152,11 @@ primaryBtn?.addEventListener('click', async () => {
     if (primaryOption === 'create') {
         const ticketId = await createTicket();
         if (ticketId) {
+            ticket_items = [];
+            unsynced_items = [];
+            editingItemIndex = null;
             setActiveTicketState(ticketId);
+            updateItemTable();
         }
     } else if (primaryOption === 'update') {
         await updateTicket();
@@ -327,6 +338,10 @@ function updateItemTable() {
     const total = allItems.reduce((sum, item) => sum + item.final_price, 0);
     const totalValueEl = document.getElementById('cart_total_value');
     if (totalValueEl) totalValueEl.textContent = total.toFixed(2);
+
+    if (createReceiptBtn) {
+        createReceiptBtn.disabled = allItems.length === 0;
+    }
 }
 
 function bindDiscountCalculationInputs(row: HTMLTableRowElement) {
@@ -740,6 +755,11 @@ async function searchTicket() {
         showErrorMessage('Please enter a ticket ID to search.');
         return;
     }
+    // Clear any leftover items before loading the searched ticket
+    ticket_items = [];
+    unsynced_items = [];
+    editingItemIndex = null;
+    updateItemTable();
     try {
         const response = await apiAxios(`/POS/ticket/${ticketId}`, { method: 'GET' });
         if (!response.items) {
@@ -895,3 +915,19 @@ document.querySelectorAll<HTMLAnchorElement>('a.nav-link, .mobile-menu-nav a').f
         }
     });
 });
+
+createReceiptBtn?.addEventListener('click', () => {
+    createItemizedReceipt();
+});
+
+function createItemizedReceipt() {
+    const allItems = [...ticket_items, ...unsynced_items];
+    if (allItems.length === 0) {
+        alert('No items in the cart to generate a receipt.');
+        return;
+    }
+    // Use localStorage for active tickets; fall back to the field value for closed tickets
+    const ticketIdRaw = localStorage.getItem('currentTicketId') ?? ticketIdField?.value ?? '';
+    const ticketLabel = /^\d+$/.test(ticketIdRaw) ? ` — Ticket #${escapeHtml(ticketIdRaw)}` : '';
+    openItemizedReceipt(allItems, ticketLabel);
+}
