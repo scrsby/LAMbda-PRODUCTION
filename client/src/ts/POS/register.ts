@@ -944,6 +944,7 @@ function createItemizedReceipt() {
 
     const receiptItems: ReceiptItem[] = allItems.map(item => {
         const quantityRaw = Number(item.quantity ?? 1);
+        // Fractional quantities are intentional — items can be priced by weight or partial unit
         const hasInvalidQuantity = !Number.isFinite(quantityRaw) || quantityRaw <= 0;
         const quantity = hasInvalidQuantity ? 1 : quantityRaw;
         if (hasInvalidQuantity) {
@@ -1013,8 +1014,9 @@ function createItemizedReceipt() {
 
     const grandTotal = receiptItems.reduce((sum, item) => sum + item.finalPrice, 0);
     const generatedAt = new Date().toLocaleString();
-    const ticketId = localStorage.getItem('currentTicketId');
-    const ticketLabel = ticketId ? ` — Ticket #${escapeHtml(ticketId)}` : '';
+    const ticketIdRaw = localStorage.getItem('currentTicketId');
+    const isValidTicketId = ticketIdRaw !== null && /^\d+$/.test(ticketIdRaw);
+    const ticketLabel = isValidTicketId ? ` — Ticket #${escapeHtml(ticketIdRaw!)}` : '';
 
     const receiptHtml = `
         <!DOCTYPE html>
@@ -1132,7 +1134,13 @@ function createItemizedReceipt() {
         return;
     }
 
-    const revokeBlobUrl = () => URL.revokeObjectURL(receiptUrl);
+    let revoked = false;
+    const revokeBlobUrl = () => {
+        if (!revoked) {
+            revoked = true;
+            URL.revokeObjectURL(receiptUrl);
+        }
+    };
     const windowClosedCheck = window.setInterval(() => {
         if (receiptWindow.closed) {
             window.clearInterval(windowClosedCheck);
