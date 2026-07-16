@@ -124,7 +124,7 @@ router.get('/getAllAccessTokens', async (req: any, res: any) => {
     }
 });
 
-router.post('/createNewUser', async (req: any, res: any) => {
+router.post('/createNewUser', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
     const { email, baseUrl, user_type, vendor_id } = req.body;
     console.log('Received request to create new user with email:', email, 'user_type:', user_type, 'vendor_id:', vendor_id);
 
@@ -177,7 +177,7 @@ router.post('/createNewUser', async (req: any, res: any) => {
                 for (let attempt = 0; attempt < maxRetries; attempt++) {
                     accessToken = generateAccessToken();
                     try {
-                        await client.query(insertQuery, ['001', email, user_type, accessToken]);
+                        await client.query(insertQuery, [req.session.user.id, email, user_type, accessToken]);
                         break;
                     } catch (insertError: any) {
                         if (insertError.code === '23505' && attempt < maxRetries - 1) {
@@ -232,7 +232,7 @@ router.post('/createNewUser', async (req: any, res: any) => {
     }
 });
 
-router.post('/regenerateAccessToken', async (req: any, res: any) => {
+router.post('/regenerateAccessToken', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
     const { email, baseUrl } = req.body;
 
     if (!email) {
@@ -289,7 +289,7 @@ router.post('/regenerateAccessToken', async (req: any, res: any) => {
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             newAccessToken = generateAccessToken();
             try {
-                await client.query(insertQuery, ['001', email, userType, newAccessToken]); // TODO: Replace '001' with actual admin user ID when auth is implemented
+                await client.query(insertQuery, [req.session.user.id, email, userType, newAccessToken]);
                 break;
             } catch (insertError: any) {
                 if (insertError.code === '23505' && attempt < maxRetries - 1) {
