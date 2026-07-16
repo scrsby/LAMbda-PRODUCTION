@@ -906,6 +906,7 @@ createReceiptBtn?.addEventListener('click', () => {
 });
 
 const URL_REVOKE_DELAY_MS = 60_000;
+const UNKNOWN_VENDOR_ID = 'UNKNOWN';
 
 function escapeHtml(value: string): string {
     return value
@@ -918,10 +919,10 @@ function escapeHtml(value: string): string {
 
 function normalizeVendorId(value: number | string | null | undefined): string {
     if (value === null || value === undefined) {
-        return 'UNKNOWN';
+        return UNKNOWN_VENDOR_ID;
     }
     const normalized = String(value).trim();
-    return normalized === '' ? 'UNKNOWN' : normalized;
+    return normalized === '' ? UNKNOWN_VENDOR_ID : normalized;
 }
 
 function createItemizedReceipt() {

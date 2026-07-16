@@ -186,6 +186,11 @@
     opacity: 0.9;
 }
 
+.receipt_btn {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    margin-top: 0.5rem;
+}
+
 .btn-edit {
     background: #9333ea;
     color: white;
