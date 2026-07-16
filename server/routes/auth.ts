@@ -5,6 +5,18 @@ import bcrypt from 'bcrypt';
 const router = Router();
 const SESSION_COOKIE_NAME = 'connect.sid';
 
+interface SessionAwareRequest {
+    session?: {
+        destroy: (callback: (err: Error) => void) => void;
+        regenerate: (callback: (err: Error) => void) => void;
+        user?: {
+            email?: string;
+            [key: string]: any;
+        };
+        [key: string]: any;
+    };
+}
+
 function getSessionCookieOptions() {
     return {
         path: '/',
@@ -14,7 +26,7 @@ function getSessionCookieOptions() {
     };
 }
 
-function destroySession(req: any): Promise<void> {
+function destroySession(req: SessionAwareRequest): Promise<void> {
     return new Promise((resolve, reject) => {
         if (!req.session) {
             resolve();
@@ -31,8 +43,13 @@ function destroySession(req: any): Promise<void> {
     });
 }
 
-function regenerateSession(req: any): Promise<void> {
+function regenerateSession(req: SessionAwareRequest): Promise<void> {
     return new Promise((resolve, reject) => {
+        if (!req.session) {
+            reject(new Error('No session available for regeneration'));
+            return;
+        }
+
         req.session.regenerate((err: Error) => {
             if (err) {
                 reject(err);
@@ -62,14 +79,15 @@ router.post('/createAccount', async (req: any, res: any) => {
     }
 
     try {
-        if (req.session?.user?.email && req.session.user.email !== email) {
+        const existingSessionEmail = req.session?.user?.email;
+        if (existingSessionEmail && existingSessionEmail !== email) {
             // Prevent multiple active identities in one browser when a logged-in user opens
             // another user's setup email link.
             await destroySession(req);
             res.clearCookie(SESSION_COOKIE_NAME, getSessionCookieOptions());
         }
     } catch (error) {
-        const message = error instanceof Error ? error.message : 'unknown session reset error';
+        const message = error instanceof Error ? error.message : 'Unknown session reset error';
         console.error('Error resetting existing session during account setup:', message);
         return res.status(500).json({
             success: false,
