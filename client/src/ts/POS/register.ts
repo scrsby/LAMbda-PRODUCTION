@@ -2,6 +2,7 @@ import { apiAxios } from '../utilities/api.js';
 import { getCurrentUser } from '../utilities/api.js';
 import { showSuccessMessage, showErrorMessage } from '../utilities/messages.js';
 import { updateProfileCard } from "../utilities/ui.js";
+import { openItemizedReceipt } from '../utilities/receipt.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await getCurrentUser();
@@ -71,6 +72,7 @@ const vendorInventoryIdInput = document.getElementById('vendor-inventory-id') as
 const itemNameInput = document.getElementById('item-name') as HTMLInputElement | null;
 const vendorPriceInput = document.getElementById('vendor-price') as HTMLInputElement | null;
 const searchAndAddSection = document.getElementById('search-and-add') as HTMLDivElement | null;
+const posTopSection = document.querySelector('.pos-top-section') as HTMLElement | null;
 
 function setTicketActionButtons(enabled: boolean) {
     if (createItemBtn) {
@@ -93,6 +95,7 @@ function setActiveTicketState(ticketId: string) {
     }
 
     searchAndAddSection!.style = '';
+    if (posTopSection) posTopSection.style.cssText = '';
     primaryBtn!.textContent = 'Update Ticket';
     secondaryBtn!.textContent = 'Clear Ticket';
     primaryOption = 'update';
@@ -113,6 +116,7 @@ function setIdleTicketState() {
     }
 
     searchAndAddSection!.style = 'opacity: 0.6; pointer-events: none;';
+    if (posTopSection) posTopSection.style.cssText = '';
     primaryBtn!.textContent = 'Create New';
     secondaryBtn!.textContent = 'Search Ticket';
     primaryOption = 'create';
@@ -133,7 +137,9 @@ function setClosedTicketState(ticketId: string) {
         ticketIdField.disabled = true;
     }
 
-    searchAndAddSection!.style = 'opacity: 0.6; pointer-events: none;';
+    // Dim only the search/add area so the cart and receipt button remain accessible
+    searchAndAddSection!.style = '';
+    if (posTopSection) posTopSection.style.cssText = 'opacity: 0.6; pointer-events: none;';
     primaryBtn!.textContent = 'Create New';
     secondaryBtn!.textContent = 'Search Ticket';
     primaryOption = 'create';
@@ -146,7 +152,11 @@ primaryBtn?.addEventListener('click', async () => {
     if (primaryOption === 'create') {
         const ticketId = await createTicket();
         if (ticketId) {
+            ticket_items = [];
+            unsynced_items = [];
+            editingItemIndex = null;
             setActiveTicketState(ticketId);
+            updateItemTable();
         }
     } else if (primaryOption === 'update') {
         await updateTicket();
@@ -745,6 +755,11 @@ async function searchTicket() {
         showErrorMessage('Please enter a ticket ID to search.');
         return;
     }
+    // Clear any leftover items before loading the searched ticket
+    ticket_items = [];
+    unsynced_items = [];
+    editingItemIndex = null;
+    updateItemTable();
     try {
         const response = await apiAxios(`/POS/ticket/${ticketId}`, { method: 'GET' });
         if (!response.items) {
@@ -905,251 +920,14 @@ createReceiptBtn?.addEventListener('click', () => {
     createItemizedReceipt();
 });
 
-const URL_REVOKE_DELAY_MS = 60_000;
-const UNKNOWN_VENDOR_ID = 'UNKNOWN';
-
-function escapeHtml(value: string): string {
-    return value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
-function normalizeVendorId(value: number | string | null | undefined): string {
-    if (value === null || value === undefined) {
-        return UNKNOWN_VENDOR_ID;
-    }
-    const normalized = String(value).trim();
-    return normalized === '' ? UNKNOWN_VENDOR_ID : normalized;
-}
-
 function createItemizedReceipt() {
     const allItems = [...ticket_items, ...unsynced_items];
-
     if (allItems.length === 0) {
         alert('No items in the cart to generate a receipt.');
         return;
     }
-
-    type ReceiptItem = {
-        vendorId: string;
-        vendorInventoryId: string;
-        itemName: string;
-        itemPrice: number;
-        discount: number;
-        finalPrice: number;
-    };
-
-    const receiptItems: ReceiptItem[] = allItems.map(item => {
-        const quantityRaw = Number(item.quantity ?? 1);
-        // Fractional quantities are intentional — items can be priced by weight or partial unit
-        const hasInvalidQuantity = !Number.isFinite(quantityRaw) || quantityRaw <= 0;
-        const quantity = hasInvalidQuantity ? 1 : quantityRaw;
-        if (hasInvalidQuantity) {
-            console.warn('Invalid ticket item quantity. Defaulting to 1.', { item });
-        }
-        const itemPrice = Number(item.vendor_price ?? 0) * quantity;
-        const discount = Number(item.discount_amount ?? 0);
-        const finalPrice = Number(item.final_price ?? itemPrice - discount);
-
-        return {
-            vendorId: normalizeVendorId(item.vendor_id),
-            vendorInventoryId: String(item.vendor_inventory_id ?? ''),
-            itemName: String(item.name ?? ''),
-            itemPrice,
-            discount,
-            finalPrice
-        };
-    });
-
-    const sortedItems = [...receiptItems].sort((a, b) => {
-        const aNum = Number(a.vendorId);
-        const bNum = Number(b.vendorId);
-        const bothNumeric = Number.isFinite(aNum) && Number.isFinite(bNum);
-        if (bothNumeric) {
-            return aNum - bNum;
-        }
-        return a.vendorId.localeCompare(b.vendorId);
-    });
-
-    const groupedByVendor = new Map<string, ReceiptItem[]>();
-    sortedItems.forEach(item => {
-        const existing = groupedByVendor.get(item.vendorId) ?? [];
-        existing.push(item);
-        groupedByVendor.set(item.vendorId, existing);
-    });
-
-    const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
-
-    const rows: string[] = [];
-
-    Array.from(groupedByVendor.entries()).forEach(([vendorId, items]) => {
-        let vendorFinalTotal = 0;
-
-        items.forEach(item => {
-            vendorFinalTotal += item.finalPrice;
-
-            rows.push(`
-                <tr>
-                    <td>${escapeHtml(vendorId)}</td>
-                    <td>${escapeHtml(item.vendorInventoryId)}</td>
-                    <td>${escapeHtml(item.itemName)}</td>
-                    <td>${formatCurrency(item.itemPrice)}</td>
-                    <td>${formatCurrency(item.discount)}</td>
-                    <td>${formatCurrency(item.finalPrice)}</td>
-                </tr>
-            `);
-        });
-
-        rows.push(`
-            <tr class="vendor-total-row">
-                <td colspan="5"></td>
-                <td><strong>${formatCurrency(vendorFinalTotal)}</strong></td>
-            </tr>
-            <tr><td colspan="6" style="height: 0.25in;"></td></tr>
-        `);
-    });
-
-    const grandTotal = receiptItems.reduce((sum, item) => sum + item.finalPrice, 0);
-    const generatedAt = new Date().toLocaleString();
-    const ticketIdRaw = localStorage.getItem('currentTicketId');
-    const isValidTicketId = ticketIdRaw !== null && /^\d+$/.test(ticketIdRaw);
-    const ticketLabel = isValidTicketId ? ` — Ticket #${escapeHtml(ticketIdRaw!)}` : '';
-
-    const receiptHtml = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Itemized Receipt</title>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    margin: 0;
-                    padding: 0.2in;
-                    color: #111;
-                    background: #fff;
-                }
-                .report-container {
-                    width: 100%;
-                    max-width: 8.5in;
-                    margin: 0 auto;
-                }
-                h1 {
-                    margin: 0 0 0.125in;
-                    font-size: 1.3rem;
-                }
-                p {
-                    margin: 0 0 0.2in;
-                    color: #444;
-                    font-size: 0.9rem;
-                }
-                table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    table-layout: fixed;
-                    border: none;
-                    background: transparent;
-                }
-                th, td {
-                    border: none;
-                    background: transparent;
-                    padding: 6px 8px;
-                    text-align: left;
-                    font-size: 0.82rem;
-                    vertical-align: top;
-                    word-break: break-word;
-                }
-                th:nth-child(4),
-                th:nth-child(5),
-                th:nth-child(6),
-                td:nth-child(4),
-                td:nth-child(5),
-                td:nth-child(6) {
-                    padding-left: 4px;
-                    padding-right: 4px;
-                    white-space: nowrap;
-                }
-                .grand-total-row td {
-                    font-size: 0.9rem;
-                    padding-top: 0.15in;
-                }
-                @media print {
-                    body {
-                        padding: 0.1in;
-                    }
-                    .report-container {
-                        max-width: none;
-                    }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="report-container">
-                <h1>Itemized Receipt${ticketLabel}</h1>
-                <p>Generated ${escapeHtml(generatedAt)}</p>
-                <table>
-                    <colgroup>
-                        <col style="width: 8%;">
-                        <col style="width: 14%;">
-                        <col style="width: 40%;">
-                        <col style="width: 12%;">
-                        <col style="width: 12%;">
-                        <col style="width: 14%;">
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th style="white-space: nowrap">Vendor</th>
-                            <th>Inventory ID</th>
-                            <th>Item</th>
-                            <th>Price</th>
-                            <th>Disc.</th>
-                            <th>Final Price</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rows.join('')}
-                    </tbody>
-                    <tfoot>
-                        <tr class="grand-total-row">
-                            <td colspan="5" style="text-align: right;"><strong>Grand Total:</strong></td>
-                            <td><strong>${formatCurrency(grandTotal)}</strong></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </body>
-        </html>
-    `;
-
-    const receiptBlob = new Blob([receiptHtml], { type: 'text/html' });
-    const receiptUrl = URL.createObjectURL(receiptBlob);
-    const receiptWindow = window.open(receiptUrl, '_blank', 'noopener,noreferrer');
-    if (!receiptWindow) {
-        URL.revokeObjectURL(receiptUrl);
-        alert('Unable to open receipt window. Please allow pop-ups and try again.');
-        return;
-    }
-
-    let revoked = false;
-    const revokeBlobUrl = () => {
-        if (!revoked) {
-            revoked = true;
-            URL.revokeObjectURL(receiptUrl);
-        }
-    };
-    const windowClosedCheck = window.setInterval(() => {
-        if (receiptWindow.closed) {
-            window.clearInterval(windowClosedCheck);
-            revokeBlobUrl();
-        }
-    }, 1000);
-
-    window.setTimeout(() => {
-        window.clearInterval(windowClosedCheck);
-        revokeBlobUrl();
-    }, URL_REVOKE_DELAY_MS);
+    // Use localStorage for active tickets; fall back to the field value for closed tickets
+    const ticketIdRaw = localStorage.getItem('currentTicketId') ?? ticketIdField?.value ?? '';
+    const ticketLabel = /^\d+$/.test(ticketIdRaw) ? ` — Ticket #${ticketIdRaw}` : '';
+    openItemizedReceipt(allItems, ticketLabel);
 }

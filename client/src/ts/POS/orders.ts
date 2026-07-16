@@ -1,5 +1,6 @@
 import { apiAxios, getCurrentUser } from '../utilities/api.js';
 import { updateProfileCard } from "../utilities/ui.js";
+import { openItemizedReceipt, type ReceiptTicketItem } from '../utilities/receipt.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await getCurrentUser();
@@ -59,6 +60,16 @@ clearBtn?.addEventListener('click', async () => {
             await loadOrders();
         }
     });
+});
+
+// Event delegation for receipt buttons (survives innerHTML re-renders on the tbody)
+ordersTableBody?.addEventListener('click', (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-ticket-id]');
+    if (!button) return;
+    const ticketId = button.getAttribute('data-ticket-id');
+    if (ticketId) {
+        void generateOrderReceipt(ticketId, button);
+    }
 });
 
 getCurrentUser().then(user => {
@@ -127,6 +138,9 @@ function renderOrders(tickets: TicketSummary[]) {
                 <a class="btn btn-primary see-more-btn" href="order-detail.html?ticketId=${ticket.ticket_id}">
                     See More
                 </a>
+                <button type="button" class="btn btn-secondary receipt-btn" data-ticket-id="${ticket.ticket_id}">
+                    Receipt
+                </button>
             </td>
         `;
         ordersTableBody.appendChild(row);
@@ -209,4 +223,20 @@ function formatDateTime(value: string) {
     }
 
     return date.toLocaleString();
+}
+
+async function generateOrderReceipt(ticketId: string, button: HTMLButtonElement): Promise<void> {
+    button.disabled = true;
+    button.textContent = 'Loading...';
+    try {
+        const response = await apiAxios(`/POS/ticket/${ticketId}`, { method: 'GET' });
+        const items = (response.items ?? []) as ReceiptTicketItem[];
+        openItemizedReceipt(items, ` — Ticket #${ticketId}`);
+    } catch (error) {
+        console.error('Error fetching ticket for receipt:', error);
+        alert('Unable to generate receipt. Please try again.');
+    } finally {
+        button.disabled = false;
+        button.textContent = 'Receipt';
+    }
 }
