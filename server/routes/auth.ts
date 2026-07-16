@@ -15,6 +15,14 @@ router.post('/createAccount', async (req: any, res: any) => {
         });
     }
 
+    const accessTokenInt = parseInt(accessToken, 10);
+    if (isNaN(accessTokenInt)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid access token'
+        });
+    }
+
     try {
         const client = await db.connect();
 
@@ -26,7 +34,7 @@ router.post('/createAccount', async (req: any, res: any) => {
                 FROM access_tokens
                 WHERE access_token = $1 AND email = $2
             `;
-            const tokenResult = await client.query(tokenQuery, [accessToken, email]);
+            const tokenResult = await client.query(tokenQuery, [accessTokenInt, email]);
             console.log('Token query result:', tokenResult.rows); // Debug log
 
             if (tokenResult.rows.length === 0) {
@@ -76,7 +84,7 @@ router.post('/createAccount', async (req: any, res: any) => {
             const deleteTokenQuery = `
                 DELETE FROM access_tokens WHERE access_token = $1
             `;
-            await client.query(deleteTokenQuery, [accessToken]);
+            await client.query(deleteTokenQuery, [accessTokenInt]);
 
             await client.query('COMMIT');
 

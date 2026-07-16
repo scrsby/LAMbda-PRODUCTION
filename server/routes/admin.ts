@@ -1,5 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
+import { randomInt } from 'crypto';
 import db from '../config/db.js';
 import { sendEmail } from '../services/mailer.js'
 import { requireAuth, requireUserType } from '../utils/auth-middleware.js';
@@ -16,12 +17,16 @@ const adminRouteRateLimit = rateLimit({
     }
 });
 
-function createMagicLink(email: string, access_token: string, baseUrl: string) {
+function generateAccessToken(): number {
+    return randomInt(100000, 1000000);
+}
+
+function createMagicLink(email: string, access_token: number, baseUrl: string) {
     const magicLink = `${baseUrl}/auth/create-account?token=${access_token}&email=${encodeURIComponent(email)}`;
     return magicLink;
 }
 
-async function sendAccessTokenEmail(email: string, accessToken: string, baseUrl: string) {
+async function sendAccessTokenEmail(email: string, accessToken: number, baseUrl: string) {
     const mailOptions = {
         from: '"LAMbda Team" <no-reply@terminalvelocitydevelopment.com>',
         to: email,
@@ -119,7 +124,7 @@ router.get('/getAllAccessTokens', async (req: any, res: any) => {
     }
 });
 
-router.post('/createNewUser', async (req: any, res: any) => {
+router.post('/createNewUser', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
     const { email, baseUrl, user_type, vendor_id } = req.body;
     console.log('Received request to create new user with email:', email, 'user_type:', user_type, 'vendor_id:', vendor_id);
 
@@ -163,16 +168,28 @@ router.post('/createNewUser', async (req: any, res: any) => {
             await client.query('BEGIN');
 
             try {        
-                const createAccessToken = `
-                    INSERT INTO access_tokens(created_by, email, user_type, expires_at)
-                    VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')
-                    RETURNING access_token
+                const insertQuery = `
+                    INSERT INTO access_tokens(created_by, email, user_type, expires_at, access_token)
+                    VALUES ($1, $2, $3, NOW() + INTERVAL '7 days', $4)
                 `;
-                const tokenResult = await client.query(createAccessToken, ['001', email, user_type]);
+                let accessToken: number = 0;
+                const maxRetries = 5;
+                for (let attempt = 0; attempt < maxRetries; attempt++) {
+                    accessToken = generateAccessToken();
+                    try {
+                        await client.query(insertQuery, [req.session.user.id, email, user_type, accessToken]);
+                        break;
+                    } catch (insertError: any) {
+                        if (insertError.code === '23505' && attempt < maxRetries - 1) {
+                            continue; // Retry with a new token
+                        }
+                        throw insertError;
+                    }
+                }
 
                 // Send email BEFORE committing the transaction
                 try {
-                    await sendAccessTokenEmail(email, tokenResult.rows[0].access_token, baseUrl);
+                    await sendAccessTokenEmail(email, accessToken, baseUrl);
                     console.log('Email sent successfully to:', email);
                 } catch (emailError) {
                     console.error('Failed to send email:', emailError);
@@ -185,7 +202,7 @@ router.post('/createNewUser', async (req: any, res: any) => {
                 // Return success response
                 res.status(201).json({ 
                     message: 'User created successfully and email sent',
-                    access_token: tokenResult.rows[0].access_token,
+                    access_token: accessToken,
                 });
                 
             } catch (transactionError: any) {
@@ -215,7 +232,7 @@ router.post('/createNewUser', async (req: any, res: any) => {
     }
 });
 
-router.post('/regenerateAccessToken', async (req: any, res: any) => {
+router.post('/regenerateAccessToken', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
     const { email, baseUrl } = req.body;
 
     if (!email) {
@@ -263,13 +280,24 @@ router.post('/regenerateAccessToken', async (req: any, res: any) => {
         await client.query('BEGIN');
 
         // Create new access token, preserving user_type and setting a fresh expiry
-        const createAccessToken = `
-            INSERT INTO access_tokens(created_by, email, user_type, expires_at)
-            VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')
-            RETURNING access_token
+        const insertQuery = `
+            INSERT INTO access_tokens(created_by, email, user_type, expires_at, access_token)
+            VALUES ($1, $2, $3, NOW() + INTERVAL '7 days', $4)
         `;
-        const tokenResult = await client.query(createAccessToken, ['001', email, userType]); // TODO: Replace '001' with actual admin user ID when auth is implemented
-        const newAccessToken = tokenResult.rows[0].access_token;
+        let newAccessToken: number = 0;
+        const maxRetries = 5;
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            newAccessToken = generateAccessToken();
+            try {
+                await client.query(insertQuery, [req.session.user.id, email, userType, newAccessToken]);
+                break;
+            } catch (insertError: any) {
+                if (insertError.code === '23505' && attempt < maxRetries - 1) {
+                    continue; // Retry with a new token
+                }
+                throw insertError;
+            }
+        }
 
         // Try to send email - if it fails, rollback the new token insertion and return error
         try {
