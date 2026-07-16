@@ -169,12 +169,14 @@ function redirectUser(userType: string) {
         case 'admin':
             window.location.href = '../admin/admin-index.html';
             break;
-        case 'user':
-            window.location.href = 'user-dashboard.html';
+        case 'employee':
+            window.location.href = '../POS/register.html';
+            break;
+        case 'vendor':
+            window.location.href = '../vendor/vendor-index.html';
             break;
         default:
             console.error('Unknown user type:', userType);
-            // Optionally show an error message to the user
     }
 };
 

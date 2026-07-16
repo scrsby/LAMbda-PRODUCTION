@@ -169,15 +169,16 @@ router.post('/createNewUser', requireAuth, requireUserType('admin'), adminRouteR
 
             try {        
                 const insertQuery = `
-                    INSERT INTO access_tokens(created_by, email, user_type, expires_at, access_token)
-                    VALUES ($1, $2, $3, NOW() + INTERVAL '7 days', $4)
+                    INSERT INTO access_tokens(created_by, email, user_type, expires_at, access_token, vendor_id)
+                    VALUES ($1, $2, $3, NOW() + INTERVAL '7 days', $4, $5)
                 `;
+                const vendorIdValue = (user_type === 'vendor' && vendor_id != null) ? parseInt(vendor_id, 10) : null;
                 let accessToken: number = 0;
                 const maxRetries = 5;
                 for (let attempt = 0; attempt < maxRetries; attempt++) {
                     accessToken = generateAccessToken();
                     try {
-                        await client.query(insertQuery, [req.session.user.id, email, user_type, accessToken]);
+                        await client.query(insertQuery, [req.session.user.id, email, user_type, accessToken, vendorIdValue]);
                         break;
                     } catch (insertError: any) {
                         if (insertError.code === '23505' && attempt < maxRetries - 1) {
@@ -257,8 +258,8 @@ router.post('/regenerateAccessToken', requireAuth, requireUserType('admin'), adm
         // DELETE OLD TOKEN
         await client.query('BEGIN');
 
-        // Check if access token exists for this email and retrieve user_type for re-use
-        const checkQuery = 'SELECT user_type FROM access_tokens WHERE email = $1';
+        // Check if access token exists for this email and retrieve user_type and vendor_id for re-use
+        const checkQuery = 'SELECT user_type, vendor_id FROM access_tokens WHERE email = $1';
         const checkResult = await client.query(checkQuery, [email]);
 
         if (checkResult.rows.length === 0) {
@@ -270,6 +271,7 @@ router.post('/regenerateAccessToken', requireAuth, requireUserType('admin'), adm
         }
 
         const userType = checkResult.rows[0].user_type;
+        const existingVendorId = checkResult.rows[0].vendor_id ?? null;
 
         // Delete the old access token
         await client.query('DELETE FROM access_tokens WHERE email = $1', [email]);
@@ -279,17 +281,17 @@ router.post('/regenerateAccessToken', requireAuth, requireUserType('admin'), adm
         // GENERATE NEW TOKEN AND SEND EMAIL
         await client.query('BEGIN');
 
-        // Create new access token, preserving user_type and setting a fresh expiry
+        // Create new access token, preserving user_type, vendor_id, and setting a fresh expiry
         const insertQuery = `
-            INSERT INTO access_tokens(created_by, email, user_type, expires_at, access_token)
-            VALUES ($1, $2, $3, NOW() + INTERVAL '7 days', $4)
+            INSERT INTO access_tokens(created_by, email, user_type, expires_at, access_token, vendor_id)
+            VALUES ($1, $2, $3, NOW() + INTERVAL '7 days', $4, $5)
         `;
         let newAccessToken: number = 0;
         const maxRetries = 5;
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             newAccessToken = generateAccessToken();
             try {
-                await client.query(insertQuery, [req.session.user.id, email, userType, newAccessToken]);
+                await client.query(insertQuery, [req.session.user.id, email, userType, newAccessToken, existingVendorId]);
                 break;
             } catch (insertError: any) {
                 if (insertError.code === '23505' && attempt < maxRetries - 1) {

@@ -101,7 +101,7 @@ router.post('/createAccount', async (req: any, res: any) => {
             await client.query('BEGIN');
 
             const tokenQuery = `
-                SELECT email, expires_at, user_type
+                SELECT email, expires_at, user_type, vendor_id
                 FROM access_tokens
                 WHERE access_token = $1 AND email = $2
             `;
@@ -141,15 +141,18 @@ router.post('/createAccount', async (req: any, res: any) => {
 
             const hashedPassword = await bcrypt.hash(password, 10);
 
+            const vendorId = tokenData.user_type === 'vendor' ? (tokenData.vendor_id ?? null) : null;
+
             const createUserQuery = `
-                INSERT INTO users (email, password_hash, user_type)
-                VALUES ($1, $2, $3)
+                INSERT INTO users (email, password_hash, user_type, vendor_id)
+                VALUES ($1, $2, $3, $4)
                 RETURNING user_id, email, created_at
             `;
             const createUserResult = await client.query(createUserQuery, [
                 email,
                 hashedPassword,
-                tokenData.user_type
+                tokenData.user_type,
+                vendorId
             ]);
 
             const deleteTokenQuery = `
@@ -200,7 +203,7 @@ router.post('/login', async (req: any, res: any) => {
 
         try {
             const loginQuery = `
-                SELECT user_id, email, password_hash, user_type, first_name, last_name, phone
+                SELECT user_id, email, password_hash, user_type, first_name, last_name, phone, vendor_id
                 FROM users
                 WHERE email = $1
             `;
@@ -231,13 +234,15 @@ router.post('/login', async (req: any, res: any) => {
                 });
             }
 
+            const sessionVendorId = user.user_type === 'vendor' ? (user.vendor_id ?? null) : undefined;
             req.session.user = {
                 id: user.user_id,
                 email: user.email,
                 userType: user.user_type,
                 firstName: user.first_name,
                 lastName: user.last_name,
-                phone: user.phone
+                phone: user.phone,
+                ...(sessionVendorId != null ? { vendorId: sessionVendorId } : {})
             };
 
             return res.status(200).json({
@@ -249,7 +254,8 @@ router.post('/login', async (req: any, res: any) => {
                     user_type: user.user_type,
                     first_name: user.first_name,
                     last_name: user.last_name,
-                    phone: user.phone
+                    phone: user.phone,
+                    vendor_id: user.vendor_id ?? null
                 }
             });
 
