@@ -72,6 +72,9 @@ function redirectUser(userType: string | null) {
         case 'admin':
             window.location.href = '../admin/admin-index.html';
             break;
+        case 'employee':
+            window.location.href = '../POS/register.html';
+            break;
         case 'vendor':
             window.location.href = '../vendor/vendor-index.html';
             break;
