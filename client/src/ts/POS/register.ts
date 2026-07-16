@@ -2,7 +2,7 @@ import { apiAxios } from '../utilities/api.js';
 import { getCurrentUser } from '../utilities/api.js';
 import { showSuccessMessage, showErrorMessage } from '../utilities/messages.js';
 import { updateProfileCard } from "../utilities/ui.js";
-import { openItemizedReceipt } from '../utilities/receipt.js';
+import { openItemizedReceipt, escapeHtml } from '../utilities/receipt.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await getCurrentUser();
@@ -928,6 +928,6 @@ function createItemizedReceipt() {
     }
     // Use localStorage for active tickets; fall back to the field value for closed tickets
     const ticketIdRaw = localStorage.getItem('currentTicketId') ?? ticketIdField?.value ?? '';
-    const ticketLabel = /^\d+$/.test(ticketIdRaw) ? ` — Ticket #${ticketIdRaw}` : '';
+    const ticketLabel = /^\d+$/.test(ticketIdRaw) ? ` — Ticket #${escapeHtml(ticketIdRaw)}` : '';
     openItemizedReceipt(allItems, ticketLabel);
 }
