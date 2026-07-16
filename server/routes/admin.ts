@@ -386,6 +386,86 @@ router.delete('/deleteUser/:userId', requireAuth, requireUserType('admin'), admi
     }
 });
 
+/* GET ALL VENDORS
+ * Returns all vendors from the vendors table.
+ */
+router.get('/getVendors', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (_req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT vendor_id, created_at
+            FROM vendors
+            ORDER BY vendor_id ASC
+        `);
+        res.status(200).json({ success: true, data: result.rows });
+    } catch (error) {
+        console.error('Error fetching vendors:', error);
+        res.status(500).json({ success: false, message: 'Internal server error while fetching vendors' });
+    }
+});
+
+/* CREATE VENDOR
+ * Creates a new vendor entry. Optionally accepts a specific vendor_id;
+ * if omitted the SERIAL default is used.
+ */
+router.post('/createVendor', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
+    const { vendor_id } = req.body;
+
+    try {
+        let result;
+        if (vendor_id !== undefined && vendor_id !== null && vendor_id !== '') {
+            const id = parseInt(vendor_id, 10);
+            if (isNaN(id) || id <= 0) {
+                return res.status(400).json({ success: false, message: 'Vendor ID must be a positive integer' });
+            }
+            result = await db.query(
+                'INSERT INTO vendors (vendor_id) VALUES ($1) RETURNING vendor_id, created_at',
+                [id]
+            );
+        } else {
+            result = await db.query(
+                'INSERT INTO vendors DEFAULT VALUES RETURNING vendor_id, created_at'
+            );
+        }
+        res.status(201).json({ success: true, data: result.rows[0] });
+    } catch (error: any) {
+        console.error('Error creating vendor:', error);
+        if (error.code === '23505') {
+            return res.status(409).json({ success: false, message: 'A vendor with this ID already exists' });
+        }
+        res.status(500).json({ success: false, message: 'Internal server error while creating vendor' });
+    }
+});
+
+/* DELETE VENDOR
+ * Deletes a vendor by vendor_id.
+ */
+router.delete('/deleteVendor/:vendorId', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
+    const { vendorId } = req.params;
+
+    if (!vendorId) {
+        return res.status(400).json({ success: false, message: 'Vendor ID is required' });
+    }
+
+    try {
+        const result = await db.query('DELETE FROM vendors WHERE vendor_id = $1 RETURNING vendor_id', [vendorId]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Vendor not found' });
+        }
+
+        res.status(200).json({ success: true, message: 'Vendor deleted successfully' });
+    } catch (error: any) {
+        console.error('Error deleting vendor:', error);
+        if (error.code === '23503') {
+            return res.status(409).json({
+                success: false,
+                message: 'You must delete all associated users before deleting this vendor'
+            });
+        }
+        res.status(500).json({ success: false, message: 'Internal server error while deleting vendor' });
+    }
+});
+
 /* GET CLOSED TICKETS (SALES)
  * Returns all closed tickets for the admin sales report, with optional filters.
  * Also returns today's daily sales total and commission.

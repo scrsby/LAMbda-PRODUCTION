@@ -13,6 +13,7 @@ export default {
         'admin/admin-index': './client/src/ts/admin/admin-index.ts',
         'admin/admin-inventory-settings': './client/src/ts/admin/admin-inventory-settings.ts',
         'admin/admin-sales-manager': './client/src/ts/admin/admin-sales-manager.ts',
+        'admin/admin-vendor-settings': './client/src/ts/admin/admin-vendor-settings.ts',
         'auth/login': './client/src/ts/auth/login.ts',
         'auth/create-account': './client/src/ts/auth/create-account.ts',
         'auth/account-finalization': './client/src/ts/auth/account-finalization.ts',
