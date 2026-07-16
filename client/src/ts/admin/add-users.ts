@@ -28,10 +28,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 const form = document.getElementById('add-user-form');
 form?.addEventListener('submit', function(event) {
   event.preventDefault();
-  formSumbit();
+  formSubmit();
 });
 
-function formSumbit(): void {
+function formSubmit(): void {
   const email = (document.getElementById('email-field') as HTMLInputElement)?.value;
   const role = (document.getElementById('role') as HTMLSelectElement)?.value;
   const vendorId = (document.getElementById('vendorId') as HTMLInputElement)?.value;

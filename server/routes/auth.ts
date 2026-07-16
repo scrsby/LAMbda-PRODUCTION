@@ -224,6 +224,12 @@ router.post('/login', async (req: any, res: any) => {
             }
 
             await regenerateSession(req);
+            if (!req.session) {
+                return res.status(500).json({
+                    success: false,
+                    message: 'Unable to initialize session'
+                });
+            }
 
             req.session.user = {
                 id: user.user_id,
