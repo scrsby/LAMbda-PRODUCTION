@@ -1,4 +1,3 @@
-const URL_REVOKE_DELAY_MS = 60_000;
 export const UNKNOWN_VENDOR_ID = 'UNKNOWN';
 
 export interface ReceiptTicketItem {
@@ -196,8 +195,8 @@ export function openItemizedReceipt(items: ReceiptTicketItem[], ticketLabel: str
         </head>
         <body>
             <div class="report-container">
-                <h1>Itemized Receipt${escapeHtml(ticketLabel)}</h1>
-                <p>Generated ${escapeHtml(generatedAt)}</p>
+                <h1>Receipt</h1>
+                <p>${escapeHtml(generatedAt)}</p>
                 <table>
                     <colgroup>
                         <col style="width: 8%;">
@@ -222,7 +221,7 @@ export function openItemizedReceipt(items: ReceiptTicketItem[], ticketLabel: str
                     </tbody>
                     <tfoot>
                         <tr class="grand-total-row">
-                            <td colspan="5" style="text-align: right;"><strong>Grand Total:</strong></td>
+                            <td colspan="5" style="text-align: right;"><strong>Total:</strong></td>
                             <td><strong>${formatCurrency(grandTotal)}</strong></td>
                         </tr>
                     </tfoot>
@@ -232,31 +231,11 @@ export function openItemizedReceipt(items: ReceiptTicketItem[], ticketLabel: str
         </html>
     `;
 
-    const receiptBlob = new Blob([receiptHtml], { type: 'text/html' });
-    const receiptUrl = URL.createObjectURL(receiptBlob);
-    const receiptWindow = window.open(receiptUrl, '_blank', 'noopener,noreferrer');
+    const receiptWindow = window.open('', '_blank');
     if (!receiptWindow) {
-        URL.revokeObjectURL(receiptUrl);
         alert('Unable to open receipt window. Please allow pop-ups and try again.');
         return;
     }
-
-    let revoked = false;
-    const revokeBlobUrl = () => {
-        if (!revoked) {
-            revoked = true;
-            URL.revokeObjectURL(receiptUrl);
-        }
-    };
-    const windowClosedCheck = window.setInterval(() => {
-        if (receiptWindow.closed) {
-            window.clearInterval(windowClosedCheck);
-            revokeBlobUrl();
-        }
-    }, 1000);
-
-    window.setTimeout(() => {
-        window.clearInterval(windowClosedCheck);
-        revokeBlobUrl();
-    }, URL_REVOKE_DELAY_MS);
+    receiptWindow.document.write(receiptHtml);
+    receiptWindow.document.close();
 }

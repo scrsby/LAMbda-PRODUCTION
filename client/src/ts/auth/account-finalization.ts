@@ -1,50 +1,27 @@
-/*
-  _               __  __ _         _
- | |        /\   |  \/  | |       | |
- | |       /  \  | \  / | |__   __| | __ _
- | |      / /\ \ | |\/| | '_ \ / _` |/ _` |
- | |____ / ____ \| |  | | |_) | (_| | (_| |
- |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
-
- Name: Account Finalization
- File: account-finalization.ts
- Description: Handles profile completion for new users after account creation
- Last Edited: 24 February 2026
-*/
-
 import { apiAxios, getCurrentUser } from "../utilities/api.js";
 
-// Check if logged in and get user type on page load
 let currentUserType: string | null = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await getCurrentUser();
     if (!user) {
-        // Not logged in, redirect to login
         window.location.href = 'login.html';
         return;
     }
     currentUserType = user.userType;
 });
 
-// Form submission handler
 const form = document.getElementById('finalization-form');
 form?.addEventListener('submit', function(event) {
     event.preventDefault();
     submitProfile();
 });
 
-// Skip button handler
 const skipBtn = document.getElementById('skip-btn');
 skipBtn?.addEventListener('click', function() {
     redirectUser(currentUserType);
 });
 
-/* SUBMIT PROFILE
-* Validates and submits the profile information to update the user's account
-* PARAMS - none (reads from form inputs)
-* RETURNS - void (redirects on success)
-*/
 async function submitProfile() {
     const firstName = (document.getElementById('first-name') as HTMLInputElement)?.value.trim();
     const lastName = (document.getElementById('last-name') as HTMLInputElement)?.value.trim();

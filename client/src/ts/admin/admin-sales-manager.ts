@@ -40,7 +40,6 @@ interface TicketDetailResponse {
 let salesDataTable: any = null;
 let lastAppliedSearchParams = new URLSearchParams();
 const COMMISSION_RATE = 0.10;
-const URL_REVOKE_DELAY_MS = 60_000;
 
 const salesTableBody = document.getElementById('sales_list');
 const filterIdInput = document.getElementById('filter-id') as HTMLInputElement | null;
@@ -388,27 +387,13 @@ async function generateReport() {
                 </html>
         `;
 
-        const reportBlob = new Blob([reportHtml], { type: 'text/html' });
-        const reportUrl = URL.createObjectURL(reportBlob);
-        const reportWindow = window.open(reportUrl, '_blank', 'noopener,noreferrer');
+        const reportWindow = window.open('', '_blank');
         if (!reportWindow) {
-            URL.revokeObjectURL(reportUrl);
             alert('Unable to open report window. Please allow pop-ups and try again.');
             return;
         }
-
-        const revokeBlobUrl = () => URL.revokeObjectURL(reportUrl);
-        const windowClosedCheck = window.setInterval(() => {
-            if (reportWindow.closed) {
-                window.clearInterval(windowClosedCheck);
-                revokeBlobUrl();
-            }
-        }, 1000);
-
-        window.setTimeout(() => {
-            window.clearInterval(windowClosedCheck);
-            revokeBlobUrl();
-        }, URL_REVOKE_DELAY_MS);
+        reportWindow.document.write(reportHtml);
+        reportWindow.document.close();
     } catch (error) {
         console.error('Error generating report:', error);
         alert('Unable to generate report right now. Please check your connection and try again.');
