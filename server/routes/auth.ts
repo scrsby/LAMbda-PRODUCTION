@@ -83,8 +83,7 @@ router.post('/createAccount', async (req: any, res: any) => {
         if (existingSessionEmail && existingSessionEmail !== email) {
             // Prevent multiple active identities in one browser when a logged-in user opens
             // another user's setup email link.
-            await destroySession(req);
-            res.clearCookie(SESSION_COOKIE_NAME, getSessionCookieOptions());
+            await regenerateSession(req);
         }
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown session reset error';
@@ -275,7 +274,6 @@ router.post('/logout', (req: any, res: any) => {
         })
         .catch((err: Error) => {
             console.error('Error destroying session:', err);
-            res.clearCookie(SESSION_COOKIE_NAME, getSessionCookieOptions());
             res.status(500).json({
                 success: false,
                 message: 'Error logging out'
