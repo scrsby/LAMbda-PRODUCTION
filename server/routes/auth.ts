@@ -63,11 +63,14 @@ router.post('/createAccount', async (req: any, res: any) => {
 
     try {
         if (req.session?.user?.email && req.session.user.email !== email) {
+            // Prevent multiple active identities in one browser when a logged-in user opens
+            // another user's setup email link.
             await destroySession(req);
             res.clearCookie(SESSION_COOKIE_NAME, getSessionCookieOptions());
         }
     } catch (error) {
-        console.error('Error resetting existing session during account setup:', error);
+        const message = error instanceof Error ? error.message : 'unknown session reset error';
+        console.error('Error resetting existing session during account setup:', message);
         return res.status(500).json({
             success: false,
             message: 'Internal server error while creating account'
