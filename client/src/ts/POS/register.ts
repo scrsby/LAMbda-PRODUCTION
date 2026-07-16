@@ -171,7 +171,7 @@ createItemBtn?.addEventListener('click', () => {
         const vendor_inventory_id = vendorInventoryIdInput.value.trim();
         const name = itemNameInput.value.trim();
         const vendor_price = parseFloat(vendorPriceInput.value);
-        if (isNaN(vendor_id) || !vendor_inventory_id || !name || isNaN(vendor_price)) {
+        if (isNaN(vendor_id) || !name || isNaN(vendor_price)) {
             alert('Please provide valid values for all item fields.');
             return;
         } else {
