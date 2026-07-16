@@ -40,7 +40,8 @@ form?.addEventListener('submit', function(event) {
 */
 function formSubmit(): void {
     const email = (document.getElementById('email-field') as HTMLInputElement)?.value;
-    const role = (document.getElementById('role') as HTMLSelectElement)?.value;
+    const role = (document.getElementById('role') as HTMLSelectElement)?.value.toLowerCase();
+    console.log(role);
     const vendorId = (document.getElementById('vendorId') as HTMLInputElement)?.value;
     
     console.log("Submitted email: ", email);

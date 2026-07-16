@@ -1,4 +1,4 @@
-import { apiAxios, getCurrentUser } from '../utilities/api.js';
+import { apiAxios, getCurrentUser, logout } from '../utilities/api.js';
 import { updateProfileCard } from "../utilities/ui.js";
 
 interface TicketDetail {
@@ -51,6 +51,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (isAdminUser) {
         showAdminControls();
     }
+
+    document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await logout();
+        window.location.href = '../auth/login.html';
+    });
+    document.getElementById('logout-btn-mobile')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await logout();
+        window.location.href = '../auth/login.html';
+    });
 
     updateProfileCard(user);
     deleteTicketButton?.addEventListener('click', handleDeleteTicket);

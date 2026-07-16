@@ -1,4 +1,4 @@
-import { apiAxios, getCurrentUser } from '../utilities/api.js';
+import { apiAxios, getCurrentUser, logout } from '../utilities/api.js';
 import { updateProfileCard } from "../utilities/ui.js";
 import { openItemizedReceipt, type ReceiptTicketItem } from '../utilities/receipt.js';
 
@@ -12,6 +12,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '/auth/login.html';
         return;
     }
+
+    document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await logout();
+            window.location.href = '../auth/login.html';
+        });
+        document.getElementById('logout-btn-mobile')?.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await logout();
+            window.location.href = '../auth/login.html';
+        });
 
     updateProfileCard(user);
     await loadOrders();
