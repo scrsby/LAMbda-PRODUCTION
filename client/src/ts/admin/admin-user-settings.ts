@@ -60,6 +60,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         await logout();
         window.location.href = '../auth/login.html';
     });
+
+    loadUsersTable();
 });
 
 function matchesSearch(user: User, query: string): boolean {

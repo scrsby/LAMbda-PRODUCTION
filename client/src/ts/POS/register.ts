@@ -183,14 +183,14 @@ secondaryBtn?.addEventListener('click', async () => {
 });
 
 createItemBtn?.addEventListener('click', () => {
-    if (!vendorIdInput || !vendorInventoryIdInput || !itemNameInput || !vendorPriceInput ) {
-        alert('Please provide vendor ID, vendor inventory ID, item name, and tag price.');
+    if (!vendorIdInput || !itemNameInput || !vendorPriceInput ) {
+        alert('Please provide vendor ID, item name, and tag price.');
         return;
     } else {
         const quantityInput = document.getElementById('quantity') as HTMLInputElement | null;
         const quantity = quantityInput ? parseInt(quantityInput.value): 1;
         const vendor_id = parseInt(vendorIdInput.value);
-        const vendor_inventory_id = vendorInventoryIdInput.value.trim();
+        const vendor_inventory_id = vendorInventoryIdInput?.value?.trim() || '';
         const name = itemNameInput.value.trim();
         const vendor_price = parseFloat(vendorPriceInput.value);
         if (isNaN(vendor_id) || !name || isNaN(vendor_price)) {
@@ -199,7 +199,7 @@ createItemBtn?.addEventListener('click', () => {
         } else {
             createItemLocally(vendor_id, vendor_inventory_id, name, vendor_price, quantity);
             vendorIdInput.value = '';
-            vendorInventoryIdInput.value = '';
+            if (vendorInventoryIdInput) vendorInventoryIdInput.value = '';
             itemNameInput.value = '';
             vendorPriceInput.value = '';
             if (quantityInput) quantityInput.value = '1';
@@ -662,7 +662,8 @@ function renderSearchResults(items: InventorySearchItem[]) {
         row.querySelector('button')?.addEventListener('click', () => {
             createItemLocally(item.vendorId, inventoryCode, item.itemName, Number(item.price), 1);
             clearItemEntryFields();
-
+            // Clear the search results
+            renderSearchResultsMessage('');
             showSuccessMessage(`${item.itemName} added to cart.`);
         });
 
