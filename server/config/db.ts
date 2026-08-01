@@ -11,12 +11,19 @@ dotenv.config({
     path: path.join(process.cwd(), '.env') 
 });
 
-const mode = process.env.MODE?.trim().toLowerCase() ?? 'production';
+const requestedMode = process.env.MODE?.trim().toLowerCase();
+
+if (requestedMode && requestedMode !== 'local' && requestedMode !== 'production') {
+    throw new Error(`Unsupported MODE "${process.env.MODE}". Expected "local" or "production".`);
+}
+
+const isRuntimeProduction = process.env.NODE_ENV?.trim().toLowerCase() === 'production';
+const mode = isRuntimeProduction ? 'production' : (requestedMode ?? 'production');
 const isLocalMode = mode === 'local';
 const isProductionMode = mode === 'production';
 
-if (!isLocalMode && !isProductionMode) {
-    throw new Error(`Unsupported MODE "${process.env.MODE}". Expected "local" or "production".`);
+if (isRuntimeProduction && requestedMode === 'local') {
+    console.warn('MODE=local ignored because NODE_ENV=production; using production database configuration.');
 }
 
 const connectionString = isLocalMode ? process.env.LOCAL_DATABASE_URL : process.env.DATABASE_URL;

@@ -269,7 +269,7 @@ router.post('/login', async (req: any, res: any) => {
         console.error('Error authenticating user:', error);
         res.status(500).json({
             success: false,
-            message: 'Internal server error while creating account'
+            message: 'Internal server error while authenticating user'
         });
      };
 
