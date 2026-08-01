@@ -1,15 +1,11 @@
 import type { SessionUser } from "../utilities/api.js";
 import { getCurrentUser, logout, requireAuth } from "../utilities/api.js";
 import { getDisplayName, updateProfileCard } from "../utilities/ui.js";
+import { redirectUser } from "../utilities/redirect.js";
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const user = await requireAuth();
-    if (!user) return;
-      
-    if (user.userType !== 'vendor') {
-        window.location.href = '/auth/login.html';
-        return;
-    }
+    
+    redirectUser('vendor');
 
     await initializeDashboard();    
 

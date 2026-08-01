@@ -1,18 +1,3 @@
-/*
-  _               __  __ _         _       
- | |        /\   |  \/  | |       | |      
- | |       /  \  | \  / | |__   __| | __ _ 
- | |      / /\ \ | |\/| | '_ \ / _` |/ _` |
- | |____ / ____ \| |  | | |_) | (_| | (_| |
- |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
- 
- Name: Database Connection File
- File: db.ts
- Required by: app.ts
- Description: Supabase database connection (pg pool + JS client)
- Last Edited: 17 March 2026
-*/
-
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -34,14 +19,12 @@ if (!isLocalMode && !isProductionMode) {
     throw new Error(`Unsupported MODE "${process.env.MODE}". Expected "local" or "production".`);
 }
 
-const connectionString = isLocalMode
-    ? process.env.LOCAL_DATABASE_URL || process.env.DATABASE_URL
-    : process.env.DATABASE_URL;
+const connectionString = isLocalMode ? process.env.LOCAL_DATABASE_URL : process.env.DATABASE_URL;
 
 if (!connectionString) {
     throw new Error(
         isLocalMode
-            ? 'Missing LOCAL_DATABASE_URL or DATABASE_URL for MODE=local.'
+            ? 'Missing LOCAL_DATABASE_URL for MODE=local.'
             : 'Missing DATABASE_URL for MODE=production.'
     );
 }
