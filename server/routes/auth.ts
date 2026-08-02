@@ -4,6 +4,22 @@ import bcrypt from 'bcrypt';
 
 const router = Router();
 const SESSION_COOKIE_NAME = 'connect.sid';
+const DATABASE_CONNECTION_ERROR_MESSAGE = 'Internal database connection error, please contact your admin';
+const DATABASE_CONNECTION_ERROR_CODES = new Set([
+    '08000',
+    '08001',
+    '08003',
+    '08004',
+    '08006',
+    '08007',
+    '08P01',
+    '28P01',
+    '3D000',
+    'EAI_AGAIN',
+    'ECONNREFUSED',
+    'ENOTFOUND',
+    'ETIMEDOUT'
+]);
 
 interface SessionAwareRequest {
     session?: {
@@ -15,6 +31,37 @@ interface SessionAwareRequest {
         };
         [key: string]: any;
     };
+}
+
+function isDatabaseConnectionError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+        return false;
+    }
+
+    const errorWithCode = error as Error & { code?: string };
+    const normalizedCode = errorWithCode.code?.toUpperCase();
+
+    if (normalizedCode && DATABASE_CONNECTION_ERROR_CODES.has(normalizedCode)) {
+        return true;
+    }
+
+    const normalizedMessage = error.message.toLowerCase();
+
+    return [
+        'database connection',
+        'connection terminated unexpectedly',
+        'client has encountered a connection error',
+        'connect econnrefused',
+        'getaddrinfo enotfound',
+        'getaddrinfo eai_again',
+        'timeout expired'
+    ].some((fragment) => normalizedMessage.includes(fragment));
+}
+
+function getAuthFailureMessage(error: unknown, defaultMessage: string): string {
+    return isDatabaseConnectionError(error)
+        ? DATABASE_CONNECTION_ERROR_MESSAGE
+        : defaultMessage;
 }
 
 function getSessionCookieOptions() {
@@ -183,7 +230,7 @@ router.post('/createAccount', async (req: any, res: any) => {
         console.error('Error creating account:', error);
         res.status(500).json({
             success: false,
-            message: 'Internal server error while creating account'
+            message: getAuthFailureMessage(error, 'Internal server error while creating account')
         });
     }
 });
@@ -269,7 +316,7 @@ router.post('/login', async (req: any, res: any) => {
         console.error('Error authenticating user:', error);
         res.status(500).json({
             success: false,
-            message: 'Internal server error while authenticating user'
+            message: getAuthFailureMessage(error, 'Internal server error while authenticating user')
         });
      };
 
