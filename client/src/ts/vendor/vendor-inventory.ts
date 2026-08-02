@@ -20,7 +20,6 @@ interface InventoryItem {
 }
 
 let inventoryDataTable: any = null;
-let sessionVendorId: number | null = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAuth();
@@ -28,8 +27,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await requireUserType('vendor', user);
     updateProfileCard(user);
-
-    sessionVendorId = user.vendorId ?? user.id;
 
     hideSearchQueryMessage();
     loadInventoryTable();
@@ -78,12 +75,8 @@ inventoryForm?.addEventListener('submit', async (event) => {
             alert("Please fill in all required fields with valid values.");
             return;
         }
-        if (!sessionVendorId) {
-            alert("Unable to determine vendor ID. Please log in again.");
-            return;
-        }
         try {
-            await addItem(itemName, sessionVendorId, inventoryCodeValue || null, itemPrice, quantity);
+            await addItem(itemName, inventoryCodeValue || null, itemPrice, quantity);
             showSuccessMessage('Item added successfully!');
             clearInventoryForm();
             hideSearchQueryMessage();
@@ -104,15 +97,14 @@ inventoryForm?.addEventListener('submit', async (event) => {
 
 /* ADD ITEM
 * Handles form submission for creating new inventory items with a vendor account
-* PARAMS - name: string, vendorId: number, inventoryCode: string | null, price: number, quantity: number
+* PARAMS - name: string, inventoryCode: string | null, price: number, quantity: number
 * RETURNS - void
 */
-async function addItem(itemName: string, vendorId: number, inventoryCode: string | null, price: number, quantity: number): Promise<void> {
-    const response = await apiAxios('/inventory/add', {
+async function addItem(itemName: string, inventoryCode: string | null, price: number, quantity: number): Promise<void> {
+    const response = await apiAxios('/inventory/vendor/add', {
         method: 'POST',
         body: {
             itemName: itemName,
-            vendorId: vendorId,
             inventoryCode: inventoryCode,
             price: price,
             quantity: quantity
@@ -123,13 +115,8 @@ async function addItem(itemName: string, vendorId: number, inventoryCode: string
 }
 
 async function loadInventoryTable(): Promise<void> {
-    if (!sessionVendorId) {
-        renderInventoryTableError('Unable to load inventory: vendor ID not found.');
-        return;
-    }
-
     try {
-        const response = await apiAxios(`/inventory/search?vendorId=${sessionVendorId}`, {
+        const response = await apiAxios('/inventory/vendor/items', {
             method: 'GET'
         });
 
@@ -257,7 +244,7 @@ function destroyInventoryTablePagination(): void {
 */
 async function deleteItem(itemId: number): Promise<void> {
     try {
-        await apiAxios('/inventory/remove-item', {
+        await apiAxios('/inventory/vendor/remove-item', {
             method: 'POST',
             body: { itemId }
         });
@@ -280,11 +267,6 @@ async function deleteItem(itemId: number): Promise<void> {
 async function searchItems(criteria: { itemName?: string; inventoryCode?: string; price?: string; quantity?: string }): Promise<void> {
     const searchParams = new URLSearchParams();
 
-    // Always scope search to the vendor's own items
-    if (sessionVendorId) {
-        searchParams.set('vendorId', String(sessionVendorId));
-    }
-
     Object.entries(criteria).forEach(([key, value]) => {
         if (value && value.trim() !== '') {
             searchParams.set(key, value.trim());
@@ -294,7 +276,7 @@ async function searchItems(criteria: { itemName?: string; inventoryCode?: string
     showSearchQueryMessage(criteria);
 
     try {
-        const response = await apiAxios(`/inventory/search?${searchParams.toString()}`, {
+        const response = await apiAxios(`/inventory/vendor/search?${searchParams.toString()}`, {
             method: 'GET'
         });
 
