@@ -11,6 +11,24 @@ dotenv.config({
     path: path.join(process.cwd(), '.env') 
 });
 
+function normalizeEnvValue(value?: string): string | undefined {
+    if (!value) {
+        return undefined;
+    }
+
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+        return undefined;
+    }
+
+    const hasMatchingQuotes =
+        (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+        (trimmed.startsWith("'") && trimmed.endsWith("'"));
+
+    return hasMatchingQuotes ? trimmed.slice(1, -1).trim() : trimmed;
+}
+
 const requestedMode = process.env.MODE?.trim().toLowerCase();
 
 if (requestedMode && requestedMode !== 'local' && requestedMode !== 'production') {
@@ -26,7 +44,8 @@ if (isRuntimeProduction && requestedMode === 'local') {
     console.warn('MODE=local ignored because NODE_ENV=production; using production database configuration.');
 }
 
-const connectionString = isLocalMode ? process.env.LOCAL_DATABASE_URL : process.env.DATABASE_URL;
+const connectionStringEnvName = isLocalMode ? 'LOCAL_DATABASE_URL' : 'DATABASE_URL';
+const connectionString = normalizeEnvValue(isLocalMode ? process.env.LOCAL_DATABASE_URL : process.env.DATABASE_URL);
 
 if (!connectionString) {
     throw new Error(
@@ -34,6 +53,20 @@ if (!connectionString) {
             ? 'Missing LOCAL_DATABASE_URL for MODE=local.'
             : 'Missing DATABASE_URL for MODE=production.'
     );
+}
+
+let dbDiagnostics: { host: string; port: string; database: string; user: string } | null = null;
+
+try {
+    const parsed = new URL(connectionString);
+    dbDiagnostics = {
+        host: parsed.hostname || 'unknown',
+        port: parsed.port || '5432',
+        database: parsed.pathname.replace(/^\//, '') || 'postgres',
+        user: decodeURIComponent(parsed.username || '') || 'unknown'
+    };
+} catch {
+    console.warn('DATABASE_URL format could not be parsed for diagnostics.');
 }
 
 // ============================================
@@ -73,6 +106,20 @@ export default pool;
 
 // Startup connection test
 pool.query('SELECT NOW()', (err: any, res: any) => {
-    if (err) console.error('Database connection error:', err);
-    else console.log(`Database connected successfully in ${mode} mode at:`, res.rows[0].now);
+    if (err) {
+        console.error('Database connection error:', err);
+        if (err?.code === '28P01') {
+            console.error(
+                `Postgres authentication failed using ${connectionStringEnvName} in ${mode} mode.`
+            );
+            if (dbDiagnostics) {
+                console.error('Connection target:', dbDiagnostics);
+            }
+            console.error(
+                'Verify DB credentials in deployment secrets and remove surrounding quotes from DATABASE_URL if present.'
+            );
+        }
+    } else {
+        console.log(`Database connected successfully in ${mode} mode at:`, res.rows[0].now);
+    }
 });
