@@ -244,16 +244,133 @@ router.post('/add', requireAuth, requireUserType('admin'), async (req, res) => {
     }
 });
 
+/* VENDOR GET OWN INVENTORY ITEMS
+* Returns all inventory items belonging to the authenticated vendor.
+* Vendor ID is always read from the session — vendors can only see their own items.
+*/
+router.get('/vendor/items', requireAuth, requireUserType('vendor'), async (req, res) => {
+    const sessionVendorId = req.session.user!.vendorId ?? req.session.user!.id;
+
+    if (!sessionVendorId) {
+        return res.status(403).json({
+            success: false,
+            message: 'Unable to determine vendor ID from session. Please log in again.'
+        });
+    }
+
+    try {
+        const db = (await import('../config/db.js')).default;
+        const result = await db.query(
+            `${inventorySelectQuery} WHERE vendor_id = $1 ORDER BY item_id DESC`,
+            [sessionVendorId]
+        );
+
+        res.status(200).json({
+            success: true,
+            items: result.rows,
+            count: result.rows.length
+        });
+    } catch (error) {
+        console.error('Error fetching vendor inventory items:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while fetching inventory items'
+        });
+    }
+});
+
+/* VENDOR SEARCH OWN INVENTORY ITEMS
+* Searches inventory items belonging to the authenticated vendor.
+* Vendor ID is always read from the session — vendorId query param is ignored.
+* Supported params: itemName, inventoryCode, price, quantity
+*/
+router.get('/vendor/search', requireAuth, requireUserType('vendor'), async (req, res) => {
+    const sessionVendorId = req.session.user!.vendorId ?? req.session.user!.id;
+
+    if (!sessionVendorId) {
+        return res.status(403).json({
+            success: false,
+            message: 'Unable to determine vendor ID from session. Please log in again.'
+        });
+    }
+
+    const { itemName, inventoryCode, price, quantity } = req.query;
+
+    const conditions: string[] = ['vendor_id = $1'];
+    const values: Array<string | number> = [sessionVendorId];
+
+    const addCondition = (condition: string, value: string | number) => {
+        values.push(value);
+        conditions.push(`${condition} $${values.length}`);
+    };
+
+    if (itemName !== undefined) {
+        const sanitizedItemName = String(itemName).trim();
+        if (sanitizedItemName.length > 0) {
+            addCondition('name ILIKE', `%${sanitizedItemName}%`);
+        }
+    }
+
+    if (inventoryCode !== undefined) {
+        const sanitizedInventoryCode = String(inventoryCode).trim();
+        if (sanitizedInventoryCode.length > 0) {
+            addCondition('inventory_number::text ILIKE', `%${sanitizedInventoryCode}%`);
+        }
+    }
+
+    if (price !== undefined) {
+        const parsedPrice = parseFloat(String(price));
+        if (isNaN(parsedPrice) || parsedPrice < 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'price must be a valid non-negative number'
+            });
+        }
+        addCondition('price =', parsedPrice);
+    }
+
+    if (quantity !== undefined) {
+        const parsedQuantity = parseInt(String(quantity), 10);
+        if (isNaN(parsedQuantity) || parsedQuantity < 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'quantity must be a valid non-negative integer'
+            });
+        }
+        addCondition('qty =', parsedQuantity);
+    }
+
+    try {
+        const db = (await import('../config/db.js')).default;
+        const whereClause = ` WHERE ${conditions.join(' AND ')}`;
+        const result = await db.query(
+            `${inventorySelectQuery}${whereClause} ORDER BY item_id DESC`,
+            values
+        );
+
+        res.status(200).json({
+            success: true,
+            items: result.rows,
+            count: result.rows.length
+        });
+    } catch (error) {
+        console.error('Error searching vendor inventory items:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error while searching inventory items'
+        });
+    }
+});
+
 /* VENDOR ADD INVENTORY ITEM
-* Price, Quantity, Vendor ID, Vendor Inventory Number, and Item Name are required fields. Vendors can only add inventory items for their own vendor ID.
-* Vendor ID is determined from the authenticated user's session and cannot be specified in the request body. This prevents vendors from adding inventory for other vendors.
+* Adds an inventory item for the authenticated vendor.
+* Vendor ID is always read from the session — vendors can only add items for themselves.
 * Security: Rejects requests that include vendorId in the body to prevent ID spoofing.
 */
 router.post('/vendor/add', requireAuth, requireUserType('vendor'), async (req, res) => {
-    const { itemName, inventoryNumber, price, quantity, vendorId } = req.body;
+    const { itemName, inventoryCode, price, quantity, vendorId } = req.body;
 
     // SECURITY: Reject if vendorId is provided in the request body
-    // This prevents vendors from spoofing their vendor ID to add items for other vendors
     if (vendorId !== undefined) {
         return res.status(403).json({
             success: false,
@@ -261,8 +378,7 @@ router.post('/vendor/add', requireAuth, requireUserType('vendor'), async (req, r
         });
     }
 
-    // Get vendorId from session (user's ID serves as their vendor ID)
-    const sessionVendorId = req.session.user!.vendorId || req.session.user!.id;
+    const sessionVendorId = req.session.user!.vendorId ?? req.session.user!.id;
 
     if (!sessionVendorId) {
         return res.status(403).json({
@@ -272,14 +388,13 @@ router.post('/vendor/add', requireAuth, requireUserType('vendor'), async (req, r
     }
 
     // Validate required fields
-    if (!itemName || !inventoryNumber || price === undefined || quantity === undefined) {
+    if (!itemName || price === undefined || quantity === undefined) {
         return res.status(400).json({
             success: false,
-            message: 'All fields are required: itemName, inventoryNumber, price, quantity'
+            message: 'All fields are required: itemName, price, quantity'
         });
     }
 
-    // Validate numeric fields
     const parsedPrice = parseFloat(price);
     const parsedQuantity = parseInt(quantity, 10);
 
@@ -297,9 +412,8 @@ router.post('/vendor/add', requireAuth, requireUserType('vendor'), async (req, r
         });
     }
 
-    // Sanitize itemName and inventoryNumber
     const sanitizedItemName = itemName.toString().trim();
-    const sanitizedInventoryNumber = inventoryNumber.toString().trim();
+    const sanitizedInventoryCode = inventoryCode ? inventoryCode.toString().trim() : null;
 
     if (sanitizedItemName.length === 0 || sanitizedItemName.length > 255) {
         return res.status(400).json({
@@ -308,30 +422,28 @@ router.post('/vendor/add', requireAuth, requireUserType('vendor'), async (req, r
         });
     }
 
-    if (sanitizedInventoryNumber.length === 0 || sanitizedInventoryNumber.length > 100) {
+    if (sanitizedInventoryCode !== null && sanitizedInventoryCode.length > 100) {
         return res.status(400).json({
             success: false,
-            message: 'Vendor inventory number must be between 1 and 100 characters'
+            message: 'Vendor inventory code must be 100 characters or fewer'
         });
     }
 
     try {
         const db = (await import('../config/db.js')).default;
 
-        // Insert the inventory item using the session's vendor ID
         const insertQuery = `
-            INSERT INTO inventory (itemName, vendorId, inventoryNumber, price, quantity, created_by)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING inventory_id, itemName, vendorId, inventoryNumber, price, quantity, created_at
+            INSERT INTO inventory (name, vendor_id, inventory_number, price, qty)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING item_id
         `;
-        
+
         const result = await db.query(insertQuery, [
             sanitizedItemName,
             sessionVendorId,
-            sanitizedInventoryNumber,
+            sanitizedInventoryCode,
             parsedPrice,
             parsedQuantity,
-            req.session.user!.id // Vendor user who created the item
         ]);
 
         res.status(201).json({
@@ -342,12 +454,11 @@ router.post('/vendor/add', requireAuth, requireUserType('vendor'), async (req, r
 
     } catch (error: any) {
         console.error('Error adding vendor inventory item:', error);
-        
-        // Handle unique constraint violations
+
         if (error.code === '23505') {
             return res.status(400).json({
                 success: false,
-                message: 'An item with this inventory number already exists in your inventory'
+                message: 'An item with this vendor inventory number already exists for this vendor'
             });
         }
 
@@ -355,6 +466,56 @@ router.post('/vendor/add', requireAuth, requireUserType('vendor'), async (req, r
             success: false,
             message: 'Internal server error while adding inventory item'
         });
+    }
+});
+
+/* VENDOR REMOVE OWN INVENTORY ITEM
+* Removes an inventory item that belongs to the authenticated vendor.
+* Verifies item ownership before deleting to prevent cross-vendor deletions.
+*/
+router.post('/vendor/remove-item', requireAuth, requireUserType('vendor'), async (req, res) => {
+    const { itemId } = req.body;
+
+    if (!itemId) {
+        return res.status(400).json({ success: false, message: 'Missing required field: itemId' });
+    }
+
+    const sessionVendorId = req.session.user!.vendorId ?? req.session.user!.id;
+
+    if (!sessionVendorId) {
+        return res.status(403).json({
+            success: false,
+            message: 'Unable to determine vendor ID from session. Please log in again.'
+        });
+    }
+
+    try {
+        const db = (await import('../config/db.js')).default;
+
+        // Delete only if the item belongs to this vendor
+        const removeQuery = `
+            DELETE FROM inventory
+            WHERE item_id = $1 AND vendor_id = $2
+            RETURNING item_id
+        `;
+
+        const result = await db.query(removeQuery, [itemId, sessionVendorId]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Item not found or does not belong to your account'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Inventory item removed successfully',
+            item: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Error removing vendor inventory item:', error);
+        res.status(500).json({ success: false, message: 'Internal server error while removing inventory item' });
     }
 });
 

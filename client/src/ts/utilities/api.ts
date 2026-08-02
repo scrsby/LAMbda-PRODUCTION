@@ -7,6 +7,7 @@ export interface SessionUser {
     firstName?: string | null;
     lastName?: string | null;
     phone?: string | null;
+    vendorId?: number | null;
 }
 
 export async function apiAxios(endpoint: string, options: any = {}) {
