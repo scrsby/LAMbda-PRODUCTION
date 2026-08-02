@@ -1,31 +1,18 @@
-import { apiAxios, getCurrentUser, logout } from '../utilities/api.js';
+import { apiAxios, logoutHandler, requireAuth, getCurrentUser } from '../utilities/api.js';
 import { updateProfileCard } from "../utilities/ui.js";
 import { openItemizedReceipt, type ReceiptTicketItem } from '../utilities/receipt.js';
+import { requireUserType } from "../utilities/redirect.js";
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const user = await getCurrentUser();
-    if (!user) {
-        window.location.href = '/auth/login.html';
-        return;
+    const user = await requireAuth();
+    
+    if (user) {
+        await requireUserType('employee', user);
+        await logoutHandler();
+        await updateProfileCard(user);
+        await loadOrders();
     }
-    if (user.userType !== 'employee' && user.userType !== 'admin' ) {
-        window.location.href = '/auth/login.html';
-        return;
-    }
-
-    document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
-            e.preventDefault();
-            await logout();
-            window.location.href = '../auth/login.html';
-        });
-        document.getElementById('logout-btn-mobile')?.addEventListener('click', async (e) => {
-            e.preventDefault();
-            await logout();
-            window.location.href = '../auth/login.html';
-        });
-
-    updateProfileCard(user);
-    await loadOrders();
+   
 });
 
 declare global {

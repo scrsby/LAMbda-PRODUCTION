@@ -58,6 +58,20 @@ export async function logout(): Promise<boolean> {
     }
 }
 
+export async function logoutHandler() {
+    document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await logout();
+        window.location.href = '../auth/login.html';
+    });
+
+    document.getElementById('logout-btn-mobile')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await logout();
+        window.location.href = '../auth/login.html';
+    });
+}
+
 /* GET CURRENT USER
 * Retrieves the currently logged in user's session data
 * Returns: Promise<SessionUser | null> - user data if authenticated, null otherwise

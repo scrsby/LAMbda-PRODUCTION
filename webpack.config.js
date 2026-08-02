@@ -20,7 +20,11 @@ export default {
         'POS/register' : './client/src/ts/POS/register.ts',
         'POS/orders': './client/src/ts/POS/orders.ts',
         'POS/order-detail': './client/src/ts/POS/order-detail.ts',
-        'vendor/vendor-index': './client/src/ts/vendor/vendor-index.ts'
+        'vendor/vendor-index': './client/src/ts/vendor/vendor-index.ts',
+        'vendor/vendor-inventory': './client/src/ts/vendor/vendor-inventory.ts',
+        'vendor/vendor-sales-manager': './client/src/ts/vendor/vendor-sales-manager.ts',
+        'vendor/vendor-settings': './client/src/ts/vendor/vendor-settings.ts'
+
     },
     output: {
         path: _resolve(__dirname, "client/dist"),

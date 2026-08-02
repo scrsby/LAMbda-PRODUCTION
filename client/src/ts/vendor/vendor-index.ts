@@ -1,34 +1,22 @@
 import type { SessionUser } from "../utilities/api.js";
-import { getCurrentUser, logout, requireAuth } from "../utilities/api.js";
+import { logout, logoutHandler, requireAuth } from "../utilities/api.js";
 import { getDisplayName, updateProfileCard } from "../utilities/ui.js";
-import { redirectUser } from "../utilities/redirect.js";
+import { requireUserType } from "../utilities/redirect.js";
 
-document.addEventListener('DOMContentLoaded', async () => {
-    
-    redirectUser('vendor');
+document.addEventListener('DOMContentLoaded', async () => { 
+    const user = await requireAuth();
 
-    await initializeDashboard();    
-
-    document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
-        e.preventDefault();
+    if (user) {
+        await requireUserType('vendor', user);
+        await initializeDashboard(user);
+        await logoutHandler();
+    } else {
         await logout();
         window.location.href = '../auth/login.html';
-    });
-    document.getElementById('logout-btn-mobile')?.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await logout();
-        window.location.href = '../auth/login.html';
-    });
+    }
 });
 
-async function initializeDashboard() {
-    const user = await getCurrentUser();
-    
-    if (!user) {
-        window.location.href = '../auth/login.html';
-        return;
-    }
-
+async function initializeDashboard(user: SessionUser) {
     displayGreeting(user);
     updateProfileCard(user);
 }

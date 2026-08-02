@@ -1,16 +1,7 @@
-import { requireAuth } from "../utilities/api.js";
-
 const REDIRECTS_ENABLED = false;
 
-export async function redirectUser(group: string) {
+export async function requireUserType(group: string, user: any) {
     if (REDIRECTS_ENABLED) {
-        const user = await requireAuth();
-        if (!user) {
-            window.location.href = '/auth/login.html';
-            return;
-        }
-
-
         if (group === 'admin' && user.userType !== 'admin') {
 
             if (user.userType === 'vendor') {
