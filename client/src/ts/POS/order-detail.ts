@@ -1,4 +1,5 @@
 import { apiAxios, getCurrentUser, logout } from '../utilities/api.js';
+import { openItemizedReceipt, type ReceiptTicketItem } from '../utilities/receipt.js';
 import { updateProfileCard } from "../utilities/ui.js";
 
 interface TicketDetail {
@@ -26,6 +27,7 @@ interface TicketItem {
 }
 
 const deleteTicketButton = document.getElementById('delete-ticket-btn') as HTMLButtonElement | null;
+const generateReceiptButton = document.getElementById('generate-receipt-btn') as HTMLButtonElement | null
 let activeTicket: TicketDetail | null = null;
 let isAdminUser = false;
 
@@ -205,3 +207,31 @@ function showAdminControls() {
     if (btn) btn.style.display = '';
     if (btnMobile) btnMobile.style.display = '';
 }
+
+
+
+async function generateOrderReceipt(ticketId: string, button: HTMLButtonElement): Promise<void> {
+    button.disabled = true;
+    button.textContent = 'Loading...';
+    try {
+        const response = await apiAxios(`/POS/ticket/${ticketId}`, { method: 'GET' });
+        const items = (response.items ?? []) as ReceiptTicketItem[];
+        openItemizedReceipt(true, items, ` — Ticket #${ticketId}`);
+    } catch (error) {
+        console.error('Error fetching ticket for receipt:', error);
+        alert('Unable to generate receipt. Please try again.');
+    } finally {
+        button.disabled = false;
+        button.textContent = 'Receipt';
+    }
+}
+
+// Event delegation for receipt buttons (survives innerHTML re-renders on the tbody)
+generateReceiptButton?.addEventListener('click', (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-ticket-id]');
+    if (!button) return;
+    const ticketId = button.getAttribute('data-ticket-id');
+    if (ticketId) {
+        void generateOrderReceipt(ticketId, button);
+    }
+});

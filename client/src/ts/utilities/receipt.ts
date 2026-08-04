@@ -36,7 +36,7 @@ export function normalizeVendorId(value: number | string | null | undefined): st
  *   ticketLabel — label string appended to the receipt title (e.g. " — Ticket #42");
  *                 pass an empty string for no label
  */
-export function openItemizedReceipt(items: ReceiptTicketItem[], ticketLabel: string): void {
+export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketItem[], ticketLabel: string): void {
     if (items.length === 0) {
         alert('No items to generate a receipt.');
         return;
@@ -51,6 +51,14 @@ export function openItemizedReceipt(items: ReceiptTicketItem[], ticketLabel: str
         finalPrice: number;
     };
 
+    function formatToPercentage(decimalValue: number) {
+        return new Intl.NumberFormat('en-US', {
+            style: 'percent',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(decimalValue);
+    }
+
     const receiptItems: ReceiptItem[] = items.map(item => {
         const quantityRaw = Number(item.quantity ?? 1);
         // Fractional quantities are intentional — items can be priced by weight or partial unit
@@ -61,7 +69,7 @@ export function openItemizedReceipt(items: ReceiptTicketItem[], ticketLabel: str
         }
         const itemPrice = Number(item.vendor_price ?? 0) * quantity;
         const discount = Number(item.discount_amount ?? 0);
-        const finalPrice = Number(item.final_price ?? itemPrice - discount);
+        const finalPrice = cashPayment ? Number(item.final_price ?? itemPrice - discount) : (Number(item.final_price ?? itemPrice - discount))*1.04;
 
         return {
             vendorId: normalizeVendorId(item.vendor_id),
