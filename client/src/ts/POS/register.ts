@@ -84,6 +84,8 @@ const itemNameInput = document.getElementById('item-name') as HTMLInputElement |
 const vendorPriceInput = document.getElementById('vendor-price') as HTMLInputElement | null;
 const searchAndAddSection = document.getElementById('search-and-add') as HTMLDivElement | null;
 const posTopSection = document.querySelector('.pos-top-section') as HTMLElement | null;
+const taxExemptCheckbox = document.getElementById('tax-exempt-checkbox') as HTMLInputElement;
+const taxExemptForm = document.getElementById('tax-exempt-form') as HTMLElement;
 
 function setTicketActionButtons(enabled: boolean) {
     if (createItemBtn) {
@@ -230,6 +232,15 @@ itemNameInput?.addEventListener('input', () => {
         void searchInventory(false);
     }, 300);
 });
+
+taxExemptCheckbox.addEventListener('change', function() {
+    console.log("Checkbox change event")
+    if (this.checked) {
+        taxExemptForm.style.display = 'block';
+    } else {
+        taxExemptForm.style.display = 'none';
+    }
+})
 
 setIdleTicketState();
 renderSearchResultsMessage('Type at least 4 characters in Description to search inventory.');
