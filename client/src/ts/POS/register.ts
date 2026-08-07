@@ -92,40 +92,40 @@ function setTicketActionButtons(enabled: boolean) {
     if (createItemBtn) {
         createItemBtn.disabled = !enabled;
     }
-
-    function setTaxExemptUi(isChecked: boolean, businessName = '') {
-        taxExemptCheckbox.checked = isChecked;
-        if (taxExemptForm) {
-            taxExemptForm.style.display = isChecked ? 'block' : 'none';
-            taxExemptForm.value = isChecked ? businessName : '';
-        }
-    }
-
-    function getTicketPaymentAndTaxDetails() {
-        return {
-            cashPayment: cashPaymentCheckbox?.checked ?? false,
-            taxExempt: taxExemptCheckbox.checked,
-            taxExemptBusinessName: taxExemptForm?.value.trim() ?? ''
-        };
-    }
-
-    function validateTaxExemptSelection() {
-        if (!taxExemptCheckbox.checked) {
-            return true;
-        }
-
-        const businessName = taxExemptForm?.value.trim() ?? '';
-        if (!businessName) {
-            showErrorMessage('Business name is required for tax exempt tickets.');
-            taxExemptForm?.focus();
-            return false;
-        }
-
-        return true;
-    }
     if (checkoutBtn) {
         checkoutBtn.disabled = !enabled;
     }
+}
+
+function setTaxExemptUi(isChecked: boolean, businessName = '') {
+    taxExemptCheckbox.checked = isChecked;
+    if (taxExemptForm) {
+        taxExemptForm.style.display = isChecked ? 'block' : 'none';
+        taxExemptForm.value = isChecked ? businessName : '';
+    }
+}
+
+function getTicketPaymentAndTaxDetails() {
+    return {
+        cashPayment: cashPaymentCheckbox?.checked ?? false,
+        taxExempt: taxExemptCheckbox.checked,
+        taxExemptBusinessName: taxExemptForm?.value.trim() ?? ''
+    };
+}
+
+function validateTaxExemptSelection() {
+    if (!taxExemptCheckbox.checked) {
+        return true;
+    }
+
+    const businessName = taxExemptForm?.value.trim() ?? '';
+    if (!businessName) {
+        showErrorMessage('Business name is required for tax exempt tickets.');
+        taxExemptForm?.focus();
+        return false;
+    }
+
+    return true;
 }
 
 function setActiveTicketState(ticketId: string) {
