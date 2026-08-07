@@ -216,7 +216,7 @@ async function generateOrderReceipt(ticketId: string, button: HTMLButtonElement)
     try {
         const response = await apiAxios(`/POS/ticket/${ticketId}`, { method: 'GET' });
         const items = (response.items ?? []) as ReceiptTicketItem[];
-        const cashPayment = window.confirm('Generate this receipt as a cash payment?\nSelect Cancel to apply the 4% card charge.');
+        const cashPayment = window.confirm('Click OK to generate a cash receipt with no card charge.\nClick Cancel to include the 4% card charge.');
         openItemizedReceipt(cashPayment, items, ` — Ticket #${ticketId}`);
     } catch (error) {
         console.error('Error fetching ticket for receipt:', error);
