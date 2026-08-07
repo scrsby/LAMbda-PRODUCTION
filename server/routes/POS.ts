@@ -32,6 +32,9 @@ async function getTicketDetail(ticketId: string) {
                 t.created_at,
                 t.ticket_status,
                 COALESCE(t.total, 0)::float AS total,
+                COALESCE(t.cash_payment, false) AS cash_payment,
+                COALESCE(t.tax_exempt, false) AS tax_exempt,
+                ted.business_name AS tax_exempt_business_name,
                 COALESCE(
                     NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''),
                     u.email,
@@ -39,6 +42,7 @@ async function getTicketDetail(ticketId: string) {
                 ) AS employee_name
          FROM tickets t
          LEFT JOIN users u ON u.user_id = t.cashier_id
+         LEFT JOIN tax_exempt_details ted ON ted.ticket_id = t.ticket_id
          WHERE t.ticket_id = $1`,
         [ticketId]
     );
@@ -171,9 +175,17 @@ router.post('/update-ticket', posWriteRateLimit, async (req, res) => {
     const { ticketId } = req.body;
     const ticketItems = Array.isArray(req.body?.ticket_items) ? req.body.ticket_items : [];
     const unsyncedItems = Array.isArray(req.body?.unsynced_items) ? req.body.unsynced_items : [];
+    const cashPayment = req.body?.cashPayment === true;
+    const taxExempt = req.body?.taxExempt === true;
+    const taxExemptBusinessName = typeof req.body?.taxExemptBusinessName === 'string'
+        ? req.body.taxExemptBusinessName.trim()
+        : '';
 
     if (!ticketId) {
         return res.status(400).json({ error: 'ticketId is required' });
+    }
+    if (taxExempt && !taxExemptBusinessName) {
+        return res.status(400).json({ error: 'Business name is required for tax exempt tickets' });
     }
 
     const client = await db.connect();
@@ -252,7 +264,17 @@ router.post('/update-ticket', posWriteRateLimit, async (req, res) => {
             [ticketId]
         );
         const total = parseFloat(totalResult.rows[0].total);
-        await client.query('UPDATE tickets SET total = $1 WHERE ticket_id = $2', [total, ticketId]);
+        await client.query(
+            'UPDATE tickets SET total = $1, cash_payment = $2, tax_exempt = $3 WHERE ticket_id = $4',
+            [total, cashPayment, taxExempt, ticketId]
+        );
+        await client.query('DELETE FROM tax_exempt_details WHERE ticket_id = $1', [ticketId]);
+        if (taxExempt) {
+            await client.query(
+                'INSERT INTO tax_exempt_details (ticket_id, business_name) VALUES ($1, $2)',
+                [ticketId, taxExemptBusinessName]
+            );
+        }
         await client.query('COMMIT');
         transactionStarted = false;
 
@@ -429,22 +451,65 @@ router.post('/close-receipt', async (req, res) => {
 */
 router.post('/close-ticket', posWriteRateLimit, async (req, res) => {
     const { ticketId } = req.body;
-    if (!ticketId) {
-        return res.status(400).json({ error: 'ticketId is required' });
-    }
-    try {
-        const result = await db.query(
-            `UPDATE tickets SET ticket_status = 'closed' WHERE ticket_id = $1 AND ticket_status = 'open' RETURNING ticket_id`,
-            [ticketId]
-        );
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Ticket not found or not open' });
-        }
-        res.status(200).json({ message: 'Ticket closed successfully', ticketId: result.rows[0].ticket_id });
-    } catch (error) {
-        console.error('Error closing ticket:', error);
-        res.status(500).json({ error: 'Failed to close ticket' });
-    }
+   const cashPayment = req.body?.cashPayment === true;
+   const taxExempt = req.body?.taxExempt === true;
+   const taxExemptBusinessName = typeof req.body?.taxExemptBusinessName === 'string'
+       ? req.body.taxExemptBusinessName.trim()
+       : '';
+
+   if (!ticketId) {
+       return res.status(400).json({ error: 'ticketId is required' });
+   }
+   if (taxExempt && !taxExemptBusinessName) {
+       return res.status(400).json({ error: 'Business name is required for tax exempt tickets' });
+   }
+
+   const client = await db.connect();
+   let transactionStarted = false;
+
+   try {
+       await client.query('BEGIN');
+       transactionStarted = true;
+
+       const result = await client.query(
+           `UPDATE tickets
+            SET ticket_status = 'closed',
+                cash_payment = $1,
+                tax_exempt = $2
+            WHERE ticket_id = $3 AND ticket_status = 'open'
+            RETURNING ticket_id`,
+           [cashPayment, taxExempt, ticketId]
+       );
+       if (result.rows.length === 0) {
+           await client.query('ROLLBACK');
+           transactionStarted = false;
+           return res.status(404).json({ error: 'Ticket not found or not open' });
+       }
+
+       await client.query('DELETE FROM tax_exempt_details WHERE ticket_id = $1', [ticketId]);
+       if (taxExempt) {
+           await client.query(
+               'INSERT INTO tax_exempt_details (ticket_id, business_name) VALUES ($1, $2)',
+               [ticketId, taxExemptBusinessName]
+           );
+       }
+
+       await client.query('COMMIT');
+       transactionStarted = false;
+       res.status(200).json({ message: 'Ticket closed successfully', ticketId: result.rows[0].ticket_id });
+   } catch (error) {
+       if (transactionStarted) {
+           try {
+               await client.query('ROLLBACK');
+           } catch (rollbackError) {
+               console.error('Error rolling back close ticket transaction:', rollbackError);
+           }
+       }
+       console.error('Error closing ticket:', error);
+       res.status(500).json({ error: 'Failed to close ticket' });
+   } finally {
+       client.release();
+   }
 });
 
 
