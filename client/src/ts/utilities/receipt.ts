@@ -61,15 +61,16 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
 
     const receiptItems: ReceiptItem[] = items.map(item => {
         const quantityRaw = Number(item.quantity ?? 1);
-        // Fractional quantities are intentional — items can be priced by weight or partial unit
+        
         const hasInvalidQuantity = !Number.isFinite(quantityRaw) || quantityRaw <= 0;
         const quantity = hasInvalidQuantity ? 1 : quantityRaw;
         if (hasInvalidQuantity) {
             console.warn('Invalid ticket item quantity. Defaulting to 1.', { item });
         }
-        const itemPrice = Number(item.vendor_price ?? 0) * quantity;
-        const discount = Number(item.discount_amount ?? 0);
-        const finalPrice = cashPayment ? Number(item.final_price ?? itemPrice - discount) : (Number(item.final_price ?? itemPrice - discount))*1.04;
+
+        const itemPrice = cashPayment ? Number(item.vendor_price) : (Number(item.vendor_price)) * 1.04;
+        const discount = cashPayment ? Number(item.discount_amount ?? 0) : (Number(item.discount_amount ?? 0)) * 1.04;
+        const finalPrice = itemPrice - discount;
 
         return {
             vendorId: normalizeVendorId(item.vendor_id),
@@ -113,7 +114,7 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
                     <td>${escapeHtml(vendorId)}</td>
                     <td>${escapeHtml(item.vendorInventoryId)}</td>
                     <td>${escapeHtml(item.itemName)}</td>
-                    <td>${formatCurrency(item.itemPrice)}</td>
+                    <td>${formatCurrency(item.finalPrice)}</td>
                     <td>${formatCurrency(item.discount)}</td>
                     <td>${formatCurrency(item.finalPrice)}</td>
                 </tr>
@@ -220,7 +221,7 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
                             <th>Inventory ID</th>
                             <th>Item</th>
                             <th>Price</th>
-                            <th>Disc.</th>
+                            <th>Merchant Disc.</th>
                             <th>Final Price</th>
                         </tr>
                     </thead>

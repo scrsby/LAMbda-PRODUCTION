@@ -952,5 +952,5 @@ function createItemizedReceipt() {
     // Use localStorage for active tickets; fall back to the field value for closed tickets
     const ticketIdRaw = localStorage.getItem('currentTicketId') ?? ticketIdField?.value ?? '';
     const ticketLabel = /^\d+$/.test(ticketIdRaw) ? ` — Ticket #${escapeHtml(ticketIdRaw)}` : '';
-    openItemizedReceipt(true, allItems, ticketLabel);
+    openItemizedReceipt(false, allItems, ticketLabel);
 }
