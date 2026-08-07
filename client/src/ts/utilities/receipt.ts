@@ -51,12 +51,8 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
         finalPrice: number;
     };
 
-    function formatToPercentage(decimalValue: number) {
-        return new Intl.NumberFormat('en-US', {
-            style: 'percent',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        }).format(decimalValue);
+    function roundCurrency(value: number): number {
+        return Math.round(value * 100) / 100;
     }
 
     const receiptItems: ReceiptItem[] = items.map(item => {
@@ -67,10 +63,13 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
         if (hasInvalidQuantity) {
             console.warn('Invalid ticket item quantity. Defaulting to 1.', { item });
         }
-
-        const itemPrice = cashPayment ? Number(item.vendor_price) : (Number(item.vendor_price)) * 1.04;
-        const discount = cashPayment ? Number(item.discount_amount ?? 0) : (Number(item.discount_amount ?? 0)) * 1.04;
-        const finalPrice = itemPrice - discount;
+        const baseItemPrice = Number(item.vendor_price ?? 0) * quantity;
+        const baseDiscount = Number(item.discount_amount ?? 0);
+        const displayedFinalPrice = Number(item.final_price ?? baseItemPrice - baseDiscount);
+        const chargeMultiplier = cashPayment ? 1 : 1.04;
+        const itemPrice = roundCurrency(baseItemPrice * chargeMultiplier);
+        const discount = roundCurrency(baseDiscount * chargeMultiplier);
+        const finalPrice = roundCurrency(displayedFinalPrice * chargeMultiplier);
 
         return {
             vendorId: normalizeVendorId(item.vendor_id),
