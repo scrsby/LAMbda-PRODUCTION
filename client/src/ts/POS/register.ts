@@ -86,6 +86,7 @@ const searchAndAddSection = document.getElementById('search-and-add') as HTMLDiv
 const posTopSection = document.querySelector('.pos-top-section') as HTMLElement | null;
 const taxExemptCheckbox = document.getElementById('tax-exempt-checkbox') as HTMLInputElement;
 const taxExemptForm = document.getElementById('tax-exempt-form') as HTMLInputElement | null;
+const taxExemptFormLabel = document.getElementById('tax-exempt-form-label') as HTMLElement | null;
 const cashPaymentCheckbox = document.getElementById('cash-payment-checkbox') as HTMLInputElement | null;
 
 function setTicketActionButtons(enabled: boolean) {
@@ -100,8 +101,27 @@ function setTicketActionButtons(enabled: boolean) {
 function setTaxExemptUi(isChecked: boolean, businessName = '') {
     taxExemptCheckbox.checked = isChecked;
     if (taxExemptForm) {
-        taxExemptForm.style.display = isChecked ? 'block' : 'none';
+        taxExemptForm.style.display = isChecked ? '' : 'none';
         taxExemptForm.value = isChecked ? businessName : '';
+    }
+    if (taxExemptFormLabel) {
+        taxExemptFormLabel.style.display = isChecked ? '' : 'none';
+    }
+}
+
+function setPaymentAndTaxControlsEnabled(enabled: boolean) {
+    taxExemptCheckbox.disabled = !enabled;
+    if (cashPaymentCheckbox) {
+        cashPaymentCheckbox.disabled = !enabled;
+    }
+
+    if (!enabled && taxExemptForm) {
+        taxExemptForm.disabled = true;
+        return;
+    }
+
+    if (taxExemptForm) {
+        taxExemptForm.disabled = !taxExemptCheckbox.checked;
     }
 }
 
@@ -146,6 +166,7 @@ function setActiveTicketState(ticketId: string) {
     primaryOption = 'update';
     secondaryOption = 'clear';
     
+    setPaymentAndTaxControlsEnabled(true);
     setTicketActionButtons(true);
 }
 
@@ -161,6 +182,10 @@ function setIdleTicketState() {
     }
 
     searchAndAddSection!.style = 'opacity: 0.6; pointer-events: none;';
+
+    taxExemptCheckbox.checked = false;
+    cashPaymentCheckbox!.checked = true;
+
     if (posTopSection) posTopSection.style.cssText = '';
     primaryBtn!.textContent = 'Create New';
     secondaryBtn!.textContent = 'Search Ticket';
@@ -172,6 +197,7 @@ function setIdleTicketState() {
         cashPaymentCheckbox.checked = true;
     }
 
+    setPaymentAndTaxControlsEnabled(false);
     setTicketActionButtons(false);
 }
 
@@ -195,6 +221,7 @@ function setClosedTicketState(ticketId: string) {
     primaryOption = 'create';
     secondaryOption = 'search';
 
+    setPaymentAndTaxControlsEnabled(false);
     setTicketActionButtons(false);
 }
 
@@ -273,12 +300,22 @@ itemNameInput?.addEventListener('input', () => {
 taxExemptCheckbox.addEventListener('change', function() {
     if (this.checked) {
         if (taxExemptForm) {
-            taxExemptForm.style.display = 'block';
+            taxExemptForm.style.display = '';
+            taxExemptForm.disabled = false;
             taxExemptForm.focus();
+        }
+        if (taxExemptFormLabel) {
+            taxExemptFormLabel.style.display = '';
         }
     } else if (taxExemptForm) {
         taxExemptForm.style.display = 'none';
+        taxExemptForm.disabled = true;
         taxExemptForm.value = '';
+        if (taxExemptFormLabel) {
+            taxExemptFormLabel.style.display = 'none';
+        }
+    } else if (taxExemptFormLabel) {
+        taxExemptFormLabel.style.display = 'none';
     }
 });
 
