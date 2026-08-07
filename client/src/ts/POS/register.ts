@@ -916,9 +916,6 @@ async function closeTicket() {
         showErrorMessage('No active ticket to close.');
         return;
     }
-    if (!validateTaxExemptSelection()) {
-        return;
-    }
     const ticketPaymentAndTaxDetails = getTicketPaymentAndTaxDetails();
 
     if (markPaidBtn) markPaidBtn.disabled = true;
@@ -951,6 +948,9 @@ async function closeTicket() {
 }
 
 checkoutBtn?.addEventListener('click', () => {
+    if (!validateTaxExemptSelection()) {
+        return;
+    }
     openCheckoutModal();
 });
 
