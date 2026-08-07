@@ -86,6 +86,7 @@ const searchAndAddSection = document.getElementById('search-and-add') as HTMLDiv
 const posTopSection = document.querySelector('.pos-top-section') as HTMLElement | null;
 const taxExemptCheckbox = document.getElementById('tax-exempt-checkbox') as HTMLInputElement;
 const taxExemptForm = document.getElementById('tax-exempt-form') as HTMLElement;
+const cashPaymentCheckbox = document.getElementById('cash-payment-checkbox') as HTMLInputElement | null;
 
 function setTicketActionButtons(enabled: boolean) {
     if (createItemBtn) {
@@ -308,7 +309,7 @@ function updateItemTable() {
     const allItems = [...ticket_items, ...unsynced_items];
     allItems.forEach((item, index) => {
         const subtotal = item.vendor_price * item.quantity;
-        const isEditing = editingItemIndex === index;
+        const isEditing = !ticketReadOnly && editingItemIndex === index;
         const row = document.createElement('tr');
 
         if (isEditing) {
@@ -349,8 +350,10 @@ function updateItemTable() {
             `;
         }
 
-        row.querySelector('[data-action="edit"]')?.addEventListener('click', () => toggleItemEditMode(index, row));
-        row.querySelector('[data-action="delete"]')?.addEventListener('click', () => removeItem(index));
+        if (!ticketReadOnly) {
+            row.querySelector('[data-action="edit"]')?.addEventListener('click', () => toggleItemEditMode(index, row));
+            row.querySelector('[data-action="delete"]')?.addEventListener('click', () => removeItem(index));
+        }
         if (isEditing) {
             bindDiscountCalculationInputs(row);
         }
@@ -793,7 +796,6 @@ async function searchTicket() {
         unsynced_items = [];
         ticketDirty = false;
         editingItemIndex = null;
-        updateItemTable();
         if (response.ticket?.ticket_status === 'closed') {
             setClosedTicketState(ticketId);
             showSuccessMessage(`Successfully retrieved CLOSED Ticket #${ticketId}.`);
@@ -801,6 +803,7 @@ async function searchTicket() {
             setActiveTicketState(ticketId);
             showSuccessMessage(`Ticket #${ticketId} loaded.`);
         }
+        updateItemTable();
     } catch (error: any) {
         if (error.response?.status === 404) {
             showErrorMessage(`Ticket #${ticketId} not found.`);
@@ -952,5 +955,5 @@ function createItemizedReceipt() {
     // Use localStorage for active tickets; fall back to the field value for closed tickets
     const ticketIdRaw = localStorage.getItem('currentTicketId') ?? ticketIdField?.value ?? '';
     const ticketLabel = /^\d+$/.test(ticketIdRaw) ? ` — Ticket #${escapeHtml(ticketIdRaw)}` : '';
-    openItemizedReceipt(true, allItems, ticketLabel);
+    openItemizedReceipt(cashPaymentCheckbox?.checked ?? false, allItems, ticketLabel);
 }
