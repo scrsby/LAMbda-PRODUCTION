@@ -85,7 +85,8 @@ const vendorPriceInput = document.getElementById('vendor-price') as HTMLInputEle
 const searchAndAddSection = document.getElementById('search-and-add') as HTMLDivElement | null;
 const posTopSection = document.querySelector('.pos-top-section') as HTMLElement | null;
 const taxExemptCheckbox = document.getElementById('tax-exempt-checkbox') as HTMLInputElement;
-const taxExemptForm = document.getElementById('tax-exempt-form') as HTMLElement;
+const taxExemptForm = document.getElementById('tax-exempt-form') as HTMLInputElement | null;
+const taxExemptFormLabel = document.getElementById('tax-exempt-form-label') as HTMLElement | null;
 const cashPaymentCheckbox = document.getElementById('cash-payment-checkbox') as HTMLInputElement | null;
 
 function setTicketActionButtons(enabled: boolean) {
@@ -95,6 +96,56 @@ function setTicketActionButtons(enabled: boolean) {
     if (checkoutBtn) {
         checkoutBtn.disabled = !enabled;
     }
+}
+
+function setTaxExemptUi(isChecked: boolean, businessName = '') {
+    taxExemptCheckbox.checked = isChecked;
+    if (taxExemptForm) {
+        taxExemptForm.style.display = isChecked ? '' : 'none';
+        taxExemptForm.value = isChecked ? businessName : '';
+    }
+    if (taxExemptFormLabel) {
+        taxExemptFormLabel.style.display = isChecked ? '' : 'none';
+    }
+}
+
+function setPaymentAndTaxControlsEnabled(enabled: boolean) {
+    taxExemptCheckbox.disabled = !enabled;
+    if (cashPaymentCheckbox) {
+        cashPaymentCheckbox.disabled = !enabled;
+    }
+
+    if (!enabled && taxExemptForm) {
+        taxExemptForm.disabled = true;
+        return;
+    }
+
+    if (taxExemptForm) {
+        taxExemptForm.disabled = !taxExemptCheckbox.checked;
+    }
+}
+
+function getTicketPaymentAndTaxDetails() {
+    return {
+        cashPayment: cashPaymentCheckbox?.checked ?? false,
+        taxExempt: taxExemptCheckbox.checked,
+        taxExemptBusinessName: taxExemptForm?.value.trim() ?? ''
+    };
+}
+
+function validateTaxExemptSelection() {
+    if (!taxExemptCheckbox.checked) {
+        return true;
+    }
+
+    const businessName = taxExemptForm?.value.trim() ?? '';
+    if (!businessName) {
+        showErrorMessage('Business name is required for tax exempt tickets.');
+        taxExemptForm?.focus();
+        return false;
+    }
+
+    return true;
 }
 
 function setActiveTicketState(ticketId: string) {
@@ -115,6 +166,7 @@ function setActiveTicketState(ticketId: string) {
     primaryOption = 'update';
     secondaryOption = 'clear';
     
+    setPaymentAndTaxControlsEnabled(true);
     setTicketActionButtons(true);
 }
 
@@ -130,12 +182,22 @@ function setIdleTicketState() {
     }
 
     searchAndAddSection!.style = 'opacity: 0.6; pointer-events: none;';
+
+    taxExemptCheckbox.checked = false;
+    cashPaymentCheckbox!.checked = true;
+
     if (posTopSection) posTopSection.style.cssText = '';
     primaryBtn!.textContent = 'Create New';
     secondaryBtn!.textContent = 'Search Ticket';
     primaryOption = 'create';
     secondaryOption = 'search';
 
+    setTaxExemptUi(false);
+    if (cashPaymentCheckbox) {
+        cashPaymentCheckbox.checked = true;
+    }
+
+    setPaymentAndTaxControlsEnabled(false);
     setTicketActionButtons(false);
 }
 
@@ -159,6 +221,7 @@ function setClosedTicketState(ticketId: string) {
     primaryOption = 'create';
     secondaryOption = 'search';
 
+    setPaymentAndTaxControlsEnabled(false);
     setTicketActionButtons(false);
 }
 
@@ -235,13 +298,26 @@ itemNameInput?.addEventListener('input', () => {
 });
 
 taxExemptCheckbox.addEventListener('change', function() {
-    console.log("Checkbox change event")
     if (this.checked) {
-        taxExemptForm.style.display = 'block';
-    } else {
+        if (taxExemptForm) {
+            taxExemptForm.style.display = '';
+            taxExemptForm.disabled = false;
+            taxExemptForm.focus();
+        }
+        if (taxExemptFormLabel) {
+            taxExemptFormLabel.style.display = '';
+        }
+    } else if (taxExemptForm) {
         taxExemptForm.style.display = 'none';
+        taxExemptForm.disabled = true;
+        taxExemptForm.value = '';
+        if (taxExemptFormLabel) {
+            taxExemptFormLabel.style.display = 'none';
+        }
+    } else if (taxExemptFormLabel) {
+        taxExemptFormLabel.style.display = 'none';
     }
-})
+});
 
 setIdleTicketState();
 renderSearchResultsMessage('Type at least 4 characters in Description to search inventory.');
@@ -279,13 +355,18 @@ async function updateTicket(): Promise<boolean> {
         showErrorMessage('No active ticket to update.');
         return false;
     }
+    if (!validateTaxExemptSelection()) {
+        return false;
+    }
+    const ticketPaymentAndTaxDetails = getTicketPaymentAndTaxDetails();
     try {
         const response = await apiAxios('/POS/update-ticket', {
             method: 'POST',
             data: {
                 ticketId,
                 ticket_items,
-                unsynced_items
+                unsynced_items,
+                ...ticketPaymentAndTaxDetails
             }
         });
         ticket_items = [...ticket_items, ...(response.insertedItems as TicketItem[])];
@@ -796,6 +877,14 @@ async function searchTicket() {
         unsynced_items = [];
         ticketDirty = false;
         editingItemIndex = null;
+        const isTaxExempt = response.ticket?.tax_exempt === true;
+        const taxExemptBusinessName = typeof response.ticket?.tax_exempt_business_name === 'string'
+            ? response.ticket.tax_exempt_business_name
+            : '';
+        setTaxExemptUi(isTaxExempt, taxExemptBusinessName);
+        if (cashPaymentCheckbox) {
+            cashPaymentCheckbox.checked = response.ticket?.cash_payment === true;
+        }
         if (response.ticket?.ticket_status === 'closed') {
             setClosedTicketState(ticketId);
             showSuccessMessage(`Successfully retrieved CLOSED Ticket #${ticketId}.`);
@@ -864,6 +953,7 @@ async function closeTicket() {
         showErrorMessage('No active ticket to close.');
         return;
     }
+    const ticketPaymentAndTaxDetails = getTicketPaymentAndTaxDetails();
 
     if (markPaidBtn) markPaidBtn.disabled = true;
 
@@ -878,7 +968,7 @@ async function closeTicket() {
     try {
         await apiAxios('/POS/close-ticket', {
             method: 'POST',
-            data: { ticketId }
+            data: { ticketId, ...ticketPaymentAndTaxDetails }
         });
         closeCheckoutModal();
         ticket_items = [];
@@ -895,6 +985,9 @@ async function closeTicket() {
 }
 
 checkoutBtn?.addEventListener('click', () => {
+    if (!validateTaxExemptSelection()) {
+        return;
+    }
     openCheckoutModal();
 });
 
