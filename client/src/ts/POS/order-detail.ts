@@ -242,7 +242,7 @@ async function generateOrderReceipt(ticketId: string, button: HTMLButtonElement)
     try {
         const response = await apiAxios(`/POS/ticket/${ticketId}`, { method: 'GET' });
         const items = (response.items ?? []) as ReceiptTicketItem[];
-        const cashPayment = response.ticket?.cash_payment === true;
+        const cashPayment = activeTicket?.cash_payment === true;
         openItemizedReceipt(cashPayment, items, ` — Ticket #${ticketId}`);
     } catch (error) {
         console.error('Error fetching ticket for receipt:', error);
