@@ -199,6 +199,7 @@ async function generateReport() {
 
         ticketDetails.forEach(detail => {
             let ticketSubtotal = 0;
+            let ticketCommission = 0;
             (detail.items ?? []).forEach(item => {
                 const quantityRaw = Number(item.quantity ?? 1);
                 const hasInvalidQuantity = !Number.isFinite(quantityRaw) || quantityRaw <= 0;
@@ -206,15 +207,16 @@ async function generateReport() {
                 if (hasInvalidQuantity) {
                     console.warn('Invalid ticket item quantity. Defaulting to 1.', { item });
                 }
-                const itemPrice = Number(item.vendor_price ?? 0) * quantity;
-                const discount = Number(item.discount_amount ?? 0);
+                const itemPrice = roundCurrency(Number(item.vendor_price ?? 0) * quantity);
+                const discount = roundCurrency(Number(item.discount_amount ?? 0));
                 const providedFinalPrice = Number(item.final_price);
-                const finalPrice = Number.isFinite(providedFinalPrice)
+                const finalPrice = roundCurrency(Number.isFinite(providedFinalPrice)
                     ? providedFinalPrice
-                    : itemPrice - discount;
-                const commission = finalPrice * COMMISSION_RATE;
-                const payout = finalPrice - commission;
-                ticketSubtotal += finalPrice;
+                    : itemPrice - discount);
+                const commission = roundCurrency(finalPrice * COMMISSION_RATE);
+                const payout = roundCurrency(finalPrice - commission);
+                ticketSubtotal = roundCurrency(ticketSubtotal + finalPrice);
+                ticketCommission = roundCurrency(ticketCommission + commission);
 
                 reportItems.push({
                     vendorId: normalizeVendorId(item.vendor_id),
@@ -232,11 +234,11 @@ async function generateReport() {
                 cashPayment: detail.ticket?.cash_payment === true,
                 taxExempt: detail.ticket?.tax_exempt === true
             });
-            subtotal += ticketSummary.subtotal;
-            totalTaxCollected += ticketSummary.taxCollected;
-            totalFeesCollected += ticketSummary.feesCollected;
-            totalCollected += ticketSummary.totalCollected;
-            totalCommission += ticketSummary.totalCommission;
+            subtotal = roundCurrency(subtotal + ticketSummary.subtotal);
+            totalTaxCollected = roundCurrency(totalTaxCollected + ticketSummary.taxCollected);
+            totalFeesCollected = roundCurrency(totalFeesCollected + ticketSummary.feesCollected);
+            totalCollected = roundCurrency(totalCollected + ticketSummary.totalCollected);
+            totalCommission = roundCurrency(totalCommission + ticketCommission);
         });
 
         if (reportItems.length === 0) {
