@@ -184,7 +184,7 @@
                         </div>
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                             <button type="button" class="btn btn-secondary-danger" id="delete-ticket-btn" style="display:none;">Delete Ticket</button>
-                            <button type="button" class="btn btn-secondary" id="generate-receipt-btn">Receipt</button>
+                            <button type="button" class="btn btn-secondary" id="generate-receipt-btn" style="display:none;">Receipt</button>
                             <a href="orders.html" class="btn btn-secondary">Back to Orders</a>
                         </div>
                     </div>
@@ -215,6 +215,10 @@
                         <div class="ticket-detail-field">
                             <span class="ticket-detail-label">Total</span>
                             <span class="ticket-detail-value" id="detail-total">-</span>
+                        </div>
+                        <div class="ticket-detail-field" id="detail-payment-type-field" style="display:none;">
+                            <span class="ticket-detail-label">Payment Type</span>
+                            <span class="ticket-detail-value" id="detail-payment-type">-</span>
                         </div>
                     </div>
                 </div>
