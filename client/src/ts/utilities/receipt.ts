@@ -29,8 +29,9 @@ export function roundCurrency(value: number): number {
 
 export function calculateReceiptSummary(subtotal: number, options: { cashPayment: boolean; taxExempt: boolean }): ReceiptSummary {
     const normalizedSubtotal = roundCurrency(subtotal);
-    const taxCollected = options.taxExempt ? 0 : roundCurrency(normalizedSubtotal * TAX_RATE);
     const feesCollected = options.cashPayment ? 0 : roundCurrency(normalizedSubtotal * CREDIT_CARD_FEE_RATE);
+    const taxableSubtotal = roundCurrency(normalizedSubtotal + feesCollected);
+    const taxCollected = options.taxExempt ? 0 : roundCurrency(taxableSubtotal * TAX_RATE);
     const totalCollected = roundCurrency(normalizedSubtotal + taxCollected + feesCollected);
     const totalCollectedCash = options.cashPayment ? totalCollected : 0;
     const totalCollectedRegister = options.cashPayment ? 0 : totalCollected;
