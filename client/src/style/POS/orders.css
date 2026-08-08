@@ -286,6 +286,38 @@ table.dataTable tbody td {
     font-weight: 600;
 }
 
+.ticket-status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.ticket-status-pill--open {
+    background: #16a34a;
+    color: #ffffff;
+}
+
+.ticket-status-pill--closed {
+    background: #dc2626;
+    color: #ffffff;
+}
+
+.ticket-status-pill--refunded {
+    background: #facc15;
+    color: #111827;
+}
+
+.ticket-status-pill--default {
+    background: var(--border-color);
+    color: var(--text);
+}
+
 .ticket-items-scroll {
     overflow-x: auto;
 }

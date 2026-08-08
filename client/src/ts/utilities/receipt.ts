@@ -102,11 +102,7 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
     const rows: string[] = [];
 
     Array.from(groupedByVendor.entries()).forEach(([vendorId, vendorItems]) => {
-        let vendorFinalTotal = 0;
-
         vendorItems.forEach(item => {
-            vendorFinalTotal += item.finalPrice;
-
             rows.push(`
                 <tr>
                     <td>${escapeHtml(vendorId)}</td>
@@ -121,15 +117,14 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
         });
 
         rows.push(`
-            <tr class="vendor-total-row">
-                <td colspan="${rowColSpan}"></td>
-                <td><strong>${formatCurrency(vendorFinalTotal)}</strong></td>
-            </tr>
             <tr><td colspan="${totalColSpan}" style="height: 0.25in;"></td></tr>
         `);
     });
 
-    const grandTotal = receiptItems.reduce((sum, item) => sum + item.finalPrice, 0);
+    const TAX_RATE = 0.0935;
+    const subtotal = roundCurrency(receiptItems.reduce((sum, item) => sum + item.finalPrice, 0));
+    const tax = roundCurrency(subtotal * TAX_RATE);
+    const grandTotal = roundCurrency(subtotal + tax);
     const generatedAt = new Date().toLocaleString();
     const logoUrl = '../../assets/logo.svg';
 
@@ -264,6 +259,14 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
                         ${rows.join('')}
                     </tbody>
                     <tfoot>
+                        <tr>
+                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Subtotal:</strong></td>
+                            <td><strong>${formatCurrency(subtotal)}</strong></td>
+                        </tr>
+                        <tr>
+                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Tax:</strong></td>
+                            <td><strong>${formatCurrency(tax)}</strong></td>
+                        </tr>
                         <tr class="grand-total-row">
                             <td colspan="${rowColSpan}" style="text-align: right;"><strong>Total:</strong></td>
                             <td><strong>${formatCurrency(grandTotal)}</strong></td>

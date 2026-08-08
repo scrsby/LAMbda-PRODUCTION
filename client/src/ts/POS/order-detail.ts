@@ -96,8 +96,7 @@ function renderTicketSummary(ticket: TicketDetail) {
     setText('detail-ticket-id', String(ticket.ticket_id));
     setText('detail-created-at', formatDateTime(ticket.created_at));
     setText('detail-employee', ticket.employee_name);
-    setText('detail-cashier-id', String(ticket.cashier_id));
-    setText('detail-status', ticket.ticket_status);
+    setStatusPill('detail-status', ticket.ticket_status);
     setText('detail-total', `$${Number(ticket.total ?? 0).toFixed(2)}`);
     setText('detail-payment-type', ticket.cash_payment ? 'Cash' : 'Card');
     updateClosedTicketControls();
@@ -211,6 +210,30 @@ function setText(elementId: string, value: string) {
     if (element) {
         element.textContent = value;
     }
+}
+
+function setStatusPill(elementId: string, status: string) {
+    const element = document.getElementById(elementId);
+    if (!element) {
+        return;
+    }
+
+    const normalizedStatus = String(status ?? '').trim().toLowerCase();
+    let statusClass = 'ticket-status-pill--default';
+    let statusText = status || 'Unknown';
+
+    if (normalizedStatus === 'open') {
+        statusClass = 'ticket-status-pill--open';
+        statusText = 'Open';
+    } else if (normalizedStatus === 'closed') {
+        statusClass = 'ticket-status-pill--closed';
+        statusText = 'Closed';
+    } else if (normalizedStatus === 'refunded') {
+        statusClass = 'ticket-status-pill--refunded';
+        statusText = 'Refunded';
+    }
+
+    element.innerHTML = `<span class="ticket-status-pill ${statusClass}">${statusText}</span>`;
 }
 
 function formatDateTime(value: string) {
