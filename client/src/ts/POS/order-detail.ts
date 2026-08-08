@@ -8,6 +8,7 @@ interface TicketDetail {
     created_at: string;
     ticket_status: string;
     total: number;
+    cash_payment: boolean;
     employee_name: string;
 }
 
@@ -98,6 +99,8 @@ function renderTicketSummary(ticket: TicketDetail) {
     setText('detail-cashier-id', String(ticket.cashier_id));
     setText('detail-status', ticket.ticket_status);
     setText('detail-total', `$${Number(ticket.total ?? 0).toFixed(2)}`);
+    setText('detail-payment-type', ticket.cash_payment ? 'Cash' : 'Card');
+    updateClosedTicketControls();
     updateDeleteTicketButton();
 }
 
@@ -174,6 +177,21 @@ function updateDeleteTicketButton() {
     deleteTicketButton.textContent = 'Delete Ticket';
 }
 
+function updateClosedTicketControls() {
+    const isClosed = activeTicket?.ticket_status === 'closed';
+    const paymentTypeField = document.getElementById('detail-payment-type-field');
+
+    if (paymentTypeField) {
+        paymentTypeField.style.display = isClosed ? '' : 'none';
+    }
+
+    if (generateReceiptButton) {
+        generateReceiptButton.style.display = isClosed ? '' : 'none';
+        generateReceiptButton.disabled = false;
+        generateReceiptButton.textContent = 'Receipt';
+    }
+}
+
 function showOrderError(message: string) {
     const errorMessage = document.getElementById('order-detail-error');
     const content = document.getElementById('order-detail-content');
@@ -214,12 +232,17 @@ function showAdminControls() {
 
 
 async function generateOrderReceipt(ticketId: string, button: HTMLButtonElement): Promise<void> {
+    if (activeTicket?.ticket_status !== 'closed') {
+        window.alert('Receipts are only available for closed tickets.');
+        return;
+    }
+
     button.disabled = true;
     button.textContent = 'Loading...';
     try {
         const response = await apiAxios(`/POS/ticket/${ticketId}`, { method: 'GET' });
         const items = (response.items ?? []) as ReceiptTicketItem[];
-        const cashPayment = window.confirm('Click OK to generate a cash receipt with no card charge.\nClick Cancel to include the 4% card charge.');
+        const cashPayment = activeTicket?.cash_payment === true;
         openItemizedReceipt(cashPayment, items, ` — Ticket #${ticketId}`);
     } catch (error) {
         console.error('Error fetching ticket for receipt:', error);
