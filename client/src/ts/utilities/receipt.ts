@@ -27,15 +27,6 @@ export function normalizeVendorId(value: number | string | null | undefined): st
     return normalized === '' ? UNKNOWN_VENDOR_ID : normalized;
 }
 
-/*  OPEN ITEMIZED RECEIPT
- * Generates a printable HTML receipt in a new tab from the provided ticket items.
- * Items are sorted and grouped by vendor ID; per-vendor subtotals and a grand total
- * footer are included.
- * Params:
- *   items       — array of ticket items
- *   ticketLabel — label string appended to the receipt title (e.g. " — Ticket #42");
- *                 pass an empty string for no label
- */
 export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketItem[], ticketLabel: string): void {
     if (items.length === 0) {
         alert('No items to generate a receipt.');
@@ -47,6 +38,7 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
         vendorInventoryId: string;
         itemName: string;
         itemPrice: number;
+        cashDiscount: number;
         discount: number;
         finalPrice: number;
     };
@@ -63,19 +55,20 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
         if (hasInvalidQuantity) {
             console.warn('Invalid ticket item quantity. Defaulting to 1.', { item });
         }
+
         const baseItemPrice = Number(item.vendor_price ?? 0) * quantity;
         const baseDiscount = Number(item.discount_amount ?? 0);
-        const displayedFinalPrice = Number(item.final_price ?? baseItemPrice - baseDiscount);
-        const chargeMultiplier = cashPayment ? 1 : 1.04;
-        const itemPrice = roundCurrency(baseItemPrice * chargeMultiplier);
-        const discount = roundCurrency(baseDiscount * chargeMultiplier);
-        const finalPrice = roundCurrency(displayedFinalPrice * chargeMultiplier);
+        const itemPrice = roundCurrency(baseItemPrice * 1.04);
+        const cashDiscount = cashPayment ? itemPrice - baseItemPrice : 0;
+        const discount = roundCurrency(cashPayment ? baseDiscount : baseDiscount * 1.04 );
+        const finalPrice = roundCurrency(itemPrice - cashDiscount - discount);
 
         return {
             vendorId: normalizeVendorId(item.vendor_id),
             vendorInventoryId: String(item.vendor_inventory_id ?? ''),
             itemName: String(item.name ?? ''),
             itemPrice,
+            cashDiscount,
             discount,
             finalPrice
         };
@@ -99,6 +92,12 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
     });
 
     const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
+    const hasCashDiscountColumn = cashPayment;
+    const rowColSpan = hasCashDiscountColumn ? 6 : 5;
+    const totalColSpan = hasCashDiscountColumn ? 7 : 6;
+    const columnWidths = hasCashDiscountColumn
+        ? ['8%', '14%', '32%', '11%', '11%', '12%', '12%']
+        : ['8%', '14%', '40%', '12%', '12%', '14%'];
 
     const rows: string[] = [];
 
@@ -113,7 +112,8 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
                     <td>${escapeHtml(vendorId)}</td>
                     <td>${escapeHtml(item.vendorInventoryId)}</td>
                     <td>${escapeHtml(item.itemName)}</td>
-                    <td>${formatCurrency(item.finalPrice)}</td>
+                    <td>${formatCurrency(item.itemPrice)}</td>
+                    ${hasCashDiscountColumn ? `<td class="money-column">${formatCurrency(item.cashDiscount)}</td>` : ''}
                     <td>${formatCurrency(item.discount)}</td>
                     <td>${formatCurrency(item.finalPrice)}</td>
                 </tr>
@@ -122,15 +122,16 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
 
         rows.push(`
             <tr class="vendor-total-row">
-                <td colspan="5"></td>
+                <td colspan="${rowColSpan}"></td>
                 <td><strong>${formatCurrency(vendorFinalTotal)}</strong></td>
             </tr>
-            <tr><td colspan="6" style="height: 0.25in;"></td></tr>
+            <tr><td colspan="${totalColSpan}" style="height: 0.25in;"></td></tr>
         `);
     });
 
     const grandTotal = receiptItems.reduce((sum, item) => sum + item.finalPrice, 0);
     const generatedAt = new Date().toLocaleString();
+    const logoUrl = '../../assets/logo.svg';
 
     const receiptHtml = `
         <!DOCTYPE html>
@@ -138,6 +139,7 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <base href="${escapeHtml(window.location.href)}">
             <title>Itemized Receipt</title>
             <style>
                 body {
@@ -152,6 +154,24 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
                     max-width: 8.5in;
                     margin: 0 auto;
                 }
+                .receipt-header {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                    margin-bottom: 0.2in;
+                }
+                .receipt-header img {
+                    width: 42%;
+                    max-width: 260px;
+                    height: auto;
+                    object-fit: contain;
+                }
+                .receipt-header-meta {
+                    flex: 1;
+                    text-align: right;
+                }
                 h1 {
                     margin: 0 0 0.125in;
                     font-size: 1.3rem;
@@ -165,24 +185,24 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
                     width: 100%;
                     border-collapse: collapse;
                     table-layout: fixed;
-                    border: none;
+                    border: solid;
                     background: transparent;
                 }
+                th {
+                    border: solid;
+                }
                 th, td {
-                    border: none;
-                    background: transparent;
                     padding: 6px 8px;
                     text-align: left;
                     font-size: 0.82rem;
                     vertical-align: top;
                     word-break: break-word;
                 }
-                th:nth-child(4),
-                th:nth-child(5),
-                th:nth-child(6),
-                td:nth-child(4),
-                td:nth-child(5),
-                td:nth-child(6) {
+                tbody tr:nth-child(odd) {
+                    background: lightgray;
+                }
+                th.money-column,
+                td.money-column {
                     padding-left: 4px;
                     padding-right: 4px;
                     white-space: nowrap;
@@ -192,6 +212,21 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
                     padding-top: 0.15in;
                 }
                 @media print {
+                    html,
+                    body,
+                    table,
+                    th,
+                    td,
+                    tr {
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    tbody tr:nth-child(odd) {
+                        background: #bfbfbf !important;
+                    }
+                    .receipt-header img {
+                        filter: grayscale(100%);
+                    }
                     body {
                         padding: 0.1in;
                     }
@@ -203,25 +238,26 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
         </head>
         <body>
             <div class="report-container">
-                <h1>Receipt</h1>
-                <p>${escapeHtml(generatedAt)}</p>
+                <div class="receipt-header">
+                    <img src="${escapeHtml(logoUrl)}" alt="LAMbda logo">
+                    <div class="receipt-header-meta">
+                        <h1>Receipt</h1>
+                        <p>${escapeHtml(generatedAt)}</p>
+                    </div>
+                </div>
                 <table>
                     <colgroup>
-                        <col style="width: 8%;">
-                        <col style="width: 14%;">
-                        <col style="width: 40%;">
-                        <col style="width: 12%;">
-                        <col style="width: 12%;">
-                        <col style="width: 14%;">
+                        ${columnWidths.map(width => `<col style="width: ${width};">`).join('')}
                     </colgroup>
                     <thead>
                         <tr>
                             <th style="white-space: nowrap">Vendor</th>
                             <th>Inventory ID</th>
                             <th>Item</th>
-                            <th>Price</th>
-                            <th>Merchant Disc.</th>
-                            <th>Final Price</th>
+                            <th class="money-column">Price</th>
+                            ${hasCashDiscountColumn ? '<th class="money-column">Cash Disc.</th>' : ''}
+                            <th class="money-column">Disc.</th>
+                            <th class="money-column">Final Price</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -229,7 +265,7 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
                     </tbody>
                     <tfoot>
                         <tr class="grand-total-row">
-                            <td colspan="5" style="text-align: right;"><strong>Total:</strong></td>
+                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Total:</strong></td>
                             <td><strong>${formatCurrency(grandTotal)}</strong></td>
                         </tr>
                     </tfoot>

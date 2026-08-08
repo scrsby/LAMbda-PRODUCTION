@@ -27,7 +27,7 @@ interface TicketItem {
 }
 
 const deleteTicketButton = document.getElementById('delete-ticket-btn') as HTMLButtonElement | null;
-const generateReceiptButton = document.getElementById('generate-receipt-btn') as HTMLButtonElement | null
+const generateReceiptButton = document.getElementById('generate-receipt-btn') as HTMLButtonElement | null;
 let activeTicket: TicketDetail | null = null;
 let isAdminUser = false;
 
@@ -67,6 +67,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     updateProfileCard(user);
     deleteTicketButton?.addEventListener('click', handleDeleteTicket);
+    generateReceiptButton?.addEventListener('click', () => {
+        void generateOrderReceipt(ticketId, generateReceiptButton);
+    });
     await loadOrderDetail(ticketId);
 });
 
@@ -226,13 +229,3 @@ async function generateOrderReceipt(ticketId: string, button: HTMLButtonElement)
         button.textContent = 'Receipt';
     }
 }
-
-// Event delegation for receipt buttons (survives innerHTML re-renders on the tbody)
-generateReceiptButton?.addEventListener('click', (event) => {
-    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-ticket-id]');
-    if (!button) return;
-    const ticketId = button.getAttribute('data-ticket-id');
-    if (ticketId) {
-        void generateOrderReceipt(ticketId, button);
-    }
-});
