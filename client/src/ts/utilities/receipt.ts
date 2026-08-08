@@ -64,12 +64,7 @@ export function normalizeVendorId(value: number | string | null | undefined): st
     return normalized === '' ? UNKNOWN_VENDOR_ID : normalized;
 }
 
-export function openItemizedReceipt(
-    cashPayment: boolean,
-    taxExempt: boolean,
-    items: ReceiptTicketItem[],
-    ticketLabel: string
-): void {
+export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketItem[], ticketLabel: string): void {
     if (items.length === 0) {
         alert('No items to generate a receipt.');
         return;
@@ -80,6 +75,7 @@ export function openItemizedReceipt(
         vendorInventoryId: string;
         itemName: string;
         itemPrice: number;
+        cashDiscount: number;
         discount: number;
         finalPrice: number;
     };
@@ -92,18 +88,19 @@ export function openItemizedReceipt(
             console.warn('Invalid ticket item quantity. Defaulting to 1.', { item });
         }
 
-        const itemPrice = roundCurrency(Number(item.vendor_price ?? 0) * quantity);
-        const discount = roundCurrency(Number(item.discount_amount ?? 0));
-        const providedFinalPrice = Number(item.final_price);
-        const finalPrice = Number.isFinite(providedFinalPrice)
-            ? roundCurrency(providedFinalPrice)
-            : roundCurrency(itemPrice - discount);
+        const baseItemPrice = Number(item.vendor_price ?? 0) * quantity;
+        const baseDiscount = Number(item.discount_amount ?? 0);
+        const itemPrice = roundCurrency(baseItemPrice * 1.04);
+        const cashDiscount = cashPayment ? itemPrice - baseItemPrice : 0;
+        const discount = roundCurrency(cashPayment ? baseDiscount : baseDiscount * 1.04);
+        const finalPrice = roundCurrency(itemPrice - cashDiscount - discount);
 
         return {
             vendorId: normalizeVendorId(item.vendor_id),
             vendorInventoryId: String(item.vendor_inventory_id ?? ''),
             itemName: String(item.name ?? ''),
             itemPrice,
+            cashDiscount,
             discount,
             finalPrice
         };
@@ -127,9 +124,12 @@ export function openItemizedReceipt(
     });
 
     const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
-    const rowColSpan = 5;
-    const totalColSpan = 6;
-    const columnWidths = ['8%', '14%', '40%', '12%', '12%', '14%'];
+    const hasCashDiscountColumn = cashPayment;
+    const rowColSpan = hasCashDiscountColumn ? 6 : 5;
+    const totalColSpan = hasCashDiscountColumn ? 7 : 6;
+    const columnWidths = hasCashDiscountColumn
+        ? ['8%', '14%', '32%', '11%', '11%', '12%', '12%']
+        : ['8%', '14%', '40%', '12%', '12%', '14%'];
 
     const rows: string[] = [];
 
@@ -141,6 +141,7 @@ export function openItemizedReceipt(
                     <td>${escapeHtml(item.vendorInventoryId)}</td>
                     <td>${escapeHtml(item.itemName)}</td>
                     <td>${formatCurrency(item.itemPrice)}</td>
+                    ${hasCashDiscountColumn ? `<td class="money-column">${formatCurrency(item.cashDiscount)}</td>` : ''}
                     <td>${formatCurrency(item.discount)}</td>
                     <td>${formatCurrency(item.finalPrice)}</td>
                 </tr>
@@ -152,10 +153,9 @@ export function openItemizedReceipt(
         `);
     });
 
-    const summary = calculateReceiptSummary(
-        receiptItems.reduce((sum, item) => sum + item.finalPrice, 0),
-        { cashPayment, taxExempt }
-    );
+    const subtotal = roundCurrency(receiptItems.reduce((sum, item) => sum + item.finalPrice, 0));
+    const tax = roundCurrency(subtotal * TAX_RATE);
+    const grandTotal = roundCurrency(subtotal + tax);
     const generatedAt = new Date().toLocaleString();
     const logoUrl = '../../assets/logo.svg';
 
@@ -281,6 +281,7 @@ export function openItemizedReceipt(
                             <th>Inventory ID</th>
                             <th>Item</th>
                             <th class="money-column">Price</th>
+                            ${hasCashDiscountColumn ? '<th class="money-column">Cash Disc.</th>' : ''}
                             <th class="money-column">Disc.</th>
                             <th class="money-column">Final Price</th>
                         </tr>
@@ -291,31 +292,15 @@ export function openItemizedReceipt(
                     <tfoot>
                         <tr>
                             <td colspan="${rowColSpan}" style="text-align: right;"><strong>Subtotal:</strong></td>
-                            <td><strong>${formatCurrency(summary.subtotal)}</strong></td>
+                            <td><strong>${formatCurrency(subtotal)}</strong></td>
                         </tr>
                         <tr>
-                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Tax Collected:</strong></td>
-                            <td><strong>${formatCurrency(summary.taxCollected)}</strong></td>
-                        </tr>
-                        <tr>
-                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Fees Collected:</strong></td>
-                            <td><strong>${formatCurrency(summary.feesCollected)}</strong></td>
-                        </tr>
-                        <tr>
-                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Total Commission:</strong></td>
-                            <td><strong>${formatCurrency(summary.totalCommission)}</strong></td>
+                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Tax:</strong></td>
+                            <td><strong>${formatCurrency(tax)}</strong></td>
                         </tr>
                         <tr class="grand-total-row">
-                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Total Collected (Cash):</strong></td>
-                            <td><strong>${formatCurrency(summary.totalCollectedCash)}</strong></td>
-                        </tr>
-                        <tr class="grand-total-row">
-                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Total Collected (Register):</strong></td>
-                            <td><strong>${formatCurrency(summary.totalCollectedRegister)}</strong></td>
-                        </tr>
-                        <tr class="grand-total-row">
-                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Total Collected:</strong></td>
-                            <td><strong>${formatCurrency(summary.totalCollected)}</strong></td>
+                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Total:</strong></td>
+                            <td><strong>${formatCurrency(grandTotal)}</strong></td>
                         </tr>
                     </tfoot>
                 </table>
