@@ -17,6 +17,8 @@ export interface ReceiptSummary {
     subtotal: number;
     taxCollected: number;
     feesCollected: number;
+    totalCollectedCash: number;
+    totalCollectedRegister: number;
     totalCollected: number;
     totalCommission: number;
 }
@@ -30,12 +32,16 @@ export function calculateReceiptSummary(subtotal: number, options: { cashPayment
     const taxCollected = options.taxExempt ? 0 : roundCurrency(normalizedSubtotal * TAX_RATE);
     const feesCollected = options.cashPayment ? 0 : roundCurrency(normalizedSubtotal * CREDIT_CARD_FEE_RATE);
     const totalCollected = roundCurrency(normalizedSubtotal + taxCollected + feesCollected);
+    const totalCollectedCash = options.cashPayment ? totalCollected : 0;
+    const totalCollectedRegister = options.cashPayment ? 0 : totalCollected;
     const totalCommission = roundCurrency(normalizedSubtotal * COMMISSION_RATE);
 
     return {
         subtotal: normalizedSubtotal,
         taxCollected,
         feesCollected,
+        totalCollectedCash,
+        totalCollectedRegister,
         totalCollected,
         totalCommission
     };
@@ -298,6 +304,14 @@ export function openItemizedReceipt(
                         <tr>
                             <td colspan="${rowColSpan}" style="text-align: right;"><strong>Total Commission:</strong></td>
                             <td><strong>${formatCurrency(summary.totalCommission)}</strong></td>
+                        </tr>
+                        <tr class="grand-total-row">
+                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Total Collected (Cash):</strong></td>
+                            <td><strong>${formatCurrency(summary.totalCollectedCash)}</strong></td>
+                        </tr>
+                        <tr class="grand-total-row">
+                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Total Collected (Register):</strong></td>
+                            <td><strong>${formatCurrency(summary.totalCollectedRegister)}</strong></td>
                         </tr>
                         <tr class="grand-total-row">
                             <td colspan="${rowColSpan}" style="text-align: right;"><strong>Total Collected:</strong></td>

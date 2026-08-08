@@ -193,6 +193,8 @@ async function generateReport() {
         const reportItems: ReportItem[] = [];
         let totalTaxCollected = 0;
         let totalFeesCollected = 0;
+        let totalCollectedCash = 0;
+        let totalCollectedRegister = 0;
         let totalCollected = 0;
         let totalCommission = 0;
         let subtotal = 0;
@@ -237,6 +239,8 @@ async function generateReport() {
             subtotal = roundCurrency(subtotal + ticketSummary.subtotal);
             totalTaxCollected = roundCurrency(totalTaxCollected + ticketSummary.taxCollected);
             totalFeesCollected = roundCurrency(totalFeesCollected + ticketSummary.feesCollected);
+            totalCollectedCash = roundCurrency(totalCollectedCash + ticketSummary.totalCollectedCash);
+            totalCollectedRegister = roundCurrency(totalCollectedRegister + ticketSummary.totalCollectedRegister);
             totalCollected = roundCurrency(totalCollected + ticketSummary.totalCollected);
             totalCommission = roundCurrency(totalCommission + ticketCommission);
         });
@@ -421,6 +425,14 @@ async function generateReport() {
                                 <tr>
                                     <td colspan="7" style="text-align: right;"><strong>Total Commission:</strong></td>
                                     <td><strong>${formatCurrency(roundCurrency(totalCommission))}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="7" style="text-align: right;"><strong>Total Collected (Cash):</strong></td>
+                                    <td><strong>${formatCurrency(roundCurrency(totalCollectedCash))}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="7" style="text-align: right;"><strong>Total Collected (Register):</strong></td>
+                                    <td><strong>${formatCurrency(roundCurrency(totalCollectedRegister))}</strong></td>
                                 </tr>
                                 <tr>
                                     <td colspan="7" style="text-align: right;"><strong>Total Collected:</strong></td>
