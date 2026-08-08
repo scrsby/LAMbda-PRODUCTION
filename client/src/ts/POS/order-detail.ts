@@ -9,6 +9,7 @@ interface TicketDetail {
     ticket_status: string;
     total: number;
     cash_payment: boolean;
+    tax_exempt: boolean;
     employee_name: string;
 }
 
@@ -266,7 +267,8 @@ async function generateOrderReceipt(ticketId: string, button: HTMLButtonElement)
         const response = await apiAxios(`/POS/ticket/${ticketId}`, { method: 'GET' });
         const items = (response.items ?? []) as ReceiptTicketItem[];
         const cashPayment = activeTicket?.cash_payment === true;
-        openItemizedReceipt(cashPayment, items, ` — Ticket #${ticketId}`);
+        const taxExempt = activeTicket?.tax_exempt === true;
+        openItemizedReceipt(cashPayment, taxExempt, items, ` — Ticket #${ticketId}`);
     } catch (error) {
         console.error('Error fetching ticket for receipt:', error);
         alert('Unable to generate receipt. Please try again.');
