@@ -27,10 +27,16 @@ export function roundCurrency(value: number): number {
     return Math.round(value * 100) / 100;
 }
 
-export function calculateReceiptSummary(subtotal: number, options: { cashPayment: boolean; taxExempt: boolean }): ReceiptSummary {
+function calculateSummary(
+    subtotal: number,
+    options: { cashPayment: boolean; taxExempt: boolean },
+    includeFeesInTaxBase: boolean
+): ReceiptSummary {
     const normalizedSubtotal = roundCurrency(subtotal);
     const feesCollected = options.cashPayment ? 0 : roundCurrency(normalizedSubtotal * CREDIT_CARD_FEE_RATE);
-    const taxableSubtotal = roundCurrency(normalizedSubtotal + feesCollected);
+    const taxableSubtotal = includeFeesInTaxBase
+        ? roundCurrency(normalizedSubtotal + feesCollected)
+        : normalizedSubtotal;
     const taxCollected = options.taxExempt ? 0 : roundCurrency(taxableSubtotal * TAX_RATE);
     const totalCollected = roundCurrency(normalizedSubtotal + taxCollected + feesCollected);
     const totalCollectedCash = options.cashPayment ? totalCollected : 0;
@@ -46,6 +52,14 @@ export function calculateReceiptSummary(subtotal: number, options: { cashPayment
         totalCollected,
         totalCommission
     };
+}
+
+export function calculateReceiptSummary(subtotal: number, options: { cashPayment: boolean; taxExempt: boolean }): ReceiptSummary {
+    return calculateSummary(subtotal, options, false);
+}
+
+export function calculateSalesReportSummary(subtotal: number, options: { cashPayment: boolean; taxExempt: boolean }): ReceiptSummary {
+    return calculateSummary(subtotal, options, true);
 }
 
 export function escapeHtml(value: string): string {

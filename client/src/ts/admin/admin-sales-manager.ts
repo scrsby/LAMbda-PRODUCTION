@@ -1,5 +1,5 @@
 import { apiAxios, requireAuth, logout } from '../utilities/api.js';
-import { calculateReceiptSummary, escapeHtml, normalizeVendorId, COMMISSION_RATE, roundCurrency } from '../utilities/receipt.js';
+import { calculateSalesReportSummary, escapeHtml, normalizeVendorId, COMMISSION_RATE, roundCurrency } from '../utilities/receipt.js';
 import { updateProfileCard } from '../utilities/ui.js';
 
 declare global {
@@ -232,7 +232,7 @@ async function generateReport() {
                 });
             });
 
-            const ticketSummary = calculateReceiptSummary(ticketSubtotal, {
+            const ticketSummary = calculateSalesReportSummary(ticketSubtotal, {
                 cashPayment: detail.ticket?.cash_payment === true,
                 taxExempt: detail.ticket?.tax_exempt === true
             });
