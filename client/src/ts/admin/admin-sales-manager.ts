@@ -1,4 +1,5 @@
 import { apiAxios, requireAuth, logout } from '../utilities/api.js';
+import { calculateSalesReportSummary, escapeHtml, normalizeVendorId, COMMISSION_RATE, roundCurrency } from '../utilities/receipt.js';
 import { updateProfileCard } from '../utilities/ui.js';
 
 declare global {
@@ -15,6 +16,8 @@ interface TicketSummary {
     employee_name: string;
     total: number;
     ticket_status: string;
+    cash_payment?: boolean;
+    tax_exempt?: boolean;
 }
 
 interface SalesResponse {
@@ -29,6 +32,7 @@ interface TicketDetailItem {
     name: string;
     vendor_price: number;
     discount_amount: number;
+    final_price: number;
     quantity: number;
 }
 
@@ -39,8 +43,6 @@ interface TicketDetailResponse {
 
 let salesDataTable: any = null;
 let lastAppliedSearchParams = new URLSearchParams();
-const COMMISSION_RATE = 0.10;
-
 const salesTableBody = document.getElementById('sales_list');
 const filterIdInput = document.getElementById('filter-id') as HTMLInputElement | null;
 const searchItemsInput = document.getElementById('search-items') as HTMLInputElement | null;
@@ -189,8 +191,17 @@ async function generateReport() {
         };
 
         const reportItems: ReportItem[] = [];
+        let totalTaxCollected = 0;
+        let totalFeesCollected = 0;
+        let totalCollectedCash = 0;
+        let totalCollectedRegister = 0;
+        let totalCollected = 0;
+        let totalCommission = 0;
+        let subtotal = 0;
 
         ticketDetails.forEach(detail => {
+            let ticketSubtotal = 0;
+            let ticketCommission = 0;
             (detail.items ?? []).forEach(item => {
                 const quantityRaw = Number(item.quantity ?? 1);
                 const hasInvalidQuantity = !Number.isFinite(quantityRaw) || quantityRaw <= 0;
@@ -198,11 +209,16 @@ async function generateReport() {
                 if (hasInvalidQuantity) {
                     console.warn('Invalid ticket item quantity. Defaulting to 1.', { item });
                 }
-                const itemPrice = Number(item.vendor_price ?? 0) * quantity;
-                const discount = Number(item.discount_amount ?? 0) * quantity;
-                const finalPrice = itemPrice - discount;
-                const commission = finalPrice * COMMISSION_RATE;
-                const payout = finalPrice - commission;
+                const itemPrice = roundCurrency(Number(item.vendor_price ?? 0) * quantity);
+                const discount = roundCurrency(Number(item.discount_amount ?? 0));
+                const providedFinalPrice = Number(item.final_price);
+                const finalPrice = roundCurrency(Number.isFinite(providedFinalPrice)
+                    ? providedFinalPrice
+                    : itemPrice - discount);
+                const commission = roundCurrency(finalPrice * COMMISSION_RATE);
+                const payout = roundCurrency(finalPrice - commission);
+                ticketSubtotal = roundCurrency(ticketSubtotal + finalPrice);
+                ticketCommission = roundCurrency(ticketCommission + commission);
 
                 reportItems.push({
                     vendorId: normalizeVendorId(item.vendor_id),
@@ -215,6 +231,18 @@ async function generateReport() {
                     payout
                 });
             });
+
+            const ticketSummary = calculateSalesReportSummary(ticketSubtotal, {
+                cashPayment: detail.ticket?.cash_payment === true,
+                taxExempt: detail.ticket?.tax_exempt === true
+            });
+            subtotal = roundCurrency(subtotal + ticketSummary.subtotal);
+            totalTaxCollected = roundCurrency(totalTaxCollected + ticketSummary.taxCollected);
+            totalFeesCollected = roundCurrency(totalFeesCollected + ticketSummary.feesCollected);
+            totalCollectedCash = roundCurrency(totalCollectedCash + ticketSummary.totalCollectedCash);
+            totalCollectedRegister = roundCurrency(totalCollectedRegister + ticketSummary.totalCollectedRegister);
+            totalCollected = roundCurrency(totalCollected + ticketSummary.totalCollected);
+            totalCommission = roundCurrency(totalCommission + ticketCommission);
         });
 
         if (reportItems.length === 0) {
@@ -381,6 +409,36 @@ async function generateReport() {
                             <tbody>
                                 ${rows.join('')}
                             </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="7" style="text-align: right;"><strong>Subtotal:</strong></td>
+                                    <td><strong>${formatCurrency(roundCurrency(subtotal))}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="7" style="text-align: right;"><strong>Tax Collected:</strong></td>
+                                    <td><strong>${formatCurrency(roundCurrency(totalTaxCollected))}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="7" style="text-align: right;"><strong>Fees Collected:</strong></td>
+                                    <td><strong>${formatCurrency(roundCurrency(totalFeesCollected))}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="7" style="text-align: right;"><strong>Total Commission:</strong></td>
+                                    <td><strong>${formatCurrency(roundCurrency(totalCommission))}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="7" style="text-align: right;"><strong>Total Collected (Cash):</strong></td>
+                                    <td><strong>${formatCurrency(roundCurrency(totalCollectedCash))}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="7" style="text-align: right;"><strong>Total Collected (Register):</strong></td>
+                                    <td><strong>${formatCurrency(roundCurrency(totalCollectedRegister))}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="7" style="text-align: right;"><strong>Total Collected:</strong></td>
+                                    <td><strong>${formatCurrency(roundCurrency(totalCollected))}</strong></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </body>
@@ -403,24 +461,6 @@ async function generateReport() {
 function updateReportButtonLabel() {
     if (!generateReportBtn) return;
     generateReportBtn.textContent = lastAppliedSearchParams.size > 0 ? 'Generate Queried Report' : 'Generate Daily Report';
-}
-
-function normalizeVendorId(value: number | string | null | undefined) {
-    if (value === null || value === undefined) {
-        return 'UNKNOWN';
-    }
-
-    const normalized = String(value).trim();
-    return normalized === '' ? 'UNKNOWN' : normalized;
-}
-
-function escapeHtml(value: string) {
-    return value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
 }
 
 function renderDailyStats(salesTotal: number, commission: number) {

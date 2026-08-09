@@ -1,4 +1,7 @@
 export const UNKNOWN_VENDOR_ID = 'UNKNOWN';
+export const TAX_RATE = 0.0935;
+export const CREDIT_CARD_FEE_RATE = 0.04;
+export const COMMISSION_RATE = 0.10;
 
 export interface ReceiptTicketItem {
     vendor_id: number | string | null | undefined;
@@ -8,6 +11,55 @@ export interface ReceiptTicketItem {
     vendor_price?: number | null;
     discount_amount?: number | null;
     final_price?: number | null;
+}
+
+export interface ReceiptSummary {
+    subtotal: number;
+    taxCollected: number;
+    feesCollected: number;
+    totalCollectedCash: number;
+    totalCollectedRegister: number;
+    totalCollected: number;
+    totalCommission: number;
+}
+
+export function roundCurrency(value: number): number {
+    return Math.round(value * 100) / 100;
+}
+
+function calculateSummary(
+    subtotal: number,
+    options: { cashPayment: boolean; taxExempt: boolean },
+    includeFeesInTaxBase: boolean
+): ReceiptSummary {
+    const normalizedSubtotal = roundCurrency(subtotal);
+    const feesCollected = options.cashPayment ? 0 : roundCurrency(normalizedSubtotal * CREDIT_CARD_FEE_RATE);
+    const taxableSubtotal = includeFeesInTaxBase
+        ? roundCurrency(normalizedSubtotal + feesCollected)
+        : normalizedSubtotal;
+    const taxCollected = options.taxExempt ? 0 : roundCurrency(taxableSubtotal * TAX_RATE);
+    const totalCollected = roundCurrency(normalizedSubtotal + taxCollected + feesCollected);
+    const totalCollectedCash = options.cashPayment ? totalCollected : 0;
+    const totalCollectedRegister = options.cashPayment ? 0 : totalCollected;
+    const totalCommission = roundCurrency(normalizedSubtotal * COMMISSION_RATE);
+
+    return {
+        subtotal: normalizedSubtotal,
+        taxCollected,
+        feesCollected,
+        totalCollectedCash,
+        totalCollectedRegister,
+        totalCollected,
+        totalCommission
+    };
+}
+
+export function calculateReceiptSummary(subtotal: number, options: { cashPayment: boolean; taxExempt: boolean }): ReceiptSummary {
+    return calculateSummary(subtotal, options, false);
+}
+
+export function calculateSalesReportSummary(subtotal: number, options: { cashPayment: boolean; taxExempt: boolean }): ReceiptSummary {
+    return calculateSummary(subtotal, options, true);
 }
 
 export function escapeHtml(value: string): string {
@@ -43,13 +95,8 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
         finalPrice: number;
     };
 
-    function roundCurrency(value: number): number {
-        return Math.round(value * 100) / 100;
-    }
-
     const receiptItems: ReceiptItem[] = items.map(item => {
         const quantityRaw = Number(item.quantity ?? 1);
-        
         const hasInvalidQuantity = !Number.isFinite(quantityRaw) || quantityRaw <= 0;
         const quantity = hasInvalidQuantity ? 1 : quantityRaw;
         if (hasInvalidQuantity) {
@@ -60,7 +107,7 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
         const baseDiscount = Number(item.discount_amount ?? 0);
         const itemPrice = roundCurrency(baseItemPrice * 1.04);
         const cashDiscount = cashPayment ? itemPrice - baseItemPrice : 0;
-        const discount = roundCurrency(cashPayment ? baseDiscount : baseDiscount * 1.04 );
+        const discount = roundCurrency(cashPayment ? baseDiscount : baseDiscount * 1.04);
         const finalPrice = roundCurrency(itemPrice - cashDiscount - discount);
 
         return {
@@ -121,7 +168,6 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
         `);
     });
 
-    const TAX_RATE = 0.0935;
     const subtotal = roundCurrency(receiptItems.reduce((sum, item) => sum + item.finalPrice, 0));
     const tax = roundCurrency(subtotal * TAX_RATE);
     const grandTotal = roundCurrency(subtotal + tax);
