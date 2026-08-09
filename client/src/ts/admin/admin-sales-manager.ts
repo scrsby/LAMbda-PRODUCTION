@@ -491,7 +491,7 @@ function renderSales(tickets: TicketSummary[]) {
             <td>${ticket.employee_name}</td>
             <td>$${Number(ticket.total ?? 0).toFixed(2)}</td>
             <td>
-                <a class="btn btn-primary see-more-btn" href="../POS/order-detail.html?ticketId=${ticket.ticket_id}">
+                <a class="btn btn-primary see-more-btn" href="admin-order-detail.html?ticketId=${ticket.ticket_id}">
                     See More
                 </a>
             </td>

@@ -12,6 +12,7 @@ export default {
         'admin/admin-invite-settings': './client/src/ts/admin/admin-invite-settings.ts',
         'admin/admin-index': './client/src/ts/admin/admin-index.ts',
         'admin/admin-inventory-settings': './client/src/ts/admin/admin-inventory-settings.ts',
+        'admin/admin-order-detail': './client/src/ts/admin/admin-order-detail.ts',
         'admin/admin-sales-manager': './client/src/ts/admin/admin-sales-manager.ts',
         'admin/admin-vendor-settings': './client/src/ts/admin/admin-vendor-settings.ts',
         'auth/login': './client/src/ts/auth/login.ts',
