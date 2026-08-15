@@ -346,7 +346,15 @@
         <div class="checkout-modal">
             <div class="checkout-modal-top">
                 <h2 class="checkout-modal-title">Checkout</h2>
-                <h2 class="checkout-modal-total" id="checkout-modal-total">$0.00</h2>
+                <div class="checkout-modal-cash-row">
+                    <span class="checkout-modal-cash-label">Cash Payment?</span>
+                    <input type="checkbox" id="checkout-cash-payment-checkbox" class="checkout-modal-cash-checkbox">
+                </div>
+                <h2 class="checkout-modal-total checkout-modal-total-card" id="checkout-modal-total">$0.00</h2>
+                <div class="checkout-modal-final-charge-row">
+                    <span class="checkout-modal-final-charge-label">Final Charge:</span>
+                    <span class="checkout-modal-final-charge-value" id="checkout-modal-final-charge">$0.00</span>
+                </div>
             </div>
             <div class="checkout-modal-bottom">
                 <button class="checkout-modal-action-btn checkout-modal-paid-btn" id="mark-paid-btn">
