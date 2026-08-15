@@ -2,7 +2,7 @@ import { apiAxios } from '../utilities/api.js';
 import { getCurrentUser, logout } from '../utilities/api.js';
 import { showSuccessMessage, showErrorMessage } from '../utilities/messages.js';
 import { updateProfileCard } from "../utilities/ui.js";
-import { openItemizedReceipt, escapeHtml } from '../utilities/receipt.js';
+import { openItemizedReceipt, escapeHtml, calculateReceiptSummary } from '../utilities/receipt.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await getCurrentUser();
@@ -421,13 +421,12 @@ function updateItemTable() {
                 <td>$${item.discount_amount.toFixed(2)}</td>
                 <td>$${item.final_price.toFixed(2)}</td>
                 <td style="display:flex;gap:0.25rem;align-items:center;">
-                    ${ticketReadOnly ? '' : `
-                    <button type="button" class="btn btn-edit" data-action="edit" data-index="${index}">
+                    <button type="button" class="btn btn-edit" data-action="edit" data-index="${index}" style="${ticketReadOnly ? 'visibility:hidden;' : ''}">
                         <span class="material-symbols-outlined">edit</span>
                     </button>
-                    <button type="button" class="btn btn-danger" data-action="delete" data-index="${index}">
+                    <button type="button" class="btn btn-danger" data-action="delete" data-index="${index}" style="${ticketReadOnly ? 'visibility:hidden;' : ''}">
                         <span class="material-symbols-outlined">delete</span>
-                    </button>`}
+                    </button>
                 </td>
             `;
         }
@@ -926,14 +925,35 @@ async function clearTicket() {
 /// CHECKOUT MODAL
 const checkoutOverlay = document.getElementById('checkout-overlay') as HTMLDivElement | null;
 const checkoutTotal = document.getElementById('checkout-modal-total') as HTMLSpanElement | null;
+const checkoutFinalCharge = document.getElementById('checkout-modal-final-charge') as HTMLSpanElement | null;
+const checkoutCashPaymentCheckbox = document.getElementById('checkout-cash-payment-checkbox') as HTMLInputElement | null;
 const checkoutGoBackBtn = document.getElementById('checkout-go-back-btn') as HTMLButtonElement | null;
 const markPaidBtn = document.getElementById('mark-paid-btn') as HTMLButtonElement | null;
+
+function updateCheckoutModalTotals() {
+    const allItems = [...ticket_items, ...unsynced_items];
+    const subtotal = allItems.reduce((sum, item) => sum + item.final_price, 0);
+    const isCash = checkoutCashPaymentCheckbox?.checked ?? false;
+    const isTaxExempt = taxExemptCheckbox.checked;
+    const summary = calculateReceiptSummary(subtotal, { cashPayment: isCash, taxExempt: isTaxExempt });
+
+    if (checkoutTotal) {
+        checkoutTotal.textContent = '$' + subtotal.toFixed(2);
+        checkoutTotal.classList.toggle('checkout-modal-total-cash', isCash);
+        checkoutTotal.classList.toggle('checkout-modal-total-card', !isCash);
+    }
+    if (checkoutFinalCharge) {
+        checkoutFinalCharge.textContent = '$' + summary.totalCollected.toFixed(2);
+    }
+}
 
 function openCheckoutModal() {
     if (checkoutOverlay) {
         checkoutOverlay.style.display = 'flex';
-        const allItems = [...ticket_items, ...unsynced_items];
-        checkoutTotal!.textContent = '$' + allItems.reduce((sum, item) => sum + item.final_price, 0).toFixed(2);
+        if (checkoutCashPaymentCheckbox && cashPaymentCheckbox) {
+            checkoutCashPaymentCheckbox.checked = cashPaymentCheckbox.checked;
+        }
+        updateCheckoutModalTotals();
         if (markPaidBtn) markPaidBtn.disabled = false;
     }
 }
@@ -998,6 +1018,14 @@ markPaidBtn?.addEventListener('click', () => {
 
 checkoutGoBackBtn?.addEventListener('click', () => {
     closeCheckoutModal();
+});
+
+// Sync modal cash payment checkbox back to the main one and update totals
+checkoutCashPaymentCheckbox?.addEventListener('change', () => {
+    if (cashPaymentCheckbox) {
+        cashPaymentCheckbox.checked = checkoutCashPaymentCheckbox?.checked ?? false;
+    }
+    updateCheckoutModalTotals();
 });
 
 // Close modal when clicking the overlay background
