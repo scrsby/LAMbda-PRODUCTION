@@ -144,17 +144,14 @@ input, select, textarea {
 .logo-icon {
     width: 32px;
     height: 32px;
-    background: var(--accent);
-    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.logo-icon svg {
-    width: 18px;
-    height: 18px;
-    fill: white;
+.logo-icon img {
+    width: 32px;
+    height: 32px;
 }
 
 /* ===== Navigation Menu ===== */
@@ -1564,9 +1561,9 @@ tr:hover td {
     height: 48px;
 }
 
-.login-logo .logo-icon svg {
-    width: 26px;
-    height: 26px;
+.login-logo .logo-icon img {
+    width: 48px;
+    height: 48px;
 }
 
 .login-logo span {

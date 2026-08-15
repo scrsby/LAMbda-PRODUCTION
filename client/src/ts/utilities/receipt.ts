@@ -162,10 +162,6 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
                 </tr>
             `);
         });
-
-        rows.push(`
-            <tr><td colspan="${totalColSpan}" style="height: 0.25in;"></td></tr>
-        `);
     });
 
     const subtotal = roundCurrency(receiptItems.reduce((sum, item) => sum + item.finalPrice, 0));
