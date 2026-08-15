@@ -235,6 +235,7 @@ primaryBtn?.addEventListener('click', async () => {
             setActiveTicketState(ticketId);
             updateItemTable();
         }
+        showSuccessMessage(`Ticket #${ticketId} created.`);
     } else if (primaryOption === 'update') {
         await updateTicket();
     }

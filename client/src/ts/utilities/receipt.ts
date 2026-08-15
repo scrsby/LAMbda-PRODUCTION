@@ -157,7 +157,7 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
                     <td>${escapeHtml(item.itemName)}</td>
                     <td>${formatCurrency(item.itemPrice)}</td>
                     ${hasCashDiscountColumn ? `<td class="money-column">${formatCurrency(item.cashDiscount)}</td>` : ''}
-                    <td>${formatCurrency(item.discount)}</td>
+                    <td>${item.discount == 0 ? '' : formatCurrency(item.discount)}</td>
                     <td>${formatCurrency(item.finalPrice)}</td>
                 </tr>
             `);
