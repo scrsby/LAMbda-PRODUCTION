@@ -104,6 +104,22 @@ generateReportBtn?.addEventListener('click', () => {
     void generateReport();
 });
 
+filterStartInput?.addEventListener('change', () => {
+    if (filterStartInput.value && !filterStartInput.dataset.wasSet) {
+        const datePart = filterStartInput.value.split('T')[0];
+        filterStartInput.value = `${datePart}T00:00`;
+    }
+    filterStartInput.dataset.wasSet = filterStartInput.value ? '1' : '';
+});
+
+filterEndInput?.addEventListener('change', () => {
+    if (filterEndInput.value && !filterEndInput.dataset.wasSet) {
+        const datePart = filterEndInput.value.split('T')[0];
+        filterEndInput.value = `${datePart}T23:59`;
+    }
+    filterEndInput.dataset.wasSet = filterEndInput.value ? '1' : '';
+});
+
 function buildSalesQueryParams() {
     const params = new URLSearchParams();
 
@@ -310,6 +326,26 @@ async function generateReport() {
 
         const generatedAt = new Date().toLocaleString();
 
+        const reportParamsLines: string[] = [];
+        if (params.has('startDate')) {
+            reportParamsLines.push(`From: ${escapeHtml(new Date(params.get('startDate')!).toLocaleString())}`);
+        }
+        if (params.has('endDate')) {
+            reportParamsLines.push(`To: ${escapeHtml(new Date(params.get('endDate')!).toLocaleString())}`);
+        }
+        if (params.has('orderId')) {
+            reportParamsLines.push(`Order ID: ${escapeHtml(params.get('orderId')!)}`);
+        }
+        if (params.has('itemSearch')) {
+            reportParamsLines.push(`Item Search: ${escapeHtml(params.get('itemSearch')!)}`);
+        }
+        if (params.has('employee')) {
+            reportParamsLines.push(`Employee: ${escapeHtml(params.get('employee')!)}`);
+        }
+        const reportParamsHtml = reportParamsLines.length > 0
+            ? `<p>${reportParamsLines.join(' &nbsp;|&nbsp; ')}</p>`
+            : '';
+
         const reportHtml = `
                 <!DOCTYPE html>
                 <html lang="en">
@@ -383,6 +419,7 @@ async function generateReport() {
                     <div class="report-container">
                         <h1>${reportType}</h1>
                         <p>Generated ${escapeHtml(generatedAt)}</p>
+                        ${reportParamsHtml}
                         <table>
                             <colgroup>
                                 <col style="width: 8%;">
@@ -564,8 +601,14 @@ function destroySalesTablePagination() {
 function clearFilters() {
     if (filterIdInput) filterIdInput.value = '';
     if (searchItemsInput) searchItemsInput.value = '';
-    if (filterStartInput) filterStartInput.value = '';
-    if (filterEndInput) filterEndInput.value = '';
+    if (filterStartInput) {
+        filterStartInput.value = '';
+        filterStartInput.dataset.wasSet = '';
+    }
+    if (filterEndInput) {
+        filterEndInput.value = '';
+        filterEndInput.dataset.wasSet = '';
+    }
     if (filterEmployeeInput) filterEmployeeInput.value = '';
 }
 
