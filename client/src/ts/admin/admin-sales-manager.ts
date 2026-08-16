@@ -104,22 +104,6 @@ generateReportBtn?.addEventListener('click', () => {
     void generateReport();
 });
 
-filterStartInput?.addEventListener('change', () => {
-    if (filterStartInput.value && !filterStartInput.dataset.wasSet) {
-        const datePart = filterStartInput.value.split('T')[0];
-        filterStartInput.value = `${datePart}T00:00`;
-    }
-    filterStartInput.dataset.wasSet = filterStartInput.value ? '1' : '';
-});
-
-filterEndInput?.addEventListener('change', () => {
-    if (filterEndInput.value && !filterEndInput.dataset.wasSet) {
-        const datePart = filterEndInput.value.split('T')[0];
-        filterEndInput.value = `${datePart}T23:59`;
-    }
-    filterEndInput.dataset.wasSet = filterEndInput.value ? '1' : '';
-});
-
 function buildSalesQueryParams() {
     const params = new URLSearchParams();
 
@@ -131,11 +115,25 @@ function buildSalesQueryParams() {
         params.set('itemSearch', searchItemsInput.value.trim());
     }
 
-    if (filterStartInput?.value) {
+    if (filterStartInput) {
+        if (!filterStartInput.value) {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            filterStartInput.value = `${yyyy}-${mm}-${dd}T00:00`;
+        }
         params.set('startDate', new Date(filterStartInput.value).toISOString());
     }
 
-    if (filterEndInput?.value) {
+    if (filterEndInput) {
+        if (!filterEndInput.value) {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            filterEndInput.value = `${yyyy}-${mm}-${dd}T23:59`;
+        }
         params.set('endDate', new Date(filterEndInput.value).toISOString());
     }
 
@@ -601,14 +599,8 @@ function destroySalesTablePagination() {
 function clearFilters() {
     if (filterIdInput) filterIdInput.value = '';
     if (searchItemsInput) searchItemsInput.value = '';
-    if (filterStartInput) {
-        filterStartInput.value = '';
-        filterStartInput.dataset.wasSet = '';
-    }
-    if (filterEndInput) {
-        filterEndInput.value = '';
-        filterEndInput.dataset.wasSet = '';
-    }
+    if (filterStartInput) filterStartInput.value = '';
+    if (filterEndInput) filterEndInput.value = '';
     if (filterEmployeeInput) filterEmployeeInput.value = '';
 }
 
