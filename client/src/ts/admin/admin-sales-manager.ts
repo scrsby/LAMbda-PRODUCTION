@@ -115,26 +115,17 @@ function buildSalesQueryParams() {
         params.set('itemSearch', searchItemsInput.value.trim());
     }
 
-    if (filterStartInput) {
-        if (!filterStartInput.value) {
-            const today = new Date();
-            const yyyy = today.getFullYear();
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const dd = String(today.getDate()).padStart(2, '0');
-            filterStartInput.value = `${yyyy}-${mm}-${dd}T00:00`;
-        }
+    if (filterStartInput?.value) {
         params.set('startDate', new Date(filterStartInput.value).toISOString());
     }
 
-    if (filterEndInput) {
-        if (!filterEndInput.value) {
-            const today = new Date();
-            const yyyy = today.getFullYear();
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const dd = String(today.getDate()).padStart(2, '0');
-            filterEndInput.value = `${yyyy}-${mm}-${dd}T23:59`;
-        }
-        params.set('endDate', new Date(filterEndInput.value).toISOString());
+    if (filterEndInput?.value) {
+        const endValue = filterEndInput.value;
+        const timePart = endValue.includes('T') ? endValue.split('T')[1] : '';
+        const dateIso = timePart === '00:00'
+            ? `${endValue.split('T')[0]}T23:59`
+            : endValue;
+        params.set('endDate', new Date(dateIso).toISOString());
     }
 
     if (filterEmployeeInput?.value.trim()) {
