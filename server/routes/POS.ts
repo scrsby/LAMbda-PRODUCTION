@@ -149,7 +149,7 @@ async function getTicketSummaries(filters: {
 
 router.use(requireAuth, requireUserType('employee', 'admin'), posRouteRateLimit);
 
-router.post('/create-ticket', posWriteRateLimit, async (req, res) => {
+router.post('/create-ticket', posWriteRateLimit, async (req: any, res) => {
     try {
         const cashierId = req.session.user?.id;
         if (!cashierId) {
@@ -586,7 +586,7 @@ router.patch('/ticket/:id/payment-type', requireUserType('admin'), posWriteRateL
 router.patch('/ticket/:id/status', requireUserType('admin'), posWriteRateLimit, async (req, res) => {
     const ticketId = req.params.id;
     const status = typeof req.body?.status === 'string' ? req.body.status.trim() : '';
-    const allowed = ['open', 'closed', 'partially refunded', 'refunded'];
+    const allowed = ['open', 'closed', 'partially_refunded', 'refunded'];
 
     if (!allowed.includes(status)) {
         return res.status(400).json({ error: `status must be one of: ${allowed.join(', ')}` });

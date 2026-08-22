@@ -23,4 +23,4 @@ $$;
 
 ALTER TABLE tickets
     ADD CONSTRAINT tickets_ticket_status_check
-    CHECK (ticket_status IN ('open', 'closed', 'partially refunded', 'refunded'));
+    CHECK (ticket_status IN ('open', 'closed', 'partially_refunded', 'refunded'));

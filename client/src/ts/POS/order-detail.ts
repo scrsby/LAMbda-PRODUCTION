@@ -113,7 +113,7 @@ function renderStatusField(status: string) {
         const options: { value: string; label: string }[] = [
             { value: 'open', label: 'Open' },
             { value: 'closed', label: 'Closed' },
-            { value: 'partially refunded', label: 'Partially Refunded' },
+            { value: 'partially_refunded', label: 'Partially Refunded' },
             { value: 'refunded', label: 'Refunded' }
         ];
         const normalized = String(status ?? '').trim().toLowerCase();
@@ -155,7 +155,7 @@ function renderTicketItems(items: TicketItem[]) {
     const tableBody = document.getElementById('ticket-items-list');
     if (!tableBody) return;
 
-    const isPartiallyRefunded = activeTicket?.ticket_status === 'partially refunded';
+    const isPartiallyRefunded = activeTicket?.ticket_status === 'partially_refunded';
 
     // Update table header to add/remove the Refund column
     const thead = document.querySelector('#ticket_items_table thead tr');
@@ -297,7 +297,7 @@ function setText(elementId: string, value: string) {
 function getStatusPillClass(normalizedStatus: string): string {
     if (normalizedStatus === 'open') return 'ticket-status-pill--open';
     if (normalizedStatus === 'closed') return 'ticket-status-pill--closed';
-    if (normalizedStatus === 'partially refunded') return 'ticket-status-pill--partially-refunded';
+    if (normalizedStatus === 'partially_refunded') return 'ticket-status-pill--partially-refunded';
     if (normalizedStatus === 'refunded') return 'ticket-status-pill--refunded';
     return 'ticket-status-pill--default';
 }
@@ -315,7 +315,7 @@ function setStatusPill(elementId: string, status: string) {
         statusText = 'Open';
     } else if (normalizedStatus === 'closed') {
         statusText = 'Closed';
-    } else if (normalizedStatus === 'partially refunded') {
+    } else if (normalizedStatus === 'partially_refunded') {
         statusText = 'Partially Refunded';
     } else if (normalizedStatus === 'refunded') {
         statusText = 'Refunded';
