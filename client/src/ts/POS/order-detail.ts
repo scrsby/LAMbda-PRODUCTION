@@ -79,7 +79,7 @@ async function loadOrderDetail(ticketId: string) {
     try {
         const response = await apiAxios(`/POS/ticket/${ticketId}`, { method: 'GET' });
         renderTicketSummary(response.ticket as TicketDetail);
-        renderTicketItems(response.items as TicketItem[] ?? []);
+        renderTicketItems((response.items ?? []) as TicketItem[]);
     } catch (error: any) {
         if (error.response?.status === 404) {
             showOrderError(`Ticket #${ticketId} was not found.`);
@@ -138,7 +138,7 @@ function renderStatusField(status: string) {
                 updateDeleteTicketButton();
                 // Re-render items to show/hide Refund column
                 const response = await apiAxios(`/POS/ticket/${ticketId}`, { method: 'GET' });
-                renderTicketItems(response.items as TicketItem[] ?? []);
+                renderTicketItems((response.items ?? []) as TicketItem[]);
             } catch (error: any) {
                 window.alert(error.response?.data?.error ?? 'Failed to update status. Please try again.');
                 // Revert select back
@@ -321,7 +321,11 @@ function setStatusPill(elementId: string, status: string) {
         statusText = 'Refunded';
     }
 
-    element.innerHTML = `<span class="ticket-status-pill ${getStatusPillClass(normalizedStatus)}">${statusText}</span>`;
+    const span = document.createElement('span');
+    span.className = `ticket-status-pill ${getStatusPillClass(normalizedStatus)}`;
+    span.textContent = statusText;
+    element.innerHTML = '';
+    element.appendChild(span);
 }
 
 function formatDateTime(value: string) {

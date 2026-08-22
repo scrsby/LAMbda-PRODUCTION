@@ -618,12 +618,21 @@ router.patch('/ticket-item/:id/refund', requireUserType('admin'), posWriteRateLi
         await client.query('BEGIN');
 
         const itemResult = await client.query(
-            `UPDATE ticket_items SET refunded = true WHERE ticket_item_id = $1 RETURNING ticket_id`,
+            `UPDATE ticket_items SET refunded = true
+             WHERE ticket_item_id = $1 AND COALESCE(refunded, false) = false
+             RETURNING ticket_id`,
             [itemId]
         );
         if (itemResult.rows.length === 0) {
             await client.query('ROLLBACK');
-            return res.status(404).json({ error: 'Ticket item not found' });
+            // Distinguish "not found" from "already refunded"
+            const exists = await client.query(
+                'SELECT ticket_item_id FROM ticket_items WHERE ticket_item_id = $1', [itemId]
+            );
+            if (exists.rows.length === 0) {
+                return res.status(404).json({ error: 'Ticket item not found' });
+            }
+            return res.status(409).json({ error: 'Ticket item is already refunded' });
         }
 
         const ticketId = itemResult.rows[0].ticket_id;
