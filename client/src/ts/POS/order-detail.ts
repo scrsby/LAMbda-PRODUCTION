@@ -156,6 +156,7 @@ function renderTicketItems(items: TicketItem[]) {
     if (!tableBody) return;
 
     const isPartiallyRefunded = activeTicket?.ticket_status === 'partially_refunded';
+    const isFullyRefunded = activeTicket?.ticket_status === 'refunded';
 
     // Update table header to add/remove the Refund column
     const thead = document.querySelector('#ticket_items_table thead tr');
@@ -187,7 +188,7 @@ function renderTicketItems(items: TicketItem[]) {
 
     items.forEach(item => {
         const row = document.createElement('tr');
-        if (item.refunded) {
+        if (item.refunded || isFullyRefunded) {
             row.classList.add('refunded-item');
         }
         row.innerHTML = `
