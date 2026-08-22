@@ -46,6 +46,7 @@ type TicketItem = {
     discount_percent: number;
     discount_amount: number;
     final_price: number;
+    refunded?: boolean;
 };
 
 type InventorySearchItem = {
@@ -62,6 +63,8 @@ let unsynced_items: TicketItem[] = [];
 let ticketActive: boolean = false;
 let ticketReadOnly: boolean = false;
 let ticketDirty: boolean = false;
+let isAdminUser: boolean = false;
+let currentTicketId: string | null = null;
 let searchResultsDataTable: any = null;
 let itemSearchDebounceId: number | undefined;
 let latestSearchRequestId = 0;
@@ -112,7 +115,8 @@ function setTaxExemptUi(isChecked: boolean, businessName = '') {
 function setPaymentAndTaxControlsEnabled(enabled: boolean) {
     taxExemptCheckbox.disabled = !enabled;
     if (cashPaymentCheckbox) {
-        cashPaymentCheckbox.disabled = !enabled;
+        // Admin users can toggle cash payment on closed tickets
+        cashPaymentCheckbox.disabled = !(enabled || (ticketReadOnly && isAdminUser));
     }
 
     if (!enabled && taxExemptForm) {
@@ -152,6 +156,7 @@ function setActiveTicketState(ticketId: string) {
     ticketActive = true;
     ticketReadOnly = false;
     ticketDirty = false;
+    currentTicketId = ticketId;
     localStorage.setItem('currentTicketId', ticketId);
 
     if (ticketIdField) {
@@ -174,6 +179,7 @@ function setIdleTicketState() {
     ticketActive = false;
     ticketReadOnly = false;
     ticketDirty = false;
+    currentTicketId = null;
     editingItemIndex = null;
 
     if (ticketIdField) {
@@ -205,6 +211,7 @@ function setClosedTicketState(ticketId: string) {
     ticketActive = false;
     ticketReadOnly = true;
     ticketDirty = false;
+    currentTicketId = ticketId;
     editingItemIndex = null;
     localStorage.removeItem('currentTicketId');
 
@@ -320,12 +327,31 @@ taxExemptCheckbox.addEventListener('change', function() {
     }
 });
 
+cashPaymentCheckbox?.addEventListener('change', async function() {
+    // When a closed ticket is loaded and the user is an admin, immediately
+    // persist the payment type change via the backend PATCH route.
+    if (!ticketReadOnly || !isAdminUser || !currentTicketId) return;
+    const newValue = this.checked;
+    try {
+        await apiAxios(`/POS/ticket/${currentTicketId}/payment-type`, {
+            method: 'PATCH',
+            data: { cashPayment: newValue }
+        });
+        showSuccessMessage(`Payment type updated to ${newValue ? 'Cash' : 'Card'}.`);
+    } catch (error: any) {
+        showErrorMessage(error?.response?.data?.error ?? 'Failed to update payment type. Please try again.');
+        // Revert the checkbox
+        this.checked = !newValue;
+    }
+});
+
 setIdleTicketState();
 renderSearchResultsMessage('Type at least 4 characters in Description to search inventory.');
 
 // Show Admin Controls button if the logged-in user is an admin
 getCurrentUser().then(user => {
     if (user?.userType === 'admin') {
+        isAdminUser = true;
         const btn = document.getElementById('admin-controls-btn');
         const btnMobile = document.getElementById('admin-controls-btn-mobile');
         if (btn) btn.style.display = '';
@@ -392,7 +418,11 @@ function updateItemTable() {
     allItems.forEach((item, index) => {
         const subtotal = item.vendor_price * item.quantity;
         const isEditing = !ticketReadOnly && editingItemIndex === index;
+        const isRefunded = item.refunded === true;
         const row = document.createElement('tr');
+        if (isRefunded) {
+            row.classList.add('refunded-item');
+        }
 
         if (isEditing) {
             row.innerHTML = `
@@ -441,7 +471,8 @@ function updateItemTable() {
         itemTableBody.appendChild(row);
     });
 
-    const total = allItems.reduce((sum, item) => sum + item.final_price, 0);
+    // Exclude refunded items from the displayed total
+    const total = allItems.reduce((sum, item) => sum + (item.refunded ? 0 : item.final_price), 0);
     const totalValueEl = document.getElementById('cart_total_value');
     if (totalValueEl) totalValueEl.textContent = total.toFixed(2);
 

@@ -523,3 +523,9 @@ table.dataTable tbody td {
     font-size: 1.375rem;
     color: var(--text);
 }
+/* Refunded item rows — shown with strikethrough and muted color */
+tr.refunded-item td {
+    text-decoration: line-through;
+    opacity: 0.55;
+}
+
