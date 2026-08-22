@@ -25,6 +25,7 @@ interface TicketItem {
     commission: number;
     payout: number;
     quantity: number;
+    refunded?: boolean;
 }
 
 const deleteTicketButton = document.getElementById('delete-ticket-btn') as HTMLButtonElement | null;
@@ -102,12 +103,32 @@ function renderTicketItems(items: TicketItem[]) {
     const tableBody = document.getElementById('ticket-items-list');
     if (!tableBody) return;
 
+    const isPartiallyRefunded = activeTicket?.ticket_status === 'partially_refunded';
+    const isFullyRefunded = activeTicket?.ticket_status === 'refunded';
+
+    // Update table header to add/remove the Refund column
+    const thead = document.querySelector('#ticket_items_table thead tr');
+    if (thead) {
+        const existingRefundTh = thead.querySelector('.refund-col-header');
+        if (isPartiallyRefunded) {
+            if (!existingRefundTh) {
+                const th = document.createElement('th');
+                th.className = 'refund-col-header';
+                th.textContent = 'Refund';
+                thead.appendChild(th);
+            }
+        } else {
+            existingRefundTh?.remove();
+        }
+    }
+
     tableBody.innerHTML = '';
 
     if (items.length === 0) {
+        const colspan = isPartiallyRefunded ? 11 : 10;
         tableBody.innerHTML = `
             <tr>
-                <td colspan="10" class="orders-empty-state">No ticket items found.</td>
+                <td colspan="${colspan}" class="orders-empty-state">No ticket items found.</td>
             </tr>
         `;
         return;
@@ -115,6 +136,9 @@ function renderTicketItems(items: TicketItem[]) {
 
     items.forEach(item => {
         const row = document.createElement('tr');
+        if (item.refunded || isFullyRefunded) {
+            row.classList.add('refunded-item');
+        }
         row.innerHTML = `
             <td>${item.ticket_item_id}</td>
             <td>${item.vendor_id}</td>
@@ -126,7 +150,19 @@ function renderTicketItems(items: TicketItem[]) {
             <td>$${Number(item.discount_amount ?? 0).toFixed(2)}</td>
             <td>$${Number(item.final_price ?? 0).toFixed(2)}</td>
             <td>$${Number((item.final_price ?? 0) * (item.quantity ?? 0)).toFixed(2)}</td>
+            ${isPartiallyRefunded ? `<td>${item.refunded ? '<em>Refunded</em>' : `<button type="button" class="btn btn-secondary refund-btn" data-item-id="${item.ticket_item_id}">Refund</button>`}</td>` : ''}
         `;
+        if (isPartiallyRefunded && !item.refunded) {
+            row.querySelector('.refund-btn')?.addEventListener('click', async () => {
+                if (!window.confirm(`Mark item #${item.ticket_item_id} (${item.name}) as refunded?`)) return;
+                try {
+                    await apiAxios(`/POS/ticket-item/${item.ticket_item_id}/refund`, { method: 'PATCH' });
+                    await loadOrderDetail(String(activeTicket!.ticket_id));
+                } catch (error: any) {
+                    window.alert(error.response?.data?.error ?? 'Failed to refund item. Please try again.');
+                }
+            });
+        }
         tableBody.appendChild(row);
     });
 }
@@ -172,15 +208,15 @@ function updateDeleteTicketButton() {
 }
 
 function updateClosedTicketControls() {
-    const isClosed = activeTicket?.ticket_status === 'closed';
+    const isOpen = activeTicket?.ticket_status === 'open';
     const paymentTypeField = document.getElementById('detail-payment-type-field');
 
     if (paymentTypeField) {
-        paymentTypeField.style.display = isClosed ? '' : 'none';
+        paymentTypeField.style.display = isOpen ? 'none' : '';
     }
 
     if (generateReceiptButton) {
-        generateReceiptButton.style.display = isClosed ? '' : 'none';
+        generateReceiptButton.style.display = isOpen ? 'none' : '';
         generateReceiptButton.disabled = false;
         generateReceiptButton.textContent = 'Receipt';
     }
@@ -223,6 +259,9 @@ function setStatusPill(elementId: string, status: string) {
     } else if (normalizedStatus === 'closed') {
         statusClass = 'ticket-status-pill--closed';
         statusText = 'Closed';
+    } else if (normalizedStatus === 'partially_refunded') {
+        statusClass = 'ticket-status-pill--partially-refunded';
+        statusText = 'Partially Refunded';
     } else if (normalizedStatus === 'refunded') {
         statusClass = 'ticket-status-pill--refunded';
         statusText = 'Refunded';
@@ -241,8 +280,8 @@ function formatDateTime(value: string) {
 }
 
 async function generateOrderReceipt(ticketId: string, button: HTMLButtonElement): Promise<void> {
-    if (activeTicket?.ticket_status !== 'closed') {
-        window.alert('Receipts are only available for closed tickets.');
+    if (!activeTicket || activeTicket.ticket_status === 'open') {
+        window.alert('Receipts are only available for non-open tickets.');
         return;
     }
 

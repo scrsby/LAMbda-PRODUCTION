@@ -11,6 +11,7 @@ export interface ReceiptTicketItem {
     vendor_price?: number | null;
     discount_amount?: number | null;
     final_price?: number | null;
+    refunded?: boolean | null;
 }
 
 export interface ReceiptSummary {
@@ -95,7 +96,7 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
         finalPrice: number;
     };
 
-    const receiptItems: ReceiptItem[] = items.map(item => {
+    const receiptItems: ReceiptItem[] = items.filter(item => !item.refunded).map(item => {
         const quantityRaw = Number(item.quantity ?? 1);
         const hasInvalidQuantity = !Number.isFinite(quantityRaw) || quantityRaw <= 0;
         const quantity = hasInvalidQuantity ? 1 : quantityRaw;

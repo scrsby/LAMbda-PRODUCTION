@@ -63,7 +63,8 @@ async function getTicketDetail(ticketId: string) {
                 final_price::float     AS final_price,
                 commission::float      AS commission,
                 payout::float          AS payout,
-                quantity
+                quantity,
+                COALESCE(refunded, false) AS refunded
          FROM ticket_items
          WHERE ticket_id = $1`,
         [ticketId]
@@ -148,7 +149,7 @@ async function getTicketSummaries(filters: {
 
 router.use(requireAuth, requireUserType('employee', 'admin'), posRouteRateLimit);
 
-router.post('/create-ticket', posWriteRateLimit, async (req, res) => {
+router.post('/create-ticket', posWriteRateLimit, async (req: any, res) => {
     try {
         const cashierId = req.session.user?.id;
         if (!cashierId) {
@@ -552,6 +553,108 @@ router.get('/receipt/:id', async (req, res) => {
     } catch (error) {
         console.error('Error fetching receipt:', error);
         res.status(500).json({ error: 'Failed to fetch receipt' });
+    }
+});
+
+/* PATCH TICKET PAYMENT TYPE (admin only)
+ * Toggles cash_payment on a ticket regardless of its current status.
+ * Body: { cashPayment: boolean }
+ */
+router.patch('/ticket/:id/payment-type', requireUserType('admin'), posWriteRateLimit, async (req, res) => {
+    const ticketId = req.params.id;
+    const cashPayment = req.body?.cashPayment === true;
+
+    try {
+        const result = await db.query(
+            `UPDATE tickets SET cash_payment = $1 WHERE ticket_id = $2 RETURNING ticket_id, cash_payment`,
+            [cashPayment, ticketId]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Ticket not found' });
+        }
+        res.status(200).json({ ticketId: result.rows[0].ticket_id, cash_payment: result.rows[0].cash_payment });
+    } catch (error) {
+        console.error('Error updating ticket payment type:', error);
+        res.status(500).json({ error: 'Failed to update ticket payment type' });
+    }
+});
+
+/* PATCH TICKET STATUS (admin only)
+ * Changes ticket_status to one of: open, closed, partially refunded, refunded.
+ * Body: { status: string }
+ */
+router.patch('/ticket/:id/status', requireUserType('admin'), posWriteRateLimit, async (req, res) => {
+    const ticketId = req.params.id;
+    const status = typeof req.body?.status === 'string' ? req.body.status.trim() : '';
+    const allowed = ['open', 'closed', 'partially_refunded', 'refunded'];
+
+    if (!allowed.includes(status)) {
+        return res.status(400).json({ error: `status must be one of: ${allowed.join(', ')}` });
+    }
+
+    try {
+        const result = await db.query(
+            `UPDATE tickets SET ticket_status = $1 WHERE ticket_id = $2 RETURNING ticket_id, ticket_status`,
+            [status, ticketId]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Ticket not found' });
+        }
+        res.status(200).json({ ticketId: result.rows[0].ticket_id, ticket_status: result.rows[0].ticket_status });
+    } catch (error) {
+        console.error('Error updating ticket status:', error);
+        res.status(500).json({ error: 'Failed to update ticket status' });
+    }
+});
+
+/* PATCH TICKET ITEM REFUND (admin only)
+ * Marks a ticket item as refunded and recalculates the ticket total.
+ */
+router.patch('/ticket-item/:id/refund', requireUserType('admin'), posWriteRateLimit, async (req, res) => {
+    const itemId = req.params.id;
+    const client = await db.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const itemResult = await client.query(
+            `UPDATE ticket_items SET refunded = true
+             WHERE ticket_item_id = $1 AND COALESCE(refunded, false) = false
+             RETURNING ticket_id`,
+            [itemId]
+        );
+        if (itemResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            // Distinguish "not found" from "already refunded"
+            const exists = await client.query(
+                'SELECT ticket_item_id FROM ticket_items WHERE ticket_item_id = $1', [itemId]
+            );
+            if (exists.rows.length === 0) {
+                return res.status(404).json({ error: 'Ticket item not found' });
+            }
+            return res.status(409).json({ error: 'Ticket item is already refunded' });
+        }
+
+        const ticketId = itemResult.rows[0].ticket_id;
+
+        // Recalculate total excluding refunded items
+        const totalResult = await client.query(
+            `SELECT COALESCE(SUM(final_price * quantity), 0)::float AS total
+             FROM ticket_items
+             WHERE ticket_id = $1 AND COALESCE(refunded, false) = false`,
+            [ticketId]
+        );
+        const newTotal = totalResult.rows[0].total;
+        await client.query(`UPDATE tickets SET total = $1 WHERE ticket_id = $2`, [newTotal, ticketId]);
+
+        await client.query('COMMIT');
+        res.status(200).json({ message: 'Item marked as refunded', ticket_item_id: Number(itemId), new_ticket_total: newTotal });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error refunding ticket item:', error);
+        res.status(500).json({ error: 'Failed to refund ticket item' });
+    } finally {
+        client.release();
     }
 });
 

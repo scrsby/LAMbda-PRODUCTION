@@ -313,9 +313,38 @@ table.dataTable tbody td {
     color: #111827;
 }
 
+.ticket-status-pill--partially-refunded {
+    background: #f97316;
+    color: #ffffff;
+}
+
 .ticket-status-pill--default {
     background: var(--border-color);
     color: var(--text);
+}
+
+/* Refunded item rows — shown with strikethrough and muted color */
+tr.refunded-item td {
+    text-decoration: line-through;
+    opacity: 0.55;
+}
+
+/* Allow the status select to inherit pill styling */
+select.ticket-status-pill {
+    border: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 1rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23fff'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.35rem center;
+    background-size: 0.55rem;
+}
+
+select.ticket-status-pill.ticket-status-pill--refunded,
+select.ticket-status-pill.ticket-status-pill--default {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23111827'/%3E%3C/svg%3E");
 }
 
 .ticket-items-scroll {

@@ -34,6 +34,7 @@ interface TicketDetailItem {
     discount_amount: number;
     final_price: number;
     quantity: number;
+    refunded?: boolean;
 }
 
 interface TicketDetailResponse {
@@ -202,7 +203,7 @@ async function generateReport() {
         ticketDetails.forEach(detail => {
             let ticketSubtotal = 0;
             let ticketCommission = 0;
-            (detail.items ?? []).forEach(item => {
+            (detail.items ?? []).filter(item => !item.refunded).forEach(item => {
                 const quantityRaw = Number(item.quantity ?? 1);
                 const hasInvalidQuantity = !Number.isFinite(quantityRaw) || quantityRaw <= 0;
                 const quantity = hasInvalidQuantity ? 1 : quantityRaw;

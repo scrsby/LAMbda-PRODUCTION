@@ -477,7 +477,7 @@ router.get('/sales', requireAuth, requireUserType('admin'), adminRouteRateLimit,
     const endDate = req.query.endDate?.toString().trim();
     const employee = req.query.employee?.toString().trim();
 
-    const conditions: string[] = [`t.ticket_status = 'closed'`];
+    const conditions: string[] = [`t.ticket_status IN ('closed', 'partially_refunded', 'refunded')`];
     const values: string[] = [];
 
     if (orderId) {
@@ -544,7 +544,7 @@ router.get('/sales', requireAuth, requireUserType('admin'), adminRouteRateLimit,
         const dailyResult = await db.query(
             `SELECT COALESCE(SUM(total), 0)::float AS daily_total
              FROM tickets
-             WHERE ticket_status = 'closed'
+             WHERE ticket_status IN ('closed', 'partially_refunded', 'refunded')
                AND created_at >= $1
                AND created_at <= $2`,
             [startOfDay, endOfDay]
