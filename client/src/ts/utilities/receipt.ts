@@ -300,21 +300,19 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
                     </thead>
                     <tbody>
                         ${rows.join('')}
-                    </tbody>
-                    <tfoot>
                         <tr>
-                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Subtotal:</strong></td>
-                            <td><strong>${formatCurrency(subtotal)}</strong></td>
+                            <td colspan="${rowColSpan - 1}" style="text-align: right;"><strong>Subtotal:</strong></td>
+                            <td colspan="2"><strong>${formatCurrency(subtotal)}</strong></td>
                         </tr>
                         <tr>
-                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Tax:</strong></td>
-                            <td><strong>${formatCurrency(tax)}</strong></td>
+                            <td colspan="${rowColSpan - 1}" style="text-align: right;"><strong>Tax:</strong></td>
+                            <td colspan="2"><strong>${formatCurrency(tax)}</strong></td>
                         </tr>
                         <tr class="grand-total-row">
-                            <td colspan="${rowColSpan}" style="text-align: right;"><strong>Total:</strong></td>
-                            <td><strong>${formatCurrency(grandTotal)}</strong></td>
+                            <td colspan="${rowColSpan - 1}" style="text-align: right;"><strong>Total:</strong></td>
+                            <td colspan="2"><strong>${formatCurrency(grandTotal)}</strong></td>
                         </tr>
-                    </tfoot>
+                    </tbody>
                 </table>
             </div>
         </body>

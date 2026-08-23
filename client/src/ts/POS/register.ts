@@ -2,7 +2,7 @@ import { apiAxios } from '../utilities/api.js';
 import { getCurrentUser, logout } from '../utilities/api.js';
 import { showSuccessMessage, showErrorMessage } from '../utilities/messages.js';
 import { updateProfileCard } from "../utilities/ui.js";
-import { openItemizedReceipt, escapeHtml, calculateReceiptSummary } from '../utilities/receipt.js';
+import { openItemizedReceipt, escapeHtml, calculateReceiptSummary, calculateSalesReportSummary } from '../utilities/receipt.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await getCurrentUser();
@@ -194,6 +194,7 @@ function setIdleTicketState() {
 
     if (posTopSection) posTopSection.style.cssText = '';
     primaryBtn!.textContent = 'Create New';
+    (primaryBtn as HTMLButtonElement).disabled = false;
     secondaryBtn!.textContent = 'Search Ticket';
     primaryOption = 'create';
     secondaryOption = 'search';
@@ -223,10 +224,11 @@ function setClosedTicketState(ticketId: string) {
     // Dim only the search/add area so the cart and receipt button remain accessible
     searchAndAddSection!.style = '';
     if (posTopSection) posTopSection.style.cssText = 'opacity: 0.6; pointer-events: none;';
-    primaryBtn!.textContent = 'Create New';
-    secondaryBtn!.textContent = 'Search Ticket';
-    primaryOption = 'create';
-    secondaryOption = 'search';
+    primaryBtn!.textContent = 'Update Ticket';
+    (primaryBtn as HTMLButtonElement).disabled = true;
+    secondaryBtn!.textContent = 'Clear Ticket';
+    primaryOption = 'update';
+    secondaryOption = 'clear';
 
     setPaymentAndTaxControlsEnabled(false);
     setTicketActionButtons(false);
@@ -966,7 +968,7 @@ function updateCheckoutModalTotals() {
     const subtotal = allItems.reduce((sum, item) => sum + item.final_price, 0);
     const isCash = checkoutCashPaymentCheckbox?.checked ?? false;
     const isTaxExempt = taxExemptCheckbox.checked;
-    const summary = calculateReceiptSummary(subtotal, { cashPayment: isCash, taxExempt: isTaxExempt });
+    const summary = calculateSalesReportSummary(subtotal, { cashPayment: isCash, taxExempt: isTaxExempt });
 
     if (checkoutTotal) {
         checkoutTotal.textContent = '$' + subtotal.toFixed(2);

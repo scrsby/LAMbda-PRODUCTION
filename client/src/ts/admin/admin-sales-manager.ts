@@ -409,37 +409,35 @@ async function generateReport() {
                             </thead>
                             <tbody>
                                 ${rows.join('')}
+                                <tr>
+                                    <td colspan="6" style="text-align: right;"><strong>Subtotal:</strong></td>
+                                    <td colspan="2"><strong>${formatCurrency(roundCurrency(subtotal))}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6" style="text-align: right;"><strong>Tax Collected:</strong></td>
+                                    <td colspan="2"><strong>${formatCurrency(roundCurrency(totalTaxCollected))}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6" style="text-align: right;"><strong>Fees Collected:</strong></td>
+                                    <td colspan="2"><strong>${formatCurrency(roundCurrency(totalFeesCollected))}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6" style="text-align: right;"><strong>Total Commission:</strong></td>
+                                    <td colspan="2"><strong>${formatCurrency(roundCurrency(totalCommission))}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6" style="text-align: right;"><strong>Total Collected (Cash):</strong></td>
+                                    <td colspan="2"><strong>${formatCurrency(roundCurrency(totalCollectedCash))}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6" style="text-align: right;"><strong>Total Collected (Register):</strong></td>
+                                    <td colspan="2"><strong>${formatCurrency(roundCurrency(totalCollectedRegister))}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6" style="text-align: right;"><strong>Total Collected:</strong></td>
+                                    <td colspan="2"><strong>${formatCurrency(roundCurrency(totalCollected))}</strong></td>
+                                </tr>
                             </tbody>
-                            <tfoot>
-                                <tr>
-                                    <td colspan="7" style="text-align: right;"><strong>Subtotal:</strong></td>
-                                    <td><strong>${formatCurrency(roundCurrency(subtotal))}</strong></td>
-                                </tr>
-                                <tr>
-                                    <td colspan="7" style="text-align: right;"><strong>Tax Collected:</strong></td>
-                                    <td><strong>${formatCurrency(roundCurrency(totalTaxCollected))}</strong></td>
-                                </tr>
-                                <tr>
-                                    <td colspan="7" style="text-align: right;"><strong>Fees Collected:</strong></td>
-                                    <td><strong>${formatCurrency(roundCurrency(totalFeesCollected))}</strong></td>
-                                </tr>
-                                <tr>
-                                    <td colspan="7" style="text-align: right;"><strong>Total Commission:</strong></td>
-                                    <td><strong>${formatCurrency(roundCurrency(totalCommission))}</strong></td>
-                                </tr>
-                                <tr>
-                                    <td colspan="7" style="text-align: right;"><strong>Total Collected (Cash):</strong></td>
-                                    <td><strong>${formatCurrency(roundCurrency(totalCollectedCash))}</strong></td>
-                                </tr>
-                                <tr>
-                                    <td colspan="7" style="text-align: right;"><strong>Total Collected (Register):</strong></td>
-                                    <td><strong>${formatCurrency(roundCurrency(totalCollectedRegister))}</strong></td>
-                                </tr>
-                                <tr>
-                                    <td colspan="7" style="text-align: right;"><strong>Total Collected:</strong></td>
-                                    <td><strong>${formatCurrency(roundCurrency(totalCollected))}</strong></td>
-                                </tr>
-                            </tfoot>
                         </table>
                     </div>
                 </body>
