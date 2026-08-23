@@ -102,8 +102,8 @@ router.get('/sales', requireAuth, requireUserType('vendor'), vendorRouteRateLimi
         );
 
         const now = new Date();
-        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-        const endOfDay   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+        const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+        const endOfDay   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999)).toISOString();
 
         const dailyResult = await db.query(
             `SELECT COALESCE(SUM(ti.final_price), 0)::float AS daily_total

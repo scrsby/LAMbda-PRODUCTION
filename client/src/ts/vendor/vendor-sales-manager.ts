@@ -361,7 +361,7 @@ function renderSales(items: VendorSaleItem[]) {
         row.innerHTML = `
             <td>${escapeHtml(String(item.vendor_inventory_id ?? ''))}</td>
             <td>${escapeHtml(String(item.name ?? ''))}</td>
-            <td>${formatDateTime(item.created_at)}</td>
+            <td>${escapeHtml(formatDateTime(item.created_at))}</td>
             <td>$${itemPrice.toFixed(2)}</td>
             <td>$${discount.toFixed(2)}</td>
             <td>$${finalPrice.toFixed(2)}</td>
