@@ -32,8 +32,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         const vendorResponse = await apiAxios('/POS/vendors', { method: 'GET' });
-        if (vendorResponse?.data?.vendorIds) {
-            validVendorIds = new Set(vendorResponse.data.vendorIds);
+        if (vendorResponse?.vendorIds) {
+            validVendorIds = new Set(vendorResponse.vendorIds);
         }
     } catch {
         // If vendor list cannot be fetched, validation is skipped silently
