@@ -456,7 +456,7 @@ function generateResetPasswordToken(): number {
 }
 
 function createMagicLink(email: string, resetToken: number, baseUrl: string) {
-    const magicLink = `${baseUrl}/auth/reset-password?token=${resetToken}}`;
+    const magicLink = `${baseUrl}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
     return magicLink;
 }
 
@@ -528,7 +528,7 @@ async function sendResetPasswordEmail(email: string, resetToken: number, baseUrl
 router.post('/generateResetPasswordToken', async (req: any, res: any) => {
     const { email, baseUrl } = req.body;
 
-    if (!email ) {
+    if (!email) {
         return res.status(400).json({
             success: false,
             message: 'Valid email is required'
@@ -549,38 +549,134 @@ router.post('/generateResetPasswordToken', async (req: any, res: any) => {
             const checkUserEmailResult = await client.query(checkUserEmailQuery, [email]);
 
             if (checkUserEmailResult.rows.length === 0) {
+                // Return success even when email not found to avoid user enumeration
                 await client.query('ROLLBACK');
+                return res.status(200).json({
+                    success: true,
+                    message: 'If an account with this email exists, a reset password link has been sent',
+                });
             }
+
+            // Remove any existing tokens for this email before inserting a new one
+            await client.query('DELETE FROM reset_password_tokens WHERE email = $1', [email]);
 
             const resetPasswordToken = generateResetPasswordToken();
 
-            const resetPasswordTokenQuery = `
-                INSERT INTO reset_password_tokens (email, reset_password_token)
-                VALUES ($1, $2)
-            `;
-
-            const resetPasswordTokenResult = await client.query(resetPasswordTokenQuery, [email, resetPasswordToken]);
+            await client.query(
+                'INSERT INTO reset_password_tokens (email, reset_password_token) VALUES ($1, $2)',
+                [email, resetPasswordToken]
+            );
 
             await sendResetPasswordEmail(email, resetPasswordToken, baseUrl);
 
             await client.query('COMMIT');
 
-            res.status(201).json({
+            res.status(200).json({
                 success: true,
-                message: 'If an email exists, a reset password token has been sent',
+                message: 'If an account with this email exists, a reset password link has been sent',
             });
 
         } catch (error) {
+            await client.query('ROLLBACK');
             throw error;
         } finally {
             client.release();
         }
 
     } catch (error) {
-        console.error('Error creating account:', error);
+        console.error('Error generating reset password token:', error);
         res.status(500).json({
             success: false,
-            message: getAuthFailureMessage(error, 'Internal server error while creating account')
+            message: getAuthFailureMessage(error, 'Internal server error while processing request')
+        });
+    }
+});
+
+router.post('/resetPassword', async (req: any, res: any) => {
+    const { email, token, newPassword } = req.body;
+
+    if (!email || !token || !newPassword) {
+        return res.status(400).json({
+            success: false,
+            message: 'Email, token, and new password are required'
+        });
+    }
+
+    if (newPassword.length < 8) {
+        return res.status(400).json({
+            success: false,
+            message: 'Password must be at least 8 characters long'
+        });
+    }
+
+    const tokenInt = parseInt(token, 10);
+    if (isNaN(tokenInt)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid reset token'
+        });
+    }
+
+    try {
+        const client = await db.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const tokenQuery = `
+                SELECT email, reset_password_token, expires_at
+                FROM reset_password_tokens
+                WHERE email = $1 AND reset_password_token = $2
+            `;
+            const tokenResult = await client.query(tokenQuery, [email, tokenInt]);
+
+            if (tokenResult.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid or expired reset token'
+                });
+            }
+
+            const tokenData = tokenResult.rows[0];
+
+            if (tokenData.expires_at && new Date(tokenData.expires_at) < new Date()) {
+                await client.query('DELETE FROM reset_password_tokens WHERE email = $1', [email]);
+                await client.query('COMMIT');
+                return res.status(400).json({
+                    success: false,
+                    message: 'Reset token has expired'
+                });
+            }
+
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+            await client.query(
+                'UPDATE users SET password_hash = $1 WHERE email = $2',
+                [hashedPassword, email]
+            );
+
+            await client.query('DELETE FROM reset_password_tokens WHERE email = $1', [email]);
+
+            await client.query('COMMIT');
+
+            res.status(200).json({
+                success: true,
+                message: 'Password reset successfully'
+            });
+
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+
+    } catch (error) {
+        console.error('Error resetting password:', error);
+        res.status(500).json({
+            success: false,
+            message: getAuthFailureMessage(error, 'Internal server error while resetting password')
         });
     }
 });
