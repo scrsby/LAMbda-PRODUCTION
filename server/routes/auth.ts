@@ -2,10 +2,31 @@ import { Router } from 'express';
 import { randomBytes } from 'crypto';
 import { sendEmail } from '../services/mailer.js'
 import db from '../config/db.js';
-import bcrypt from 'bcrypt'; 
+import bcrypt from 'bcrypt';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
 const SESSION_COOKIE_NAME = 'connect.sid';
+
+const forgotPasswordRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (_req: any, res: any) => {
+        res.status(429).json({ success: false, message: 'Too many password reset requests. Please wait and try again.' });
+    }
+});
+
+const resetPasswordRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (_req: any, res: any) => {
+        res.status(429).json({ success: false, message: 'Too many password reset attempts. Please wait and try again.' });
+    }
+});
 const DATABASE_CONNECTION_ERROR_MESSAGE = 'Internal database connection error, please contact your admin';
 const DATABASE_CONNECTION_ERROR_CODES = new Set([
     '08000',
@@ -513,7 +534,7 @@ async function sendResetPasswordEmail(email: string, resetToken: string, baseUrl
 
 }
 
-router.post('/generateResetPasswordToken', async (req: any, res: any) => {
+router.post('/generateResetPasswordToken', forgotPasswordRateLimit, async (req: any, res: any) => {
     const { email, baseUrl } = req.body;
 
     if (!email) {
@@ -580,7 +601,7 @@ router.post('/generateResetPasswordToken', async (req: any, res: any) => {
     }
 });
 
-router.post('/resetPassword', async (req: any, res: any) => {
+router.post('/resetPassword', resetPasswordRateLimit, async (req: any, res: any) => {
     const { email, token, newPassword } = req.body;
 
     if (!email || !token || !newPassword) {
