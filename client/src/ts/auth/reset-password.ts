@@ -63,13 +63,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!resetToken || !resetEmail) {
         showInvalidLink();
+        return;
     }
-});
 
-const form = document.getElementById('reset-password-form');
-form?.addEventListener('submit', function (event) {
-    event.preventDefault();
-    handleResetPassword();
+    const form = document.getElementById('reset-password-form');
+    form?.addEventListener('submit', function (event) {
+        event.preventDefault();
+        handleResetPassword();
+    });
 });
 
 async function handleResetPassword() {
@@ -98,7 +99,7 @@ async function handleResetPassword() {
         return;
     }
 
-    const submitButton = form?.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+    const submitButton = document.querySelector('#reset-password-form button[type="submit"]') as HTMLButtonElement | null;
     if (submitButton) {
         submitButton.disabled = true;
         submitButton.textContent = 'Resetting...';

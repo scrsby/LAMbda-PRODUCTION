@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { randomInt } from 'crypto';
+import { randomBytes } from 'crypto';
 import { sendEmail } from '../services/mailer.js'
 import db from '../config/db.js';
 import bcrypt from 'bcrypt'; 
@@ -451,28 +451,28 @@ router.post('/update-profile', async (req: any, res: any) => {
     }
 });
 
-function generateResetPasswordToken(): number {
-    return randomInt(100000, 1000000);
+function generateResetPasswordToken(): string {
+    return randomBytes(32).toString('hex');
 }
 
-function createMagicLink(email: string, resetToken: number, baseUrl: string) {
+function createMagicLink(email: string, resetToken: string, baseUrl: string) {
     const magicLink = `${baseUrl}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
     return magicLink;
 }
 
-async function sendResetPasswordEmail(email: string, resetToken: number, baseUrl: string) {
+async function sendResetPasswordEmail(email: string, resetToken: string, baseUrl: string) {
     const mailOptions = {
         from: '"LAMbda Team" <no-reply@terminalvelocitydevelopment.com>',
         to: email,
         subject: "Action Required: Reset Your Password",
-        text: `A password reset was requested for your account. Click the following link to reset your password: ${createMagicLink(email, resetToken, baseUrl)} Your reset code is: ${resetToken}`,
+        text: `A password reset was requested for your account. Click the following link to reset your password: ${createMagicLink(email, resetToken, baseUrl)}`,
         html: `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #f8f9fa;">
             <div style="background-color: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); padding: 40px; text-align: center;">
-                <h1 style="color: #2c3e50; margin-bottom: 30px; font-size: 28px; font-weight: 600;">Welcome to LAMbda</h1>
+                <h1 style="color: #2c3e50; margin-bottom: 30px; font-size: 28px; font-weight: 600;">LAMbda Password Reset</h1>
                 
                 <p style="color: #555; font-size: 16px; margin-bottom: 30px;">
-                    A password reset was requested for your account. Click the following link to reset your password:
+                    A password reset was requested for your account. Click the button below to reset your password. This link expires in 1 hour.
                 </p>
                 
                 <div style="margin: 40px 0;">
@@ -489,18 +489,6 @@ async function sendResetPasswordEmail(email: string, resetToken: number, baseUrl
                               transition: transform 0.2s ease;">
                         Reset Password
                     </a>
-                </div>
-                
-                <div style="background-color: #f1f3f4; 
-                           border: 1px solid #e0e0e0; 
-                           border-radius: 8px; 
-                           padding: 20px; 
-                           margin: 30px 0; 
-                           text-align: center;">
-                    <p style="color: #666; font-size: 14px; margin-bottom: 10px;">Your Access Token:</p>
-                    <p style="color: #333; font-weight: bold; font-size: 16px; font-family: 'Courier New', monospace; margin: 0; word-break: break-all;">
-                        ${resetToken}
-                    </p>
                 </div>
                 
                 <p style="color: #888; font-size: 14px; margin-top: 30px;">
@@ -609,8 +597,7 @@ router.post('/resetPassword', async (req: any, res: any) => {
         });
     }
 
-    const tokenInt = parseInt(token, 10);
-    if (isNaN(tokenInt)) {
+    if (typeof token !== 'string' || token.length === 0) {
         return res.status(400).json({
             success: false,
             message: 'Invalid reset token'
@@ -628,7 +615,7 @@ router.post('/resetPassword', async (req: any, res: any) => {
                 FROM reset_password_tokens
                 WHERE email = $1 AND reset_password_token = $2
             `;
-            const tokenResult = await client.query(tokenQuery, [email, tokenInt]);
+            const tokenResult = await client.query(tokenQuery, [email, token]);
 
             if (tokenResult.rows.length === 0) {
                 await client.query('ROLLBACK');
