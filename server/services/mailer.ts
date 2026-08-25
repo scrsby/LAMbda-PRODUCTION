@@ -18,29 +18,44 @@
 import nodemailer from 'nodemailer';
 
 export async function sendEmail(mailOptions: any) {
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+
+    if (!smtpHost || !smtpUser || !smtpPass) {
+        const missing = [
+            !smtpHost && 'SMTP_HOST',
+            !smtpUser && 'SMTP_USER',
+            !smtpPass && 'SMTP_PASS',
+        ].filter(Boolean).join(', ');
+        throw new Error(`SMTP configuration is incomplete. Missing environment variables: ${missing}`);
+    }
+
     // Create transporter inside the function to ensure env vars are loaded
     const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
+        host: smtpHost,
         port: parseInt(process.env.SMTP_PORT || '587'),
         secure: false, // true for 465, false for other ports
         auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS
+            user: smtpUser,
+            pass: smtpPass
         }
     });
 
-    // Debug the actual auth values being used
-    console.log('Using auth:', {
-        user: process.env.SMTP_USER ? 'SET' : 'NOT SET', 
-        pass: process.env.SMTP_PASS ? 'SET' : 'NOT SET'
-    });
-
+    let info;
     try {
-        const info = await transporter.sendMail(mailOptions);
-        console.log('Email sent successfully:', info.messageId);
-        return info;
+        info = await transporter.sendMail(mailOptions);
     } catch (error) {
         console.error('Error sending email:', error);
         throw error;
     }
+
+    if (info.rejected && info.rejected.length > 0) {
+        const rejectedList = info.rejected.join(', ');
+        console.error('Email rejected for recipients:', rejectedList);
+        throw new Error(`Email rejected for recipients: ${rejectedList}`);
+    }
+
+    console.log('Email sent successfully:', info.messageId);
+    return info;
 }

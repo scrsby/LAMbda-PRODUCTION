@@ -1,11 +1,32 @@
 import { Router } from 'express';
-import { randomInt } from 'crypto';
+import { randomBytes } from 'crypto';
 import { sendEmail } from '../services/mailer.js'
 import db from '../config/db.js';
-import bcrypt from 'bcrypt'; 
+import bcrypt from 'bcrypt';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
 const SESSION_COOKIE_NAME = 'connect.sid';
+
+const forgotPasswordRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (_req: any, res: any) => {
+        res.status(429).json({ success: false, message: 'Too many password reset requests. Please wait and try again.' });
+    }
+});
+
+const resetPasswordRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (_req: any, res: any) => {
+        res.status(429).json({ success: false, message: 'Too many password reset attempts. Please wait and try again.' });
+    }
+});
 const DATABASE_CONNECTION_ERROR_MESSAGE = 'Internal database connection error, please contact your admin';
 const DATABASE_CONNECTION_ERROR_CODES = new Set([
     '08000',
@@ -451,28 +472,28 @@ router.post('/update-profile', async (req: any, res: any) => {
     }
 });
 
-function generateResetPasswordToken(): number {
-    return randomInt(100000, 1000000);
+function generateResetPasswordToken(): string {
+    return randomBytes(32).toString('hex');
 }
 
-function createMagicLink(email: string, resetToken: number, baseUrl: string) {
-    const magicLink = `${baseUrl}/auth/reset-password?token=${resetToken}}`;
+function createMagicLink(email: string, resetToken: string, baseUrl: string) {
+    const magicLink = `${baseUrl}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
     return magicLink;
 }
 
-async function sendResetPasswordEmail(email: string, resetToken: number, baseUrl: string) {
+async function sendResetPasswordEmail(email: string, resetToken: string, baseUrl: string) {
     const mailOptions = {
         from: '"LAMbda Team" <no-reply@terminalvelocitydevelopment.com>',
         to: email,
         subject: "Action Required: Reset Your Password",
-        text: `A password reset was requested for your account. Click the following link to reset your password: ${createMagicLink(email, resetToken, baseUrl)} Your reset code is: ${resetToken}`,
+        text: `A password reset was requested for your account. Click the following link to reset your password: ${createMagicLink(email, resetToken, baseUrl)}`,
         html: `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #f8f9fa;">
             <div style="background-color: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); padding: 40px; text-align: center;">
-                <h1 style="color: #2c3e50; margin-bottom: 30px; font-size: 28px; font-weight: 600;">Welcome to LAMbda</h1>
+                <h1 style="color: #2c3e50; margin-bottom: 30px; font-size: 28px; font-weight: 600;">LAMbda Password Reset</h1>
                 
                 <p style="color: #555; font-size: 16px; margin-bottom: 30px;">
-                    A password reset was requested for your account. Click the following link to reset your password:
+                    A password reset was requested for your account. Click the button below to reset your password. This link expires in 1 hour.
                 </p>
                 
                 <div style="margin: 40px 0;">
@@ -489,18 +510,6 @@ async function sendResetPasswordEmail(email: string, resetToken: number, baseUrl
                               transition: transform 0.2s ease;">
                         Reset Password
                     </a>
-                </div>
-                
-                <div style="background-color: #f1f3f4; 
-                           border: 1px solid #e0e0e0; 
-                           border-radius: 8px; 
-                           padding: 20px; 
-                           margin: 30px 0; 
-                           text-align: center;">
-                    <p style="color: #666; font-size: 14px; margin-bottom: 10px;">Your Access Token:</p>
-                    <p style="color: #333; font-weight: bold; font-size: 16px; font-family: 'Courier New', monospace; margin: 0; word-break: break-all;">
-                        ${resetToken}
-                    </p>
                 </div>
                 
                 <p style="color: #888; font-size: 14px; margin-top: 30px;">
@@ -525,10 +534,10 @@ async function sendResetPasswordEmail(email: string, resetToken: number, baseUrl
 
 }
 
-router.post('/generateResetPasswordToken', async (req: any, res: any) => {
+router.post('/generateResetPasswordToken', forgotPasswordRateLimit, async (req: any, res: any) => {
     const { email, baseUrl } = req.body;
 
-    if (!email ) {
+    if (!email) {
         return res.status(400).json({
             success: false,
             message: 'Valid email is required'
@@ -549,38 +558,133 @@ router.post('/generateResetPasswordToken', async (req: any, res: any) => {
             const checkUserEmailResult = await client.query(checkUserEmailQuery, [email]);
 
             if (checkUserEmailResult.rows.length === 0) {
+                // Return success even when email not found to avoid user enumeration
                 await client.query('ROLLBACK');
+                return res.status(200).json({
+                    success: true,
+                    message: 'If an account with this email exists, a reset password link has been sent',
+                });
             }
+
+            // Remove any existing tokens for this email before inserting a new one
+            await client.query('DELETE FROM reset_password_tokens WHERE email = $1', [email]);
 
             const resetPasswordToken = generateResetPasswordToken();
 
-            const resetPasswordTokenQuery = `
-                INSERT INTO reset_password_tokens (email, reset_password_token)
-                VALUES ($1, $2)
-            `;
-
-            const resetPasswordTokenResult = await client.query(resetPasswordTokenQuery, [email, resetPasswordToken]);
+            await client.query(
+                'INSERT INTO reset_password_tokens (email, reset_password_token) VALUES ($1, $2)',
+                [email, resetPasswordToken]
+            );
 
             await sendResetPasswordEmail(email, resetPasswordToken, baseUrl);
 
             await client.query('COMMIT');
 
-            res.status(201).json({
+            res.status(200).json({
                 success: true,
-                message: 'If an email exists, a reset password token has been sent',
+                message: 'If an account with this email exists, a reset password link has been sent',
             });
 
         } catch (error) {
+            await client.query('ROLLBACK');
             throw error;
         } finally {
             client.release();
         }
 
     } catch (error) {
-        console.error('Error creating account:', error);
+        console.error('Error generating reset password token:', error);
         res.status(500).json({
             success: false,
-            message: getAuthFailureMessage(error, 'Internal server error while creating account')
+            message: getAuthFailureMessage(error, 'Internal server error while processing request')
+        });
+    }
+});
+
+router.post('/resetPassword', resetPasswordRateLimit, async (req: any, res: any) => {
+    const { email, token, newPassword } = req.body;
+
+    if (!email || !token || !newPassword) {
+        return res.status(400).json({
+            success: false,
+            message: 'Email, token, and new password are required'
+        });
+    }
+
+    if (newPassword.length < 8) {
+        return res.status(400).json({
+            success: false,
+            message: 'Password must be at least 8 characters long'
+        });
+    }
+
+    if (typeof token !== 'string' || token.length === 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid reset token'
+        });
+    }
+
+    try {
+        const client = await db.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const tokenQuery = `
+                SELECT email, reset_password_token, expires_at
+                FROM reset_password_tokens
+                WHERE email = $1 AND reset_password_token = $2
+            `;
+            const tokenResult = await client.query(tokenQuery, [email, token]);
+
+            if (tokenResult.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid or expired reset token'
+                });
+            }
+
+            const tokenData = tokenResult.rows[0];
+
+            if (tokenData.expires_at && new Date(tokenData.expires_at) < new Date()) {
+                await client.query('DELETE FROM reset_password_tokens WHERE email = $1', [email]);
+                await client.query('COMMIT');
+                return res.status(400).json({
+                    success: false,
+                    message: 'Reset token has expired'
+                });
+            }
+
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+            await client.query(
+                'UPDATE users SET password_hash = $1 WHERE email = $2',
+                [hashedPassword, email]
+            );
+
+            await client.query('DELETE FROM reset_password_tokens WHERE email = $1', [email]);
+
+            await client.query('COMMIT');
+
+            res.status(200).json({
+                success: true,
+                message: 'Password reset successfully'
+            });
+
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+
+    } catch (error) {
+        console.error('Error resetting password:', error);
+        res.status(500).json({
+            success: false,
+            message: getAuthFailureMessage(error, 'Internal server error while resetting password')
         });
     }
 });
