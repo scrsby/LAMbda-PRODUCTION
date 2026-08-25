@@ -4,6 +4,8 @@ import { showSuccessMessage, showErrorMessage } from '../utilities/messages.js';
 import { updateProfileCard } from "../utilities/ui.js";
 import { openItemizedReceipt, escapeHtml, calculateReceiptSummary, calculateSalesReportSummary } from '../utilities/receipt.js';
 
+let validVendorIds: Set<number> = new Set();
+
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await getCurrentUser();
     if (!user) {
@@ -27,6 +29,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     updateProfileCard(user);
+
+    try {
+        const vendorResponse = await apiAxios('/POS/vendors', { method: 'GET' });
+        if (vendorResponse?.data?.vendorIds) {
+            validVendorIds = new Set(vendorResponse.data.vendorIds);
+        }
+    } catch {
+        // If vendor list cannot be fetched, validation is skipped silently
+    }
 });
 
 declare global {
@@ -272,14 +283,17 @@ createItemBtn?.addEventListener('click', () => {
         if (isNaN(vendor_id) || !name || isNaN(vendor_price)) {
             alert('Please provide valid values for all item fields.');
             return;
-        } else {
-            createItemLocally(vendor_id, vendor_inventory_id, name, vendor_price, quantity);
-            vendorIdInput.value = '';
-            if (vendorInventoryIdInput) vendorInventoryIdInput.value = '';
-            itemNameInput.value = '';
-            vendorPriceInput.value = '';
-            if (quantityInput) quantityInput.value = '1';
         }
+        if (validVendorIds.size > 0 && !validVendorIds.has(vendor_id)) {
+            showErrorMessage('Invalid Vendor ID. If you believe this is a mistake, create the item under #604 and enter the Vendor ID into the Vendor Inventory ID field.');
+            return;
+        }
+        createItemLocally(vendor_id, vendor_inventory_id, name, vendor_price, quantity);
+        vendorIdInput.value = '';
+        if (vendorInventoryIdInput) vendorInventoryIdInput.value = '';
+        itemNameInput.value = '';
+        vendorPriceInput.value = '';
+        if (quantityInput) quantityInput.value = '1';
     }
 });
 

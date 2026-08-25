@@ -658,4 +658,18 @@ router.patch('/ticket-item/:id/refund', requireUserType('admin'), posWriteRateLi
     }
 });
 
+/* GET VENDOR IDS
+ * Returns the list of all vendor IDs from the vendors table.
+ * Accessible to employees and admins (via the router-level requireUserType middleware above).
+ */
+router.get('/vendors', async (_req, res) => {
+    try {
+        const result = await db.query('SELECT vendor_id FROM vendors ORDER BY vendor_id ASC');
+        res.status(200).json({ vendorIds: result.rows.map((r: { vendor_id: number }) => r.vendor_id) });
+    } catch (error) {
+        console.error('Error fetching vendor IDs:', error);
+        res.status(500).json({ error: 'Failed to fetch vendor list' });
+    }
+});
+
 export default router;
