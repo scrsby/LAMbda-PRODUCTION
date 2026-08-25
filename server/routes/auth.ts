@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { randomInt } from 'crypto';
+import { sendEmail } from '../services/mailer.js'
 import db from '../config/db.js';
 import bcrypt from 'bcrypt'; 
 
@@ -445,6 +447,140 @@ router.post('/update-profile', async (req: any, res: any) => {
         res.status(500).json({
             success: false,
             message: 'Internal server error while updating profile'
+        });
+    }
+});
+
+function generateResetPasswordToken(): number {
+    return randomInt(100000, 1000000);
+}
+
+function createMagicLink(email: string, resetToken: number, baseUrl: string) {
+    const magicLink = `${baseUrl}/auth/reset-password?token=${resetToken}}`;
+    return magicLink;
+}
+
+async function sendResetPasswordEmail(email: string, resetToken: number, baseUrl: string) {
+    const mailOptions = {
+        from: '"LAMbda Team" <no-reply@terminalvelocitydevelopment.com>',
+        to: email,
+        subject: "Action Required: Reset Your Password",
+        text: `A password reset was requested for your account. Click the following link to reset your password: ${createMagicLink(email, resetToken, baseUrl)} Your reset code is: ${resetToken}`,
+        html: `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #f8f9fa;">
+            <div style="background-color: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); padding: 40px; text-align: center;">
+                <h1 style="color: #2c3e50; margin-bottom: 30px; font-size: 28px; font-weight: 600;">Welcome to LAMbda</h1>
+                
+                <p style="color: #555; font-size: 16px; margin-bottom: 30px;">
+                    A password reset was requested for your account. Click the following link to reset your password:
+                </p>
+                
+                <div style="margin: 40px 0;">
+                    <a href="${createMagicLink(email, resetToken, baseUrl)}" 
+                       style="display: inline-block; 
+                              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                              color: white; 
+                              text-decoration: none; 
+                              padding: 16px 32px; 
+                              border-radius: 8px; 
+                              font-weight: 600; 
+                              font-size: 16px; 
+                              box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+                              transition: transform 0.2s ease;">
+                        Reset Password
+                    </a>
+                </div>
+                
+                <div style="background-color: #f1f3f4; 
+                           border: 1px solid #e0e0e0; 
+                           border-radius: 8px; 
+                           padding: 20px; 
+                           margin: 30px 0; 
+                           text-align: center;">
+                    <p style="color: #666; font-size: 14px; margin-bottom: 10px;">Your Access Token:</p>
+                    <p style="color: #333; font-weight: bold; font-size: 16px; font-family: 'Courier New', monospace; margin: 0; word-break: break-all;">
+                        ${resetToken}
+                    </p>
+                </div>
+                
+                <p style="color: #888; font-size: 14px; margin-top: 30px;">
+                    If you didn't request a password reset, please ignore this email.
+                </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+                © 2026 LAMbda Team - Terminal Velocity Development
+            </div>
+        </div>
+        `
+    }
+
+    try {
+        await sendEmail(mailOptions);
+        console.log('Access token email sent successfully to:', email);
+    } catch (error) {
+        console.error('Error sending access token email to', email, ':', error);
+        throw error;
+    }
+
+}
+
+router.post('/generateResetPasswordToken', async (req: any, res: any) => {
+    const { email, baseUrl } = req.body;
+
+    if (!email ) {
+        return res.status(400).json({
+            success: false,
+            message: 'Valid email is required'
+        });
+    }
+
+    try {
+        const client = await db.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const checkUserEmailQuery = `
+                SELECT email
+                FROM users
+                WHERE email = $1
+            `;
+            const checkUserEmailResult = await client.query(checkUserEmailQuery, [email]);
+
+            if (checkUserEmailResult.rows.length === 0) {
+                await client.query('ROLLBACK');
+            }
+
+            const resetPasswordToken = generateResetPasswordToken();
+
+            const resetPasswordTokenQuery = `
+                INSERT INTO reset_password_tokens (email, reset_password_token)
+                VALUES ($1, $2)
+            `;
+
+            const resetPasswordTokenResult = await client.query(resetPasswordTokenQuery, [email, resetPasswordToken]);
+
+            await sendResetPasswordEmail(email, resetPasswordToken, baseUrl);
+
+            await client.query('COMMIT');
+
+            res.status(201).json({
+                success: true,
+                message: 'If an email exists, a reset password token has been sent',
+            });
+
+        } catch (error) {
+            throw error;
+        } finally {
+            client.release();
+        }
+
+    } catch (error) {
+        console.error('Error creating account:', error);
+        res.status(500).json({
+            success: false,
+            message: getAuthFailureMessage(error, 'Internal server error while creating account')
         });
     }
 });

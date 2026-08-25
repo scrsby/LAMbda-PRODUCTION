@@ -45,13 +45,6 @@ function formSubmit(): void {
   createUser(email, role, vendorId);
 }
 
-/* CREATE USER SEQUENCE
-* Params: email
-* 
-* 
-* 
-* 
-*/
 async function createUser(email: string, role: string, vendorId: string) {
     try {
         const baseUrl = window.location.origin;
