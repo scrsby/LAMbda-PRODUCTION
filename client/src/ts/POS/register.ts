@@ -33,10 +33,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const vendorResponse = await apiAxios('/POS/vendors', { method: 'GET' });
         if (vendorResponse?.vendorIds) {
-            validVendorIds = new Set(vendorResponse.vendorIds);
+            const normalizedVendorIds = (vendorResponse.vendorIds as Array<string | number>)
+                .map((id) => Number(id))
+                .filter((id) => Number.isInteger(id) && id > 0);
+
+            validVendorIds = new Set(normalizedVendorIds);
         }
     } catch {
-        // If vendor list cannot be fetched, validation is skipped silently
+        throw new Error('Failed to fetch vendor list. Please ensure the backend is running and accessible.');
     }
 });
 
@@ -276,7 +280,7 @@ createItemBtn?.addEventListener('click', () => {
     } else {
         const quantityInput = document.getElementById('quantity') as HTMLInputElement | null;
         const quantity = quantityInput ? parseInt(quantityInput.value): 1;
-        const vendor_id = parseInt(vendorIdInput.value);
+        const vendor_id = parseInt(vendorIdInput.value, 10);
         const vendor_inventory_id = vendorInventoryIdInput?.value?.trim() || '';
         const name = itemNameInput.value.trim();
         const vendor_price = parseFloat(vendorPriceInput.value);
