@@ -434,7 +434,7 @@ async function updateTicket(): Promise<boolean> {
                 ...ticketPaymentAndTaxDetails
             }
         });
-        ticket_items = [...ticket_items, ...(response.insertedItems as TicketItem[])];
+        ticket_items = [...ticket_items, ...(response.insertedItems as TicketItem[]).map(normalizeRegisterItem)];
         unsynced_items = [];
         ticketDirty = false;
         updateItemTable();
@@ -739,6 +739,18 @@ function createItemLocally(vendor_id: number, vendor_inventory_id: string, name:
     updateItemTable();
 }
 
+function normalizeRegisterItem(item: TicketItem): TicketItem {
+    const vendor_price = getLineBasePrice(item);
+
+    return {
+        ...item,
+        name: getDisplayItemName(item),
+        quantity: 1,
+        vendor_price,
+        final_price: roundCurrency(vendor_price - Number(item.discount_amount ?? 0))
+    };
+}
+
 function initializeSearchResultsPagination() {
     const jquery = window.$;
     const tableSelector = '#search_table';
@@ -875,7 +887,7 @@ function parseItemQuantity(): number | null {
     }
 
     const parsedQuantity = Number(rawQuantity);
-    return Number.isInteger(parsedQuantity) && parsedQuantity > 0 ? parsedQuantity : null;
+    return Number.isSafeInteger(parsedQuantity) && parsedQuantity > 0 ? parsedQuantity : null;
 }
 
 function formatItemDescription(name: string, quantity: number): string {
@@ -973,7 +985,7 @@ async function searchTicket() {
             showErrorMessage(`Ticket #${ticketId} found but returned no items array.`);
             return;
         }
-        ticket_items = response.items as TicketItem[];
+        ticket_items = (response.items as TicketItem[]).map(normalizeRegisterItem);
         unsynced_items = [];
         ticketDirty = false;
         editingItemIndex = null;

@@ -177,7 +177,7 @@ function renderTicketItems(items: TicketItem[]) {
     tableBody.innerHTML = '';
 
     if (items.length === 0) {
-        const colspan = (isPartiallyRefunded && isAdminUser) ? 10 : 9;
+        const colspan = (isPartiallyRefunded && isAdminUser) ? 9 : 8;
         tableBody.innerHTML = `
             <tr>
                 <td colspan="${colspan}" class="orders-empty-state">No ticket items found.</td>
@@ -202,7 +202,6 @@ function renderTicketItems(items: TicketItem[]) {
             <td>$${basePrice.toFixed(2)}</td>
             <td>${Number(item.discount_percent ?? 0).toFixed(2)}%</td>
             <td>$${Number(item.discount_amount ?? 0).toFixed(2)}</td>
-            <td>$${finalPrice.toFixed(2)}</td>
             <td>$${finalPrice.toFixed(2)}</td>
             ${isPartiallyRefunded && isAdminUser ? `<td>${item.refunded ? '<em>Refunded</em>' : `<button type="button" class="btn btn-secondary refund-btn" data-item-id="${item.ticket_item_id}">Refund</button>`}</td>` : ''}
         `;

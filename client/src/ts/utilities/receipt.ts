@@ -101,7 +101,7 @@ export function getDisplayItemName(item: { name?: string | null; quantity?: numb
 export function getLineBasePrice(item: { vendor_price?: number | string | null; quantity?: number | string | null }): number {
     const basePrice = Number(item.vendor_price ?? 0);
     const quantity = normalizeItemQuantity(item.quantity);
-    return roundCurrency(basePrice * (quantity > 1 ? quantity : 1));
+    return roundCurrency(basePrice * quantity);
 }
 
 export function getLineFinalPrice(item: {
@@ -112,7 +112,7 @@ export function getLineFinalPrice(item: {
 }): number {
     const providedFinalPrice = Number(item.final_price);
 
-    if (Number.isFinite(providedFinalPrice)) {
+    if (item.final_price !== null && item.final_price !== undefined && item.final_price !== '' && Number.isFinite(providedFinalPrice)) {
         return roundCurrency(providedFinalPrice);
     }
 

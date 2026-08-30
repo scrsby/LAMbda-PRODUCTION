@@ -63,7 +63,7 @@ export function getDisplayItemName(item) {
 export function getLineBasePrice(item) {
     const basePrice = Number(item.vendor_price ?? 0);
     const quantity = normalizeItemQuantity(item.quantity);
-    return roundCurrency(basePrice * (quantity > 1 ? quantity : 1));
+    return roundCurrency(basePrice * quantity);
 }
 export function getLineFinalPrice(item) {
     const providedFinalPrice = Number(item.final_price);
