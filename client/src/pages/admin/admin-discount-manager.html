@@ -69,13 +69,6 @@
                     <div style="flex: 1; padding: 1.25rem 1.5rem; display: flex; align-items: center;">
                         <h1 class="greeting" style="margin: 0;">Discount Manager</h1>
                     </div>
-                    <div style="width: 1px; background: var(--border-color); box-shadow: 2px 0 6px rgba(0,0,0,0.12); flex-shrink: 0;"></div>
-                    <div style="padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <a class="btn btn-primary" href="admin-invite-settings.html">Invites</a>
-                        <a class="btn btn-primary" href="admin-user-settings.html">Users</a>
-                        <a class="btn btn-primary" href="admin-vendor-settings.html">Vendors</a>
-                        <button class="btn btn-primary" disabled style="opacity: 0.5; cursor: not-allowed;">Discounts</button>
-                    </div>
                 </div>
             </div>
 
@@ -123,16 +116,28 @@
                                     <th>Description</th>
                                     <th>Start Time</th>
                                     <th>End Time</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="discounts-table-body">
-                                <tr><td colspan="4" style="text-align: center; padding: 20px; color: #9ca3af;">Loading discounts...</td></tr>
+                                <tr><td colspan="5" style="text-align: center; padding: 20px; color: #9ca3af;">Loading discounts...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </section>
         </main>
+
+        <div id="delete-modal" style="display: none; position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+            <div style="background: white; border-radius: 12px; padding: 2rem; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                <h3 style="margin: 0 0 0.75rem; font-size: 1.25rem; color: #111827;">Delete Discount?</h3>
+                <p id="delete-modal-message" style="color: #6b7280; margin-bottom: 1.5rem;"></p>
+                <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                    <button id="delete-modal-back" class="btn" style="background: #e5e7eb; color: #374151; border: none; padding: 0.5rem 1.25rem; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">Go Back</button>
+                    <button id="delete-modal-confirm" class="btn btn-primary" style="background: #ef4444; border: none; padding: 0.5rem 1.25rem; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: white;">Delete</button>
+                </div>
+            </div>
+        </div>
 
         <footer class="footer"><p>&copy; 2026 Lawrence Antique Mall</p></footer>
     </div>

@@ -491,6 +491,30 @@ router.post('/discounts', requireAuth, requireUserType('admin'), adminRouteRateL
     }
 });
 
+router.delete('/discounts/:discountId', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
+    const discountId = parseInt(req.params?.discountId, 10);
+
+    if (!Number.isInteger(discountId) || discountId <= 0) {
+        return res.status(400).json({ success: false, message: 'Discount ID must be a positive integer' });
+    }
+
+    try {
+        const result = await db.query(
+            'DELETE FROM discounts WHERE discount_id = $1 RETURNING discount_id',
+            [discountId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Discount not found' });
+        }
+
+        res.status(200).json({ success: true, message: 'Discount deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting discount:', error);
+        res.status(500).json({ success: false, message: 'Internal server error while deleting discount' });
+    }
+});
+
 /* DELETE VENDOR
  * Deletes a vendor by vendor_id.
  */
