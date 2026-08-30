@@ -112,7 +112,7 @@ export function getLineFinalPrice(item: {
 }): number {
     const providedFinalPrice = Number(item.final_price);
 
-    if (item.final_price !== null && item.final_price !== undefined && item.final_price !== '' && Number.isFinite(providedFinalPrice)) {
+    if (item.final_price != null && item.final_price !== '' && Number.isFinite(providedFinalPrice)) {
         return roundCurrency(providedFinalPrice);
     }
 
