@@ -81,9 +81,9 @@ async function createDiscount() {
     const startTimeValue = (document.getElementById('discount-start-time') as HTMLInputElement | null)?.value ?? '';
     const endTimeValue = (document.getElementById('discount-end-time') as HTMLInputElement | null)?.value ?? '';
 
-    const vendor_id = Number.parseInt(vendorIdValue, 10);
+    const vendorId = Number.parseInt(vendorIdValue, 10);
 
-    if (!Number.isInteger(vendor_id) || vendor_id <= 0) {
+    if (!Number.isInteger(vendorId) || vendorId <= 0) {
         showErrorMessage('Vendor ID must be a positive integer.');
         return;
     }
@@ -100,7 +100,7 @@ async function createDiscount() {
         await apiAxios('/admin/discounts', {
             method: 'POST',
             body: {
-                vendor_id,
+                vendor_id: vendorId,
                 description,
                 start_time: new Date(startTimeValue).toISOString(),
                 end_time: new Date(endTimeValue).toISOString()
