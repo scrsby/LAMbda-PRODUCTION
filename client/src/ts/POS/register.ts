@@ -99,7 +99,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         updateRunningDiscountsDisplay();
     } catch {
-        throw new Error('Failed to fetch register setup data. Please ensure the backend is running and accessible.');
+        showErrorMessage('Failed to load register setup data. Please refresh the page and verify the backend is available.');
+        return;
     }
 });
 
