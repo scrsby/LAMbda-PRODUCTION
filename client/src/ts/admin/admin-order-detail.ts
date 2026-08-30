@@ -1,5 +1,5 @@
 import { apiAxios, getCurrentUser, logout } from '../utilities/api.js';
-import { getDisplayItemName, getLineBasePrice, getLineFinalPrice, openItemizedReceipt, type ReceiptTicketItem } from '../utilities/receipt.js';
+import { escapeHtml, getDisplayItemName, getLineBasePrice, getLineFinalPrice, openItemizedReceipt, type ReceiptTicketItem } from '../utilities/receipt.js';
 import { updateProfileCard } from "../utilities/ui.js";
 
 interface TicketDetail {
@@ -145,8 +145,8 @@ function renderTicketItems(items: TicketItem[]) {
         row.innerHTML = `
             <td>${item.ticket_item_id}</td>
             <td>${item.vendor_id}</td>
-            <td>${item.vendor_inventory_id}</td>
-            <td>${displayName}</td>
+            <td>${escapeHtml(String(item.vendor_inventory_id ?? ''))}</td>
+            <td>${escapeHtml(displayName)}</td>
             <td>$${basePrice.toFixed(2)}</td>
             <td>${Number(item.discount_percent ?? 0).toFixed(2)}%</td>
             <td>$${Number(item.discount_amount ?? 0).toFixed(2)}</td>

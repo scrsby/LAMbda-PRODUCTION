@@ -1,61 +1,29 @@
 import { apiAxios, getCurrentUser, logout } from '../utilities/api.js';
-import { escapeHtml, getDisplayItemName, getLineBasePrice, getLineFinalPrice, openItemizedReceipt, type ReceiptTicketItem } from '../utilities/receipt.js';
+import { escapeHtml, getDisplayItemName, getLineBasePrice, getLineFinalPrice, openItemizedReceipt } from '../utilities/receipt.js';
 import { updateProfileCard } from "../utilities/ui.js";
-
-interface TicketDetail {
-    ticket_id: number;
-    cashier_id: number;
-    created_at: string;
-    ticket_status: string;
-    total: number;
-    cash_payment: boolean;
-    employee_name: string;
-}
-
-interface TicketItem {
-    ticket_item_id: number;
-    ticket_id: number;
-    vendor_id: number;
-    vendor_inventory_id: string;
-    name: string;
-    vendor_price: number;
-    discount_percent: number;
-    discount_amount: number;
-    final_price: number;
-    commission: number;
-    payout: number;
-    quantity: number;
-    refunded?: boolean;
-}
-
-const deleteTicketButton = document.getElementById('delete-ticket-btn') as HTMLButtonElement | null;
-const generateReceiptButton = document.getElementById('generate-receipt-btn') as HTMLButtonElement | null;
-let activeTicket: TicketDetail | null = null;
+const deleteTicketButton = document.getElementById('delete-ticket-btn');
+const generateReceiptButton = document.getElementById('generate-receipt-btn');
+let activeTicket = null;
 let isAdminUser = false;
-
 document.addEventListener('DOMContentLoaded', async () => {
     const ticketId = new URLSearchParams(window.location.search).get('ticketId');
-
     if (!ticketId) {
         showOrderError('No ticket ID was provided.');
         return;
     }
-
     const user = await getCurrentUser();
     isAdminUser = user?.userType === 'admin';
-
     if (!user) {
         window.location.href = '/auth/login.html';
         return;
     }
-    if (user.userType !== 'employee' && user.userType !== 'admin' ) {
+    if (user.userType !== 'employee' && user.userType !== 'admin') {
         window.location.href = '/auth/login.html';
         return;
     }
     if (isAdminUser) {
         showAdminControls();
     }
-
     document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
         await logout();
@@ -66,7 +34,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         await logout();
         window.location.href = '../auth/login.html';
     });
-
     updateProfileCard(user);
     deleteTicketButton?.addEventListener('click', handleDeleteTicket);
     generateReceiptButton?.addEventListener('click', () => {
@@ -74,24 +41,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     await loadOrderDetail(ticketId);
 });
-
-async function loadOrderDetail(ticketId: string) {
+async function loadOrderDetail(ticketId) {
     try {
         const response = await apiAxios(`/POS/ticket/${ticketId}`, { method: 'GET' });
-        renderTicketSummary(response.ticket as TicketDetail);
-        renderTicketItems((response.items ?? []) as TicketItem[]);
-    } catch (error: any) {
+        renderTicketSummary(response.ticket);
+        renderTicketItems((response.items ?? []));
+    }
+    catch (error) {
         if (error.response?.status === 404) {
             showOrderError(`Ticket #${ticketId} was not found.`);
             return;
         }
-
         console.error('Error loading ticket detail:', error);
         showOrderError('Unable to load this ticket right now.');
     }
 }
-
-function renderTicketSummary(ticket: TicketDetail) {
+function renderTicketSummary(ticket) {
     activeTicket = ticket;
     setText('ticket-detail-title', `Ticket #${ticket.ticket_id}`);
     setText('detail-ticket-id', String(ticket.ticket_id));
@@ -103,14 +68,13 @@ function renderTicketSummary(ticket: TicketDetail) {
     updateClosedTicketControls();
     updateDeleteTicketButton();
 }
-
-function renderStatusField(status: string) {
+function renderStatusField(status) {
     const container = document.getElementById('detail-status');
-    if (!container) return;
-
+    if (!container)
+        return;
     if (isAdminUser) {
         const ticketId = activeTicket?.ticket_id;
-        const options: { value: string; label: string }[] = [
+        const options = [
             { value: 'open', label: 'Open' },
             { value: 'closed', label: 'Closed' },
             { value: 'partially_refunded', label: 'Partially Refunded' },
@@ -123,10 +87,11 @@ function renderStatusField(status: string) {
                 ${options.map(o => `<option value="${o.value}"${o.value === normalized ? ' selected' : ''}>${o.label}</option>`).join('')}
             </select>
         `;
-        const select = document.getElementById('status-select') as HTMLSelectElement | null;
+        const select = document.getElementById('status-select');
         select?.addEventListener('change', async () => {
             const newStatus = select.value;
-            if (!ticketId) return;
+            if (!ticketId)
+                return;
             try {
                 await apiAxios(`/POS/ticket/${ticketId}/status`, { method: 'PATCH', data: { status: newStatus } });
                 if (activeTicket) {
@@ -138,26 +103,26 @@ function renderStatusField(status: string) {
                 updateDeleteTicketButton();
                 // Re-render items to show/hide Refund column
                 const response = await apiAxios(`/POS/ticket/${ticketId}`, { method: 'GET' });
-                renderTicketItems((response.items ?? []) as TicketItem[]);
-            } catch (error: any) {
+                renderTicketItems((response.items ?? []));
+            }
+            catch (error) {
                 window.alert(error.response?.data?.error ?? 'Failed to update status. Please try again.');
                 // Revert select back
                 select.value = activeTicket?.ticket_status ?? status;
                 select.className = `ticket-status-pill ${getStatusPillClass(activeTicket?.ticket_status ?? status)}`;
             }
         });
-    } else {
+    }
+    else {
         setStatusPill('detail-status', status);
     }
 }
-
-function renderTicketItems(items: TicketItem[]) {
+function renderTicketItems(items) {
     const tableBody = document.getElementById('ticket-items-list');
-    if (!tableBody) return;
-
+    if (!tableBody)
+        return;
     const isPartiallyRefunded = activeTicket?.ticket_status === 'partially_refunded';
     const isFullyRefunded = activeTicket?.ticket_status === 'refunded';
-
     // Update table header to add/remove the Refund column
     const thead = document.querySelector('#ticket_items_table thead tr');
     if (thead) {
@@ -169,13 +134,12 @@ function renderTicketItems(items: TicketItem[]) {
                 th.textContent = 'Refund';
                 thead.appendChild(th);
             }
-        } else {
+        }
+        else {
             existingRefundTh?.remove();
         }
     }
-
     tableBody.innerHTML = '';
-
     if (items.length === 0) {
         const colspan = (isPartiallyRefunded && isAdminUser) ? 10 : 9;
         tableBody.innerHTML = `
@@ -185,7 +149,6 @@ function renderTicketItems(items: TicketItem[]) {
         `;
         return;
     }
-
     items.forEach(item => {
         const row = document.createElement('tr');
         const displayName = getDisplayItemName(item);
@@ -208,11 +171,13 @@ function renderTicketItems(items: TicketItem[]) {
         `;
         if (isPartiallyRefunded && isAdminUser && !item.refunded) {
             row.querySelector('.refund-btn')?.addEventListener('click', async () => {
-                if (!window.confirm(`Mark item #${item.ticket_item_id} (${item.name}) as refunded?`)) return;
+                if (!window.confirm(`Mark item #${item.ticket_item_id} (${item.name}) as refunded?`))
+                    return;
                 try {
                     await apiAxios(`/POS/ticket-item/${item.ticket_item_id}/refund`, { method: 'PATCH' });
-                    await loadOrderDetail(String(activeTicket!.ticket_id));
-                } catch (error: any) {
+                    await loadOrderDetail(String(activeTicket.ticket_id));
+                }
+                catch (error) {
                     window.alert(error.response?.data?.error ?? 'Failed to refund item. Please try again.');
                 }
             });
@@ -220,153 +185,140 @@ function renderTicketItems(items: TicketItem[]) {
         tableBody.appendChild(row);
     });
 }
-
 async function handleDeleteTicket() {
     if (!activeTicket || !isAdminUser) {
         return;
     }
-
     if (activeTicket.ticket_status !== 'open') {
         window.alert('Only open tickets can be deleted.');
         return;
     }
-
     if (!window.confirm(`Delete ticket #${activeTicket.ticket_id}? This will also remove all ticket items.`)) {
         return;
     }
-
     if (deleteTicketButton) {
         deleteTicketButton.disabled = true;
         deleteTicketButton.textContent = 'Deleting...';
     }
-
     try {
         await apiAxios(`/POS/ticket/${activeTicket.ticket_id}`, { method: 'DELETE' });
         window.location.href = 'orders.html';
-    } catch (error: any) {
+    }
+    catch (error) {
         console.error('Error deleting ticket:', error);
         window.alert(error.response?.data?.error ?? 'Failed to delete ticket. Please try again.');
         updateDeleteTicketButton();
     }
 }
-
 function updateDeleteTicketButton() {
     if (!deleteTicketButton) {
         return;
     }
-
     const canDelete = isAdminUser && activeTicket?.ticket_status === 'open';
     deleteTicketButton.style.display = canDelete ? '' : 'none';
     deleteTicketButton.disabled = false;
     deleteTicketButton.textContent = 'Delete Ticket';
 }
-
 function updateClosedTicketControls() {
     const isOpen = activeTicket?.ticket_status === 'open';
     const paymentTypeField = document.getElementById('detail-payment-type-field');
-
     if (paymentTypeField) {
         paymentTypeField.style.display = isOpen ? 'none' : '';
     }
-
     if (generateReceiptButton) {
         generateReceiptButton.style.display = isOpen ? 'none' : '';
         generateReceiptButton.disabled = false;
         generateReceiptButton.textContent = 'Receipt';
     }
 }
-
-function showOrderError(message: string) {
+function showOrderError(message) {
     const errorMessage = document.getElementById('order-detail-error');
     const content = document.getElementById('order-detail-content');
-
     if (content) {
         content.style.display = 'none';
     }
-
     if (errorMessage) {
         errorMessage.textContent = message;
         errorMessage.style.display = 'block';
     }
 }
-
-function setText(elementId: string, value: string) {
+function setText(elementId, value) {
     const element = document.getElementById(elementId);
     if (element) {
         element.textContent = value;
     }
 }
-
-function getStatusPillClass(normalizedStatus: string): string {
-    if (normalizedStatus === 'open') return 'ticket-status-pill--open';
-    if (normalizedStatus === 'closed') return 'ticket-status-pill--closed';
-    if (normalizedStatus === 'partially_refunded') return 'ticket-status-pill--partially-refunded';
-    if (normalizedStatus === 'refunded') return 'ticket-status-pill--refunded';
+function getStatusPillClass(normalizedStatus) {
+    if (normalizedStatus === 'open')
+        return 'ticket-status-pill--open';
+    if (normalizedStatus === 'closed')
+        return 'ticket-status-pill--closed';
+    if (normalizedStatus === 'partially_refunded')
+        return 'ticket-status-pill--partially-refunded';
+    if (normalizedStatus === 'refunded')
+        return 'ticket-status-pill--refunded';
     return 'ticket-status-pill--default';
 }
-
-function setStatusPill(elementId: string, status: string) {
+function setStatusPill(elementId, status) {
     const element = document.getElementById(elementId);
     if (!element) {
         return;
     }
-
     const normalizedStatus = String(status ?? '').trim().toLowerCase();
     let statusText = status || 'Unknown';
-
     if (normalizedStatus === 'open') {
         statusText = 'Open';
-    } else if (normalizedStatus === 'closed') {
+    }
+    else if (normalizedStatus === 'closed') {
         statusText = 'Closed';
-    } else if (normalizedStatus === 'partially_refunded') {
+    }
+    else if (normalizedStatus === 'partially_refunded') {
         statusText = 'Partially Refunded';
-    } else if (normalizedStatus === 'refunded') {
+    }
+    else if (normalizedStatus === 'refunded') {
         statusText = 'Refunded';
     }
-
     const span = document.createElement('span');
     span.className = `ticket-status-pill ${getStatusPillClass(normalizedStatus)}`;
     span.textContent = statusText;
     element.innerHTML = '';
     element.appendChild(span);
 }
-
-function formatDateTime(value: string) {
+function formatDateTime(value) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
         return value;
     }
-
     return date.toLocaleString();
 }
-
 function showAdminControls() {
     const btn = document.getElementById('admin-controls-btn');
     const btnMobile = document.getElementById('admin-controls-btn-mobile');
-    if (btn) btn.style.display = '';
-    if (btnMobile) btnMobile.style.display = '';
+    if (btn)
+        btn.style.display = '';
+    if (btnMobile)
+        btnMobile.style.display = '';
 }
-
-
-
-async function generateOrderReceipt(ticketId: string, button: HTMLButtonElement): Promise<void> {
+async function generateOrderReceipt(ticketId, button) {
     if (!activeTicket || activeTicket.ticket_status === 'open') {
         window.alert('Receipts are only available for non-open tickets.');
         return;
     }
-
     button.disabled = true;
     button.textContent = 'Loading...';
     try {
         const response = await apiAxios(`/POS/ticket/${ticketId}`, { method: 'GET' });
-        const items = (response.items ?? []) as ReceiptTicketItem[];
+        const items = (response.items ?? []);
         const cashPayment = activeTicket?.cash_payment === true;
         openItemizedReceipt(cashPayment, items, ` — Ticket #${ticketId}`);
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error fetching ticket for receipt:', error);
         alert('Unable to generate receipt. Please try again.');
-    } finally {
+    }
+    finally {
         button.disabled = false;
         button.textContent = 'Receipt';
     }
 }
+//# sourceMappingURL=order-detail.js.map
