@@ -43,23 +43,21 @@ function renderDiscounts(discounts: Discount[]) {
 
     discounts.forEach((discount) => {
         const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${discount.vendor_id}</td>
-            <td>${escapeHtml(discount.description)}</td>
-            <td>${formatDateTime(discount.start_time)}</td>
-            <td>${formatDateTime(discount.end_time)}</td>
-        `;
+        const vendorCell = document.createElement('td');
+        vendorCell.textContent = String(discount.vendor_id);
+
+        const descriptionCell = document.createElement('td');
+        descriptionCell.textContent = discount.description;
+
+        const startTimeCell = document.createElement('td');
+        startTimeCell.textContent = formatDateTime(discount.start_time);
+
+        const endTimeCell = document.createElement('td');
+        endTimeCell.textContent = formatDateTime(discount.end_time);
+
+        row.append(vendorCell, descriptionCell, startTimeCell, endTimeCell);
         tableBody.appendChild(row);
     });
-}
-
-function escapeHtml(value: string): string {
-    return value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
 }
 
 async function loadDiscounts() {
