@@ -816,9 +816,16 @@ function renderDiscountList(discounts: RunningDiscount[]) {
 
     discounts.forEach((discount) => {
         const item = document.createElement('li');
-        item.textContent = `Vendor #${discount.vendor_id}: ${discount.description}`;
-        item.style.marginBottom = '0.5rem';
-        item.style.listStyle = 'none';
+
+        const vendor = document.createElement('span');
+        vendor.className = 'deal-vendor';
+        vendor.textContent = `Vendor ID: ${discount.vendor_id}`;
+
+        const description = document.createElement('span');
+        description.className = 'deal-description';
+        description.textContent = discount.description;
+
+        item.append(vendor, description);
         dealsList.appendChild(item);
     });
 }
@@ -830,7 +837,7 @@ function updateRunningDiscountsDisplay() {
     const matchingDiscounts = runningDiscounts.filter((discount) => matchingVendorIds.has(discount.vendor_id));
     const discountsToShow = showAllRunningDiscounts ? runningDiscounts : matchingDiscounts;
 
-    dealsToggleBtn.textContent = showAllRunningDiscounts ? 'Show Matching' : 'Show All';
+    dealsToggleBtn.textContent = showAllRunningDiscounts ? 'Show Relevant' : 'Show All';
 
     if (discountsToShow.length === 0) {
         dealsList.style.display = 'none';
