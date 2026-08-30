@@ -20,8 +20,6 @@
 
 .discount-checkbox-wrap {
     min-height: 38px;
-    padding: 0.375rem 0.75rem;
-    border: 1px solid var(--border-color);
     border-radius: 4px;
     background: var(--bg);
     display: flex;
@@ -29,7 +27,7 @@
 }
 
 .discount-checkbox-wrap #apply-to-all {
-    transform: scale(2);
+    transform: scale(2.5);
     transform-origin: left center;
     margin: 0 0 0 0.3rem;
 }
