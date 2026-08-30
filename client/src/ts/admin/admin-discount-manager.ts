@@ -2,13 +2,6 @@ import { apiAxios, requireAuth, logout } from '../utilities/api.js';
 import { showErrorMessage, showSuccessMessage } from '../utilities/messages.js';
 import { updateProfileCard } from '../utilities/ui.js';
 
-declare global {
-    interface Window {
-        $?: any;
-        jQuery?: any;
-    }
-}
-
 interface Discount {
     discount_id: number;
     vendor_id: number;
@@ -19,7 +12,6 @@ interface Discount {
 }
 
 let allDiscounts: Discount[] = [];
-let discountsDataTable: any = null;
 
 const discountForm = document.getElementById('discount-form') as HTMLFormElement | null;
 const tableBody = document.getElementById('discounts-table-body');
@@ -39,45 +31,8 @@ function formatDateTime(value: string): string {
     });
 }
 
-function initializeDiscountTable() {
-    const jquery = window.$;
-    const tableSelector = '#discounts-table';
-
-    if (!jquery || !jquery.fn?.DataTable) return;
-
-    if (jquery.fn.DataTable.isDataTable(tableSelector)) {
-        jquery(tableSelector).DataTable().destroy();
-    }
-
-    discountsDataTable = jquery(tableSelector).DataTable({
-        pageLength: 25,
-        lengthChange: false,
-        searching: false,
-        ordering: true,
-        responsive: true,
-        info: true,
-        autoWidth: false,
-        order: [[2, 'desc']]
-    });
-}
-
-function destroyDiscountTable() {
-    const jquery = window.$;
-    const tableSelector = '#discounts-table';
-
-    if (!jquery || !jquery.fn?.DataTable) return;
-
-    if (jquery.fn.DataTable.isDataTable(tableSelector)) {
-        jquery(tableSelector).DataTable().destroy();
-    }
-
-    discountsDataTable = null;
-}
-
 function renderDiscounts(discounts: Discount[]) {
     if (!tableBody) return;
-
-    destroyDiscountTable();
 
     if (!Array.isArray(discounts) || discounts.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #9ca3af;">No discounts found</td></tr>';
@@ -96,8 +51,6 @@ function renderDiscounts(discounts: Discount[]) {
         `;
         tableBody.appendChild(row);
     });
-
-    initializeDiscountTable();
 }
 
 function escapeHtml(value: string): string {
@@ -118,7 +71,6 @@ async function loadDiscounts() {
         renderDiscounts(allDiscounts);
     } catch (error) {
         console.error('Error loading discounts:', error);
-        destroyDiscountTable();
         tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #ef4444;">Error loading discounts. Please refresh the page.</td></tr>';
     }
 }
