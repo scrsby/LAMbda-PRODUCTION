@@ -10,7 +10,7 @@
     flex: initial;
 }
 
-.discount-toolbar .ticket-toolbar-field input {
+.discount-toolbar .ticket-toolbar-field input:not([type="checkbox"]) {
     min-height: 38px;
 }
 
@@ -20,15 +20,22 @@
 
 .discount-checkbox-wrap {
     min-height: 38px;
+    padding: 0.375rem 0.75rem;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     background: var(--bg);
     display: flex;
     align-items: center;
+    line-height: 1;
+    cursor: pointer;
 }
 
 .discount-checkbox-wrap #apply-to-all {
-    transform: scale(2.5);
+    width: 16px;
+    height: 16px;
+    transform: scale(2);
     transform-origin: left center;
+    display: block;
     margin: 0 0 0 0.3rem;
 }
 
