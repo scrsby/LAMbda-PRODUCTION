@@ -660,6 +660,24 @@ router.patch('/ticket-item/:id/refund', requireUserType('admin'), posWriteRateLi
     }
 });
 
+
+router.get('/running-discounts', requireAuth, requireUserType('employee', 'admin'), async (_req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT discount_id, vendor_id, description
+            FROM discounts
+            WHERE start_time <= NOW()
+              AND end_time >= NOW()
+            ORDER BY vendor_id ASC, start_time ASC, discount_id ASC
+        `);
+
+        res.status(200).json({ success: true, data: result.rows });
+    } catch (error) {
+        console.error('Error fetching running discounts:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch running discounts' });
+    }
+});
+
 /* GET VENDOR IDS
  * Returns the list of all vendor IDs from the vendors table.
  * Accessible to employees and admins (via the router-level requireUserType middleware above).

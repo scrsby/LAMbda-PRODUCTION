@@ -436,6 +436,95 @@ router.post('/createVendor', requireAuth, requireUserType('admin'), adminRouteRa
     }
 });
 
+router.get('/discounts', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (_req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT discount_id, vendor_id, description, start_time, end_time, created_at
+            FROM discounts
+            ORDER BY start_time DESC, end_time DESC, discount_id DESC
+        `);
+
+        res.status(200).json({ success: true, data: result.rows });
+    } catch (error) {
+        console.error('Error fetching discounts:', error);
+        res.status(500).json({ success: false, message: 'Internal server error while fetching discounts' });
+    }
+});
+
+router.post('/discounts', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
+    const vendorId = Number.parseInt(req.body?.vendor_id, 10);
+    const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
+    const startTimeValue = typeof req.body?.start_time === 'string' ? req.body.start_time.trim() : '';
+    const endTimeValue = typeof req.body?.end_time === 'string' ? req.body.end_time.trim() : '';
+
+    if (!Number.isInteger(vendorId) || vendorId <= 0) {
+        return res.status(400).json({ success: false, message: 'Vendor ID must be a positive integer' });
+    }
+    if (!description) {
+        return res.status(400).json({ success: false, message: 'Description is required' });
+    }
+    if (description.length > 500) {
+        return res.status(400).json({ success: false, message: 'Description must be 500 characters or fewer' });
+    }
+    if (!startTimeValue || !endTimeValue) {
+        return res.status(400).json({ success: false, message: 'Start time and end time are required' });
+    }
+
+    const startTime = new Date(startTimeValue);
+    const endTime = new Date(endTimeValue);
+
+    if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
+        return res.status(400).json({ success: false, message: 'Start time and end time must be valid dates' });
+    }
+    if (endTime <= startTime) {
+        return res.status(400).json({ success: false, message: 'End time must be after start time' });
+    }
+
+    try {
+        const result = await db.query(
+            `INSERT INTO discounts (vendor_id, description, start_time, end_time)
+             VALUES ($1, $2, $3, $4)
+             RETURNING discount_id, vendor_id, description, start_time, end_time, created_at`,
+            [vendorId, description, startTime.toISOString(), endTime.toISOString()]
+        );
+
+        res.status(201).json({ success: true, data: result.rows[0] });
+    } catch (error: any) {
+        console.error('Error creating discount:', error);
+        if (error.code === '23503') {
+            return res.status(400).json({ success: false, message: 'Vendor ID does not exist' });
+        }
+        if (error.code === '23514') {
+            return res.status(400).json({ success: false, message: 'End time must be after start time' });
+        }
+        res.status(500).json({ success: false, message: 'Internal server error while creating discount' });
+    }
+});
+
+router.delete('/discounts/:discountId', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
+    const discountId = parseInt(req.params?.discountId, 10);
+
+    if (!Number.isInteger(discountId) || discountId <= 0) {
+        return res.status(400).json({ success: false, message: 'Discount ID must be a positive integer' });
+    }
+
+    try {
+        const result = await db.query(
+            'DELETE FROM discounts WHERE discount_id = $1 RETURNING discount_id',
+            [discountId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Discount not found' });
+        }
+
+        res.status(200).json({ success: true, message: 'Discount deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting discount:', error);
+        res.status(500).json({ success: false, message: 'Internal server error while deleting discount' });
+    }
+});
+
 /* DELETE VENDOR
  * Deletes a vendor by vendor_id.
  */
