@@ -409,7 +409,6 @@ cashPaymentCheckbox?.addEventListener('change', async function() {
 });
 
 setIdleTicketState();
-updateRunningDiscountsDisplay();
 renderSearchResultsMessage('Type at least 4 characters in Description to search inventory.');
 
 dealsToggleBtn?.addEventListener('click', () => {
