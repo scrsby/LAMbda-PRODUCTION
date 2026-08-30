@@ -80,6 +80,45 @@ export function normalizeVendorId(value: number | string | null | undefined): st
     return normalized === '' ? UNKNOWN_VENDOR_ID : normalized;
 }
 
+const QUANTITY_SUFFIX_PATTERN = /\s+x\s+\d+$/i;
+
+export function normalizeItemQuantity(value: number | string | null | undefined): number {
+    const parsedQuantity = Number(value ?? 1);
+    return Number.isFinite(parsedQuantity) && parsedQuantity > 0 ? parsedQuantity : 1;
+}
+
+export function getDisplayItemName(item: { name?: string | null; quantity?: number | string | null }): string {
+    const name = String(item.name ?? '').trim();
+    const quantity = normalizeItemQuantity(item.quantity);
+
+    if (!name || quantity <= 1 || QUANTITY_SUFFIX_PATTERN.test(name)) {
+        return name;
+    }
+
+    return `${name} x ${quantity}`;
+}
+
+export function getLineBasePrice(item: { vendor_price?: number | string | null; quantity?: number | string | null }): number {
+    const basePrice = Number(item.vendor_price ?? 0);
+    const quantity = normalizeItemQuantity(item.quantity);
+    return roundCurrency(basePrice * (quantity > 1 ? quantity : 1));
+}
+
+export function getLineFinalPrice(item: {
+    vendor_price?: number | string | null;
+    quantity?: number | string | null;
+    discount_amount?: number | string | null;
+    final_price?: number | string | null;
+}): number {
+    const providedFinalPrice = Number(item.final_price);
+
+    if (Number.isFinite(providedFinalPrice)) {
+        return roundCurrency(providedFinalPrice);
+    }
+
+    return roundCurrency(getLineBasePrice(item) - Number(item.discount_amount ?? 0));
+}
+
 export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketItem[], ticketLabel: string): void {
     if (items.length === 0) {
         alert('No items to generate a receipt.');
@@ -97,14 +136,7 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
     };
 
     const receiptItems: ReceiptItem[] = items.filter(item => !item.refunded).map(item => {
-        const quantityRaw = Number(item.quantity ?? 1);
-        const hasInvalidQuantity = !Number.isFinite(quantityRaw) || quantityRaw <= 0;
-        const quantity = hasInvalidQuantity ? 1 : quantityRaw;
-        if (hasInvalidQuantity) {
-            console.warn('Invalid ticket item quantity. Defaulting to 1.', { item });
-        }
-
-        const baseItemPrice = Number(item.vendor_price ?? 0) * quantity;
+        const baseItemPrice = getLineBasePrice(item);
         const baseDiscount = Number(item.discount_amount ?? 0);
         const itemPrice = roundCurrency(baseItemPrice * 1.04);
         const cashDiscount = cashPayment ? itemPrice - baseItemPrice : 0;
@@ -114,7 +146,7 @@ export function openItemizedReceipt(cashPayment: boolean, items: ReceiptTicketIt
         return {
             vendorId: normalizeVendorId(item.vendor_id),
             vendorInventoryId: String(item.vendor_inventory_id ?? ''),
-            itemName: String(item.name ?? ''),
+            itemName: getDisplayItemName(item),
             itemPrice,
             cashDiscount,
             discount,

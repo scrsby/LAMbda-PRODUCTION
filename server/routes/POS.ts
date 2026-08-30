@@ -233,10 +233,12 @@ router.post('/update-ticket', posWriteRateLimit, async (req, res) => {
             const payout = parseFloat((item.final_price * 0.90).toFixed(2));
             await client.query(
                 `UPDATE ticket_items
-                 SET discount_percent = $1, discount_amount = $2,
-                     final_price = $3, commission = $4, payout = $5, quantity = $6
-                 WHERE ticket_item_id = $7 AND ticket_id = $8`,
-                [item.discount_percent, item.discount_amount, item.final_price,
+                 SET vendor_id = $1, inventory_code = $2, item_name = $3, base_price = $4,
+                     discount_percent = $5, discount_amount = $6, final_price = $7,
+                     commission = $8, payout = $9, quantity = $10
+                 WHERE ticket_item_id = $11 AND ticket_id = $12`,
+                [item.vendor_id, item.vendor_inventory_id, item.name, item.vendor_price,
+                 item.discount_percent, item.discount_amount, item.final_price,
                  commission, payout, item.quantity, item.ticket_item_id, ticketId]
             );
         }
@@ -261,7 +263,7 @@ router.post('/update-ticket', posWriteRateLimit, async (req, res) => {
 
         // 5. Recalculate and update ticket total
         const totalResult = await client.query(
-            'SELECT COALESCE(SUM(final_price * quantity), 0) AS total FROM ticket_items WHERE ticket_id = $1',
+            'SELECT COALESCE(SUM(final_price), 0) AS total FROM ticket_items WHERE ticket_id = $1',
             [ticketId]
         );
         const total = parseFloat(totalResult.rows[0].total);
@@ -639,7 +641,7 @@ router.patch('/ticket-item/:id/refund', requireUserType('admin'), posWriteRateLi
 
         // Recalculate total excluding refunded items
         const totalResult = await client.query(
-            `SELECT COALESCE(SUM(final_price * quantity), 0)::float AS total
+            `SELECT COALESCE(SUM(final_price), 0)::float AS total
              FROM ticket_items
              WHERE ticket_id = $1 AND COALESCE(refunded, false) = false`,
             [ticketId]

@@ -1,5 +1,5 @@
 import { apiAxios, requireAuth, logout } from '../utilities/api.js';
-import { calculateSalesReportSummary, escapeHtml, normalizeVendorId, COMMISSION_RATE, roundCurrency } from '../utilities/receipt.js';
+import { calculateSalesReportSummary, escapeHtml, getDisplayItemName, getLineBasePrice, getLineFinalPrice, normalizeVendorId, COMMISSION_RATE, roundCurrency } from '../utilities/receipt.js';
 import { updateProfileCard } from '../utilities/ui.js';
 
 declare global {
@@ -204,18 +204,9 @@ async function generateReport() {
             let ticketSubtotal = 0;
             let ticketCommission = 0;
             (detail.items ?? []).filter(item => !item.refunded).forEach(item => {
-                const quantityRaw = Number(item.quantity ?? 1);
-                const hasInvalidQuantity = !Number.isFinite(quantityRaw) || quantityRaw <= 0;
-                const quantity = hasInvalidQuantity ? 1 : quantityRaw;
-                if (hasInvalidQuantity) {
-                    console.warn('Invalid ticket item quantity. Defaulting to 1.', { item });
-                }
-                const itemPrice = roundCurrency(Number(item.vendor_price ?? 0) * quantity);
+                const itemPrice = getLineBasePrice(item);
                 const discount = roundCurrency(Number(item.discount_amount ?? 0));
-                const providedFinalPrice = Number(item.final_price);
-                const finalPrice = roundCurrency(Number.isFinite(providedFinalPrice)
-                    ? providedFinalPrice
-                    : itemPrice - discount);
+                const finalPrice = getLineFinalPrice(item);
                 const commission = roundCurrency(finalPrice * COMMISSION_RATE);
                 const payout = roundCurrency(finalPrice - commission);
                 ticketSubtotal = roundCurrency(ticketSubtotal + finalPrice);
@@ -224,7 +215,7 @@ async function generateReport() {
                 reportItems.push({
                     vendorId: normalizeVendorId(item.vendor_id),
                     vendorInventoryId: String(item.vendor_inventory_id ?? ''),
-                    itemName: String(item.name ?? ''),
+                    itemName: getDisplayItemName(item),
                     itemPrice,
                     discount,
                     finalPrice,

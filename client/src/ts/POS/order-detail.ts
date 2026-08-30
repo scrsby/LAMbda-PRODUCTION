@@ -1,5 +1,5 @@
 import { apiAxios, getCurrentUser, logout } from '../utilities/api.js';
-import { openItemizedReceipt, type ReceiptTicketItem } from '../utilities/receipt.js';
+import { getDisplayItemName, getLineBasePrice, getLineFinalPrice, openItemizedReceipt, type ReceiptTicketItem } from '../utilities/receipt.js';
 import { updateProfileCard } from "../utilities/ui.js";
 
 interface TicketDetail {
@@ -177,7 +177,7 @@ function renderTicketItems(items: TicketItem[]) {
     tableBody.innerHTML = '';
 
     if (items.length === 0) {
-        const colspan = (isPartiallyRefunded && isAdminUser) ? 11 : 10;
+        const colspan = (isPartiallyRefunded && isAdminUser) ? 10 : 9;
         tableBody.innerHTML = `
             <tr>
                 <td colspan="${colspan}" class="orders-empty-state">No ticket items found.</td>
@@ -188,6 +188,9 @@ function renderTicketItems(items: TicketItem[]) {
 
     items.forEach(item => {
         const row = document.createElement('tr');
+        const displayName = getDisplayItemName(item);
+        const basePrice = getLineBasePrice(item);
+        const finalPrice = getLineFinalPrice(item);
         if (item.refunded || isFullyRefunded) {
             row.classList.add('refunded-item');
         }
@@ -195,13 +198,12 @@ function renderTicketItems(items: TicketItem[]) {
             <td>${item.ticket_item_id}</td>
             <td>${item.vendor_id}</td>
             <td>${item.vendor_inventory_id}</td>
-            <td>${item.name}</td>
-            <td>${item.quantity}</td>
-            <td>$${Number(item.vendor_price ?? 0).toFixed(2)}</td>
+            <td>${displayName}</td>
+            <td>$${basePrice.toFixed(2)}</td>
             <td>${Number(item.discount_percent ?? 0).toFixed(2)}%</td>
             <td>$${Number(item.discount_amount ?? 0).toFixed(2)}</td>
-            <td>$${Number(item.final_price ?? 0).toFixed(2)}</td>
-            <td>$${Number((item.final_price ?? 0) * (item.quantity ?? 0)).toFixed(2)}</td>
+            <td>$${finalPrice.toFixed(2)}</td>
+            <td>$${finalPrice.toFixed(2)}</td>
             ${isPartiallyRefunded && isAdminUser ? `<td>${item.refunded ? '<em>Refunded</em>' : `<button type="button" class="btn btn-secondary refund-btn" data-item-id="${item.ticket_item_id}">Refund</button>`}</td>` : ''}
         `;
         if (isPartiallyRefunded && isAdminUser && !item.refunded) {

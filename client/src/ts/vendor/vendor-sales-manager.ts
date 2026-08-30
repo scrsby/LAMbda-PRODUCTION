@@ -1,5 +1,5 @@
 import { apiAxios, requireAuth, logout } from '../utilities/api.js';
-import { escapeHtml, roundCurrency, COMMISSION_RATE } from '../utilities/receipt.js';
+import { escapeHtml, getDisplayItemName, getLineBasePrice, getLineFinalPrice, roundCurrency, COMMISSION_RATE } from '../utilities/receipt.js';
 import { updateProfileCard } from '../utilities/ui.js';
 
 declare global {
@@ -173,16 +173,9 @@ async function generateReport() {
         const rows: string[] = [];
 
         items.forEach(item => {
-            const quantityRaw = Number(item.quantity ?? 1);
-            const hasInvalidQuantity = !Number.isFinite(quantityRaw) || quantityRaw <= 0;
-            const quantity = hasInvalidQuantity ? 1 : quantityRaw;
-            if (hasInvalidQuantity) {
-                console.warn('Invalid ticket item quantity. Defaulting to 1.', { item });
-            }
-            const itemPrice  = roundCurrency(Number(item.vendor_price ?? 0) * quantity);
+            const itemPrice  = getLineBasePrice(item);
             const discount   = roundCurrency(Number(item.discount_amount ?? 0));
-            const providedFinalPrice = Number(item.final_price);
-            const finalPrice = roundCurrency(Number.isFinite(providedFinalPrice) ? providedFinalPrice : itemPrice - discount);
+            const finalPrice = getLineFinalPrice(item);
             const earnings   = roundCurrency(finalPrice * EARNINGS_RATE);
 
             totalFinalPrice = roundCurrency(totalFinalPrice + finalPrice);
@@ -191,7 +184,7 @@ async function generateReport() {
             rows.push(`
                 <tr>
                     <td>${escapeHtml(String(item.vendor_inventory_id ?? ''))}</td>
-                    <td>${escapeHtml(String(item.name ?? ''))}</td>
+                    <td>${escapeHtml(getDisplayItemName(item))}</td>
                     <td>${escapeHtml(formatDateTime(item.created_at))}</td>
                     <td>${formatCurrency(itemPrice)}</td>
                     <td>${formatCurrency(discount)}</td>
@@ -350,17 +343,14 @@ function renderSales(items: VendorSaleItem[]) {
     }
 
     items.forEach(item => {
-        const quantityRaw = Number(item.quantity ?? 1);
-        const quantity = Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1;
-        const itemPrice  = roundCurrency(Number(item.vendor_price ?? 0) * quantity);
+        const itemPrice  = getLineBasePrice(item);
         const discount   = roundCurrency(Number(item.discount_amount ?? 0));
-        const providedFinalPrice = Number(item.final_price);
-        const finalPrice = roundCurrency(Number.isFinite(providedFinalPrice) ? providedFinalPrice : itemPrice - discount);
+        const finalPrice = getLineFinalPrice(item);
 
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${escapeHtml(String(item.vendor_inventory_id ?? ''))}</td>
-            <td>${escapeHtml(String(item.name ?? ''))}</td>
+            <td>${escapeHtml(getDisplayItemName(item))}</td>
             <td>${escapeHtml(formatDateTime(item.created_at))}</td>
             <td>$${itemPrice.toFixed(2)}</td>
             <td>$${discount.toFixed(2)}</td>
@@ -444,4 +434,3 @@ function formatDateTime(value: string) {
     }
     return date.toLocaleString();
 }
-
