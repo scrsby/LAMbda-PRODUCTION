@@ -63,7 +63,7 @@ function renderDiscounts(discounts: Discount[]) {
 
         const deleteButton = document.createElement('button');
         deleteButton.type = 'button';
-        deleteButton.className = 'btn btn-danger';
+        deleteButton.className = 'btn btn-danger material-symbols-outlined';
         deleteButton.textContent = 'Delete';
         deleteButton.addEventListener('click', () => openDeleteModal(discount.discount_id, discount.vendor_id));
 
