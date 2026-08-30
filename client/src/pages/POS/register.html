@@ -221,10 +221,16 @@
                                     Description
                                     <input type="text" id="item-name" name="item-name" placeholder="Enter description">
                                 </label>
-                                <label for="vendor-inventory-id">
-                                    Vendor Inventory ID
-                                    <input type="text" id="vendor-inventory-id" name="vendor-inventory-id" placeholder="Enter vendor inventory ID">
-                                </label>
+                                <div class="split-field">
+                                    <label for="vendor-inventory-id">
+                                        Vendor Inventory ID
+                                        <input type="text" id="vendor-inventory-id" name="vendor-inventory-id" placeholder="Enter vendor inventory ID">
+                                    </label>
+                                    <label for="item-qty">
+                                        Qty
+                                        <input type="number" id="item-qty" name="item-qty" placeholder="1" min="1" step="1" inputmode="numeric">
+                                    </label>
+                                </div>
                                 
                             </div>
                         </form>
@@ -291,8 +297,7 @@
                                     <col style="width: 9%">
                                     <col style="width: 10%">
                                     <col style="width: 20%">
-                                    <col style="width: 6%">
-                                    <col style="width: 11%">
+                                    <col style="width: 14%">
                                     <col style="width: 9%">
                                     <col style="width: 11%">
                                     <col style="width: 11%">
@@ -303,7 +308,6 @@
                                         <th>Vendor</th>
                                         <th>Inv. ID</th>
                                         <th>Name</th>
-                                        <th>Qty</th>
                                         <th>Subtotal</th>
                                         <th>Disc %</th>
                                         <th>Disc Amt</th>
@@ -314,7 +318,7 @@
                                 <tbody id="cart_list"></tbody>
                                 <tfoot>
                                     <tr id="cart_total_row">
-                                        <td colspan="8" style="text-align:right;font-weight:bold;">
+                                        <td colspan="7" style="text-align:right;font-weight:bold;">
                                             Total: $<span id="cart_total_value">0.00</span>
                                         </td>
                                         <td></td>

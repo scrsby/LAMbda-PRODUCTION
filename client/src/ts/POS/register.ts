@@ -2,7 +2,16 @@ import { apiAxios } from '../utilities/api.js';
 import { getCurrentUser, logout } from '../utilities/api.js';
 import { showSuccessMessage, showErrorMessage } from '../utilities/messages.js';
 import { updateProfileCard } from "../utilities/ui.js";
-import { openItemizedReceipt, escapeHtml, calculateReceiptSummary, calculateSalesReportSummary } from '../utilities/receipt.js';
+import {
+    openItemizedReceipt,
+    escapeHtml,
+    calculateReceiptSummary,
+    calculateSalesReportSummary,
+    QUANTITY_SUFFIX_PATTERN,
+    getDisplayItemName,
+    getLineBasePrice,
+    getLineFinalPrice
+} from '../utilities/receipt.js';
 
 let validVendorIds: Set<number> = new Set();
 
@@ -98,6 +107,7 @@ const createReceiptBtn = document.getElementById('create-receipt-btn') as HTMLBu
 const searchForm = document.getElementById('input_box') as HTMLFormElement | null;
 const vendorIdInput = document.getElementById('vendor-id') as HTMLInputElement | null;
 const vendorInventoryIdInput = document.getElementById('vendor-inventory-id') as HTMLInputElement | null;
+const itemQtyInput = document.getElementById('item-qty') as HTMLInputElement | null;
 const itemNameInput = document.getElementById('item-name') as HTMLInputElement | null;
 const vendorPriceInput = document.getElementById('vendor-price') as HTMLInputElement | null;
 const searchAndAddSection = document.getElementById('search-and-add') as HTMLDivElement | null;
@@ -278,26 +288,35 @@ createItemBtn?.addEventListener('click', () => {
         alert('Please provide vendor ID, item name, and tag price.');
         return;
     } else {
-        const quantityInput = document.getElementById('quantity') as HTMLInputElement | null;
-        const quantity = quantityInput ? parseInt(quantityInput.value): 1;
+        const quantity = parseItemQuantity();
         const vendor_id = parseInt(vendorIdInput.value, 10);
         const vendor_inventory_id = vendorInventoryIdInput?.value?.trim() || '';
-        const name = itemNameInput.value.trim();
-        const vendor_price = parseFloat(vendorPriceInput.value);
-        if (isNaN(vendor_id) || !name || isNaN(vendor_price)) {
+        const baseName = itemNameInput.value.trim();
+        const tagPrice = parseFloat(vendorPriceInput.value);
+        if (isNaN(vendor_id) || !baseName || isNaN(tagPrice)) {
             alert('Please provide valid values for all item fields.');
+            return;
+        }
+        if (!quantity) {
+            showErrorMessage('Quantity must be a whole number greater than 0.');
+            itemQtyInput?.focus();
             return;
         }
         if (validVendorIds.size > 0 && !validVendorIds.has(vendor_id)) {
             showErrorMessage('Invalid Vendor ID. If you believe this is a mistake, create the item under #604 and enter the Vendor ID into the Vendor Inventory ID field.');
             return;
         }
-        createItemLocally(vendor_id, vendor_inventory_id, name, vendor_price, quantity);
+        createItemLocally(
+            vendor_id,
+            vendor_inventory_id,
+            formatItemDescription(baseName, quantity),
+            roundCurrency(tagPrice * quantity)
+        );
         vendorIdInput.value = '';
         if (vendorInventoryIdInput) vendorInventoryIdInput.value = '';
         itemNameInput.value = '';
         vendorPriceInput.value = '';
-        if (quantityInput) quantityInput.value = '1';
+        if (itemQtyInput) itemQtyInput.value = '';
     }
 });
 
@@ -416,7 +435,7 @@ async function updateTicket(): Promise<boolean> {
                 ...ticketPaymentAndTaxDetails
             }
         });
-        ticket_items = [...ticket_items, ...(response.insertedItems as TicketItem[])];
+        ticket_items = [...ticket_items, ...(response.insertedItems as TicketItem[]).map(normalizeRegisterItem)];
         unsynced_items = [];
         ticketDirty = false;
         updateItemTable();
@@ -436,7 +455,9 @@ function updateItemTable() {
     itemTableBody.innerHTML = '';
     const allItems = [...ticket_items, ...unsynced_items];
     allItems.forEach((item, index) => {
-        const subtotal = item.vendor_price * item.quantity;
+        const subtotal = getLineBasePrice(item);
+        const displayName = getDisplayItemName(item);
+        const finalPrice = getLineFinalPrice(item);
         const isEditing = !ticketReadOnly && editingItemIndex === index;
         const isRefunded = item.refunded === true;
         const row = document.createElement('tr');
@@ -448,12 +469,11 @@ function updateItemTable() {
             row.innerHTML = `
                 <td><input class="cart-edit-input" data-field="vendor_id" type="number" value="${item.vendor_id}" min="1" aria-label="Vendor ID"></td>
                 <td><input class="cart-edit-input" data-field="vendor_inventory_id" type="text" value="${escapeHtmlAttribute(item.vendor_inventory_id)}" aria-label="Vendor inventory ID"></td>
-                <td><input class="cart-edit-input" data-field="name" type="text" value="${escapeHtmlAttribute(item.name)}" aria-label="Item name"></td>
-                <td><input class="cart-edit-input" data-field="quantity" type="number" value="${item.quantity}" min="1" step="1" aria-label="Quantity"></td>
+                <td><input class="cart-edit-input" data-field="name" type="text" value="${escapeHtmlAttribute(displayName)}" aria-label="Item name"></td>
                 <td><input class="cart-edit-input" data-field="subtotal" type="number" value="${subtotal.toFixed(2)}" min="0" step="0.01" aria-label="Subtotal"></td>
                 <td><input class="cart-edit-input" data-field="discount_percent" type="number" value="${item.discount_percent > 0 ? item.discount_percent : ''}" min="0" step="0.01" placeholder="optional" aria-label="Discount percentage"></td>
                 <td><input class="cart-edit-input" data-field="discount_amount" type="number" value="${item.discount_amount.toFixed(2)}" min="0" step="0.01" aria-label="Discount amount"></td>
-                <td><input class="cart-edit-input" data-field="final_price" type="number" value="${item.final_price.toFixed(2)}" min="0" step="0.01" aria-label="Total"></td>
+                <td><input class="cart-edit-input" data-field="final_price" type="number" value="${finalPrice.toFixed(2)}" min="0" step="0.01" aria-label="Total"></td>
                 <td style="display:flex;gap:0.25rem;align-items:center;">
                     <button type="button" class="btn btn-edit btn-edit-saving" data-action="edit" data-index="${index}">
                         <span class="material-symbols-outlined">check</span>
@@ -464,12 +484,11 @@ function updateItemTable() {
             row.innerHTML = `
                 <td>${item.vendor_id}</td>
                 <td>${escapeHtmlAttribute(item.vendor_inventory_id)}</td>
-                <td>${escapeHtmlAttribute(item.name)}</td>
-                <td>${item.quantity}</td>
+                <td>${escapeHtmlAttribute(displayName)}</td>
                 <td>$${subtotal.toFixed(2)}</td>
                 <td>${item.discount_percent > 0 ? `${item.discount_percent}%` : ''}</td>
                 <td>$${item.discount_amount.toFixed(2)}</td>
-                <td>$${item.final_price.toFixed(2)}</td>
+                <td>$${finalPrice.toFixed(2)}</td>
                 <td style="display:flex;gap:0.25rem;align-items:center;">
                     <button type="button" class="btn btn-edit" data-action="edit" data-index="${index}" style="${ticketReadOnly ? 'visibility:hidden;' : ''}">
                         <span class="material-symbols-outlined">edit</span>
@@ -492,7 +511,7 @@ function updateItemTable() {
     });
 
     // Exclude refunded items from the displayed total
-    const total = allItems.reduce((sum, item) => sum + (item.refunded ? 0 : item.final_price), 0);
+    const total = allItems.reduce((sum, item) => sum + (item.refunded ? 0 : getLineFinalPrice(item)), 0);
     const totalValueEl = document.getElementById('cart_total_value');
     if (totalValueEl) totalValueEl.textContent = total.toFixed(2);
 
@@ -590,13 +609,12 @@ function saveEditedItem(index: number, row: HTMLTableRowElement) {
     const vendorIdInput = row.querySelector('[data-field="vendor_id"]') as HTMLInputElement | null;
     const vendorInventoryIdInput = row.querySelector('[data-field="vendor_inventory_id"]') as HTMLInputElement | null;
     const nameInput = row.querySelector('[data-field="name"]') as HTMLInputElement | null;
-    const quantityInput = row.querySelector('[data-field="quantity"]') as HTMLInputElement | null;
     const subtotalInput = row.querySelector('[data-field="subtotal"]') as HTMLInputElement | null;
     const discountPercentInput = row.querySelector('[data-field="discount_percent"]') as HTMLInputElement | null;
     const discountAmountInput = row.querySelector('[data-field="discount_amount"]') as HTMLInputElement | null;
     const finalPriceInput = row.querySelector('[data-field="final_price"]') as HTMLInputElement | null;
 
-    if (!vendorIdInput || !vendorInventoryIdInput || !nameInput || !quantityInput || !subtotalInput || !discountPercentInput || !discountAmountInput || !finalPriceInput) {
+    if (!vendorIdInput || !vendorInventoryIdInput || !nameInput || !subtotalInput || !discountPercentInput || !discountAmountInput || !finalPriceInput) {
         showErrorMessage('Could not save item due to missing edit fields.');
         return;
     }
@@ -604,11 +622,10 @@ function saveEditedItem(index: number, row: HTMLTableRowElement) {
     const vendor_id = parseInt(vendorIdInput.value, 10);
     const vendor_inventory_id = vendorInventoryIdInput.value.trim();
     const name = nameInput.value.trim();
-    const quantity = parseInt(quantityInput.value, 10);
     const subtotal = parseFloat(subtotalInput.value);
     const discountPercentRaw = discountPercentInput.value.trim();
 
-    if (isNaN(vendor_id) || vendor_id <= 0 || !name || isNaN(quantity) || quantity <= 0 || isNaN(subtotal) || subtotal < 0) {
+    if (isNaN(vendor_id) || vendor_id <= 0 || !name || isNaN(subtotal) || subtotal < 0) {
         alert('Please enter valid values for all editable fields.');
         return;
     }
@@ -643,21 +660,21 @@ function saveEditedItem(index: number, row: HTMLTableRowElement) {
         return;
     }
 
-    const vendor_price = quantity > 0 ? roundCurrency(subtotal / quantity) : 0;
+    const vendor_price = roundCurrency(subtotal);
 
     const updatedItem: TicketItem = {
         ...currentItem,
         vendor_id,
         vendor_inventory_id,
         name,
-        quantity,
+        quantity: 1,
         vendor_price,
         discount_percent,
         discount_amount,
         final_price
     };
 
-    setCombinedItem(index, updatedItem);
+    setCombinedItem(index, normalizeRegisterItem(updatedItem));
     ticketDirty = true;
     editingItemIndex = null;
     updateItemTable();
@@ -716,12 +733,21 @@ function removeItem(index: number) {
     updateItemTable();
 }
 
-function createItemLocally(vendor_id: number, vendor_inventory_id: string, name: string, vendor_price: number, quantity: number) {
-    const subtotal = vendor_price * quantity;
-    const newItem: TicketItem = { vendor_id, vendor_inventory_id, name, quantity, vendor_price, discount_percent: 0, discount_amount: 0, final_price: roundCurrency(subtotal) };
+function createItemLocally(vendor_id: number, vendor_inventory_id: string, name: string, vendor_price: number) {
+    const newItem: TicketItem = { vendor_id, vendor_inventory_id, name, quantity: 1, vendor_price, discount_percent: 0, discount_amount: 0, final_price: roundCurrency(vendor_price) };
     unsynced_items.push(newItem);
     ticketDirty = true;
     updateItemTable();
+}
+
+function normalizeRegisterItem(item: TicketItem): TicketItem {
+    return {
+        ...item,
+        name: getDisplayItemName(item),
+        quantity: 1,
+        vendor_price: getLineBasePrice(item),
+        final_price: getLineFinalPrice(item)
+    };
 }
 
 function initializeSearchResultsPagination() {
@@ -806,7 +832,18 @@ function renderSearchResults(items: InventorySearchItem[]) {
         `;
 
         row.querySelector('button')?.addEventListener('click', () => {
-            createItemLocally(item.vendorId, inventoryCode, item.itemName, Number(item.price), 1);
+            const quantity = parseItemQuantity();
+            if (!quantity) {
+                showErrorMessage('Quantity must be a whole number greater than 0.');
+                itemQtyInput?.focus();
+                return;
+            }
+            createItemLocally(
+                item.vendorId,
+                inventoryCode,
+                formatItemDescription(item.itemName, quantity),
+                roundCurrency(Number(item.price) * quantity)
+            );
             clearItemEntryFields();
             // Clear the search results
             renderSearchResultsMessage('');
@@ -836,6 +873,29 @@ function clearItemEntryFields(): void {
     if (searchForm) {
         searchForm.reset();
     }
+}
+
+function parseItemQuantity(): number | null {
+    const rawQuantity = itemQtyInput?.value.trim() ?? '';
+    if (!rawQuantity) {
+        return 1;
+    }
+
+    if (!/^\d+$/.test(rawQuantity)) {
+        return null;
+    }
+
+    const parsedQuantity = Number(rawQuantity);
+    return Number.isSafeInteger(parsedQuantity) && parsedQuantity > 0 ? parsedQuantity : null;
+}
+
+function formatItemDescription(name: string, quantity: number): string {
+    const normalizedName = name.trim().replace(QUANTITY_SUFFIX_PATTERN, '');
+    if (quantity <= 1) {
+        return normalizedName;
+    }
+
+    return `${normalizedName} x ${quantity}`;
 }
 
 async function searchInventory(manualSearch: boolean) {
@@ -924,7 +984,7 @@ async function searchTicket() {
             showErrorMessage(`Ticket #${ticketId} found but returned no items array.`);
             return;
         }
-        ticket_items = response.items as TicketItem[];
+        ticket_items = (response.items as TicketItem[]).map(normalizeRegisterItem);
         unsynced_items = [];
         ticketDirty = false;
         editingItemIndex = null;
@@ -983,7 +1043,7 @@ const markPaidBtn = document.getElementById('mark-paid-btn') as HTMLButtonElemen
 
 function updateCheckoutModalTotals() {
     const allItems = [...ticket_items, ...unsynced_items];
-    const subtotal = allItems.reduce((sum, item) => sum + item.final_price, 0);
+    const subtotal = allItems.reduce((sum, item) => sum + getLineFinalPrice(item), 0);
     const isCash = checkoutCashPaymentCheckbox?.checked ?? false;
     const isTaxExempt = taxExemptCheckbox.checked;
     const summary = calculateSalesReportSummary(subtotal, { cashPayment: isCash, taxExempt: isTaxExempt });
