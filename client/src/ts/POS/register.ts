@@ -52,6 +52,33 @@ let validVendorIds: Set<number> = new Set();
 let runningDiscounts: RunningDiscount[] = [];
 let showAllRunningDiscounts = false;
 
+function disableRegisterSetup() {
+    const controlsToDisable = [
+        ticketIdField,
+        primaryBtn,
+        secondaryBtn,
+        createItemBtn,
+        searchItemBtn,
+        checkoutBtn,
+        createReceiptBtn,
+        vendorIdInput,
+        vendorInventoryIdInput,
+        itemQtyInput,
+        itemNameInput,
+        vendorPriceInput,
+        taxExemptCheckbox,
+        taxExemptForm,
+        cashPaymentCheckbox,
+        dealsToggleBtn
+    ];
+
+    controlsToDisable.forEach((control) => {
+        if (control instanceof HTMLInputElement || control instanceof HTMLButtonElement) {
+            control.disabled = true;
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await getCurrentUser();
     if (!user) {
@@ -96,8 +123,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             validVendorIds = new Set(normalizedVendorIds);
         }
-        if (Array.isArray(runningDiscountResponse?.discounts)) {
-            runningDiscounts = (runningDiscountResponse.discounts as RunningDiscount[])
+        const runningDiscountData = Array.isArray(runningDiscountResponse?.data)
+            ? runningDiscountResponse.data
+            : Array.isArray(runningDiscountResponse?.discounts)
+                ? runningDiscountResponse.discounts
+                : [];
+        if (Array.isArray(runningDiscountData)) {
+            runningDiscounts = (runningDiscountData as RunningDiscount[])
                 .map((discount) => ({
                     discount_id: Number(discount.discount_id),
                     vendor_id: Number(discount.vendor_id),
@@ -107,6 +139,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         updateRunningDiscountsDisplay();
     } catch {
+        disableRegisterSetup();
         showErrorMessage('Failed to load register setup data. Please refresh the page and verify the backend is available.');
         return;
     }

@@ -671,10 +671,10 @@ router.get('/running-discounts', requireAuth, requireUserType('employee', 'admin
             ORDER BY vendor_id ASC, start_time ASC, discount_id ASC
         `);
 
-        res.status(200).json({ discounts: result.rows });
+        res.status(200).json({ success: true, data: result.rows });
     } catch (error) {
         console.error('Error fetching running discounts:', error);
-        res.status(500).json({ error: 'Failed to fetch running discounts' });
+        res.status(500).json({ success: false, message: 'Failed to fetch running discounts' });
     }
 });
 

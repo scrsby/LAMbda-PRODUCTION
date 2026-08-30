@@ -456,8 +456,6 @@ router.post('/discounts', requireAuth, requireUserType('admin'), adminRouteRateL
     const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
     const startTimeValue = typeof req.body?.start_time === 'string' ? req.body.start_time.trim() : '';
     const endTimeValue = typeof req.body?.end_time === 'string' ? req.body.end_time.trim() : '';
-    const startTime = new Date(startTimeValue);
-    const endTime = new Date(endTimeValue);
 
     if (!Number.isInteger(vendorId) || vendorId <= 0) {
         return res.status(400).json({ success: false, message: 'Vendor ID must be a positive integer' });
@@ -468,6 +466,10 @@ router.post('/discounts', requireAuth, requireUserType('admin'), adminRouteRateL
     if (!startTimeValue || !endTimeValue) {
         return res.status(400).json({ success: false, message: 'Start time and end time are required' });
     }
+
+    const startTime = new Date(startTimeValue);
+    const endTime = new Date(endTimeValue);
+
     if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
         return res.status(400).json({ success: false, message: 'Start time and end time must be valid dates' });
     }
