@@ -38,7 +38,7 @@ function renderDiscounts(discounts: Discount[]) {
     if (!tableBody) return;
 
     if (!Array.isArray(discounts) || discounts.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #9ca3af;">No discounts found</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-secondary);">No discounts found</td></tr>';
         return;
     }
 
@@ -83,7 +83,7 @@ async function loadDiscounts() {
         renderDiscounts(allDiscounts);
     } catch (error) {
         console.error('Error loading discounts:', error);
-        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #ef4444;">Error loading discounts. Please refresh the page.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--danger-color, #ef4444);">Error loading discounts. Please refresh the page.</td></tr>';
     }
 }
 

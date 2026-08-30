@@ -661,7 +661,7 @@ router.patch('/ticket-item/:id/refund', requireUserType('admin'), posWriteRateLi
 });
 
 
-router.get('/running-discounts', async (_req, res) => {
+router.get('/running-discounts', requireAuth, requireUserType('employee', 'admin'), async (_req, res) => {
     try {
         const result = await db.query(`
             SELECT discount_id, vendor_id, description
