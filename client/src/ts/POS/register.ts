@@ -126,15 +126,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const runningDiscountData = Array.isArray(runningDiscountResponse?.data)
             ? runningDiscountResponse.data
             : [];
-        if (Array.isArray(runningDiscountData)) {
-            runningDiscounts = (runningDiscountData as RunningDiscount[])
-                .map((discount) => ({
-                    discount_id: Number(discount.discount_id),
-                    vendor_id: Number(discount.vendor_id),
-                    description: String(discount.description ?? '').trim()
-                }))
-                .filter((discount) => Number.isInteger(discount.vendor_id) && discount.vendor_id > 0 && discount.description);
-        }
+        runningDiscounts = (runningDiscountData as RunningDiscount[])
+            .map((discount) => ({
+                discount_id: Number(discount.discount_id),
+                vendor_id: Number(discount.vendor_id),
+                description: String(discount.description ?? '').trim()
+            }))
+            .filter((discount) => Number.isInteger(discount.vendor_id) && discount.vendor_id > 0 && discount.description);
         updateRunningDiscountsDisplay();
     } catch {
         disableRegisterSetup();
@@ -834,7 +832,9 @@ function updateRunningDiscountsDisplay() {
         dealsStatus.style.display = '';
         dealsStatus.textContent = showAllRunningDiscounts
             ? 'No current discounts are running.'
-            : 'Add an item to reveal matching vendor discounts.';
+            : matchingVendorIds.size === 0
+                ? 'Add an item to reveal matching vendor discounts.'
+                : 'No discounts match the vendors in your cart.';
         return;
     }
 
