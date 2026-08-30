@@ -452,7 +452,7 @@ router.get('/discounts', requireAuth, requireUserType('admin'), adminRouteRateLi
 });
 
 router.post('/discounts', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
-    const vendorId = parseInt(req.body?.vendor_id, 10);
+    const vendorId = Number.parseInt(req.body?.vendor_id, 10);
     const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
     const startTimeValue = typeof req.body?.start_time === 'string' ? req.body.start_time.trim() : '';
     const endTimeValue = typeof req.body?.end_time === 'string' ? req.body.end_time.trim() : '';

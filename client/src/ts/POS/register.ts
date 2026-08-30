@@ -105,7 +105,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 vendor_id: Number(discount.vendor_id),
                 description: String(discount.description ?? '').trim()
             }))
-            .filter((discount) => Number.isInteger(discount.vendor_id) && discount.vendor_id > 0 && discount.description);
+            .filter((discount) =>
+                Number.isInteger(discount.discount_id)
+                && discount.discount_id > 0
+                && Number.isInteger(discount.vendor_id)
+                && discount.vendor_id > 0
+                && discount.description
+            );
         updateRunningDiscountsDisplay();
     } catch {
         disableRegisterSetup();
