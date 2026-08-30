@@ -13,7 +13,44 @@ import {
     getLineFinalPrice
 } from '../utilities/receipt.js';
 
+declare global {
+    interface Window {
+        $?: any;
+        jQuery?: any;
+    }
+}
+
+type TicketItem = {
+    ticket_item_id?: number;
+    vendor_id: number;
+    vendor_inventory_id: string;
+    name: string;
+    quantity: number;
+    vendor_price: number;
+    discount_percent: number;
+    discount_amount: number;
+    final_price: number;
+    refunded?: boolean;
+};
+
+type RunningDiscount = {
+    discount_id: number;
+    vendor_id: number;
+    description: string;
+};
+
+type InventorySearchItem = {
+    itemId: number;
+    itemName: string;
+    vendorId: number;
+    inventoryCode: string | number | null;
+    price: number;
+    quantity: number;
+};
+
 let validVendorIds: Set<number> = new Set();
+let runningDiscounts: RunningDiscount[] = [];
+let showAllRunningDiscounts = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await getCurrentUser();
@@ -40,7 +77,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateProfileCard(user);
 
     try {
-        const vendorResponse = await apiAxios('/POS/vendors', { method: 'GET' });
+        const [vendorResponse, runningDiscountResponse] = await Promise.all([
+            apiAxios('/POS/vendors', { method: 'GET' }),
+            apiAxios('/POS/running-discounts', { method: 'GET' })
+        ]);
         if (vendorResponse?.vendorIds) {
             const normalizedVendorIds = (vendorResponse.vendorIds as Array<string | number>)
                 .map((id) => Number(id))
@@ -48,39 +88,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             validVendorIds = new Set(normalizedVendorIds);
         }
+        if (Array.isArray(runningDiscountResponse?.discounts)) {
+            runningDiscounts = (runningDiscountResponse.discounts as RunningDiscount[])
+                .map((discount) => ({
+                    discount_id: Number(discount.discount_id),
+                    vendor_id: Number(discount.vendor_id),
+                    description: String(discount.description ?? '').trim()
+                }))
+                .filter((discount) => Number.isInteger(discount.vendor_id) && discount.vendor_id > 0 && discount.description);
+        }
+        updateRunningDiscountsDisplay();
     } catch {
-        throw new Error('Failed to fetch vendor list. Please ensure the backend is running and accessible.');
+        throw new Error('Failed to fetch register setup data. Please ensure the backend is running and accessible.');
     }
 });
-
-declare global {
-    interface Window {
-        $?: any;
-        jQuery?: any;
-    }
-}
-
-type TicketItem = {
-    ticket_item_id?: number;
-    vendor_id: number;
-    vendor_inventory_id: string;
-    name: string;
-    quantity: number;
-    vendor_price: number;
-    discount_percent: number;
-    discount_amount: number;
-    final_price: number;
-    refunded?: boolean;
-};
-
-type InventorySearchItem = {
-    itemId: number;
-    itemName: string;
-    vendorId: number;
-    inventoryCode: string | number | null;
-    price: number;
-    quantity: number;
-};
 
 let ticket_items: TicketItem[] = [];
 let unsynced_items: TicketItem[] = [];
@@ -116,6 +137,9 @@ const taxExemptCheckbox = document.getElementById('tax-exempt-checkbox') as HTML
 const taxExemptForm = document.getElementById('tax-exempt-form') as HTMLInputElement | null;
 const taxExemptFormLabel = document.getElementById('tax-exempt-form-label') as HTMLElement | null;
 const cashPaymentCheckbox = document.getElementById('cash-payment-checkbox') as HTMLInputElement | null;
+const dealsList = document.getElementById('deals_list') as HTMLUListElement | null;
+const dealsStatus = document.getElementById('deals-status') as HTMLParagraphElement | null;
+const dealsToggleBtn = document.getElementById('deals_toggle_btn') as HTMLButtonElement | null;
 
 function setTicketActionButtons(enabled: boolean) {
     if (createItemBtn) {
@@ -385,7 +409,13 @@ cashPaymentCheckbox?.addEventListener('change', async function() {
 });
 
 setIdleTicketState();
+updateRunningDiscountsDisplay();
 renderSearchResultsMessage('Type at least 4 characters in Description to search inventory.');
+
+dealsToggleBtn?.addEventListener('click', () => {
+    showAllRunningDiscounts = !showAllRunningDiscounts;
+    updateRunningDiscountsDisplay();
+});
 
 // Show Admin Controls button if the logged-in user is an admin
 getCurrentUser().then(user => {
@@ -514,6 +544,8 @@ function updateItemTable() {
     const total = allItems.reduce((sum, item) => sum + (item.refunded ? 0 : getLineFinalPrice(item)), 0);
     const totalValueEl = document.getElementById('cart_total_value');
     if (totalValueEl) totalValueEl.textContent = total.toFixed(2);
+
+    updateRunningDiscountsDisplay();
 
     if (createReceiptBtn) {
         createReceiptBtn.disabled = allItems.length === 0;
@@ -733,6 +765,55 @@ function removeItem(index: number) {
     updateItemTable();
 }
 
+function getCartVendorIds(): Set<number> {
+    const vendorIds = new Set<number>();
+    [...ticket_items, ...unsynced_items].forEach((item) => {
+        const vendorId = Number(item.vendor_id);
+        if (Number.isInteger(vendorId) && vendorId > 0) {
+            vendorIds.add(vendorId);
+        }
+    });
+    return vendorIds;
+}
+
+function renderDiscountList(discounts: RunningDiscount[]) {
+    if (!dealsList) return;
+
+    dealsList.innerHTML = '';
+
+    discounts.forEach((discount) => {
+        const item = document.createElement('li');
+        item.textContent = `Vendor #${discount.vendor_id}: ${discount.description}`;
+        item.style.marginBottom = '0.5rem';
+        item.style.listStyle = 'none';
+        dealsList.appendChild(item);
+    });
+}
+
+function updateRunningDiscountsDisplay() {
+    if (!dealsList || !dealsStatus || !dealsToggleBtn) return;
+
+    const matchingVendorIds = getCartVendorIds();
+    const matchingDiscounts = runningDiscounts.filter((discount) => matchingVendorIds.has(discount.vendor_id));
+    const discountsToShow = showAllRunningDiscounts ? runningDiscounts : matchingDiscounts;
+
+    dealsToggleBtn.textContent = showAllRunningDiscounts ? 'Show Matching' : 'Show All';
+
+    if (discountsToShow.length === 0) {
+        dealsList.style.display = 'none';
+        dealsList.innerHTML = '';
+        dealsStatus.style.display = '';
+        dealsStatus.textContent = showAllRunningDiscounts
+            ? 'No current discounts are running.'
+            : 'Add an item to reveal matching vendor discounts.';
+        return;
+    }
+
+    renderDiscountList(discountsToShow);
+    dealsStatus.style.display = 'none';
+    dealsList.style.display = '';
+}
+
 function createItemLocally(vendor_id: number, vendor_inventory_id: string, name: string, vendor_price: number) {
     const newItem: TicketItem = { vendor_id, vendor_inventory_id, name, quantity: 1, vendor_price, discount_percent: 0, discount_amount: 0, final_price: roundCurrency(vendor_price) };
     unsynced_items.push(newItem);
@@ -743,6 +824,7 @@ function createItemLocally(vendor_id: number, vendor_inventory_id: string, name:
 function normalizeRegisterItem(item: TicketItem): TicketItem {
     return {
         ...item,
+        vendor_id: Number(item.vendor_id),
         name: getDisplayItemName(item),
         quantity: 1,
         vendor_price: getLineBasePrice(item),

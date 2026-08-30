@@ -436,6 +436,61 @@ router.post('/createVendor', requireAuth, requireUserType('admin'), adminRouteRa
     }
 });
 
+router.get('/discounts', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (_req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT discount_id, vendor_id, description, start_time, end_time, created_at
+            FROM discounts
+            ORDER BY start_time DESC, end_time DESC, discount_id DESC
+        `);
+
+        res.status(200).json({ success: true, data: result.rows });
+    } catch (error) {
+        console.error('Error fetching discounts:', error);
+        res.status(500).json({ success: false, message: 'Internal server error while fetching discounts' });
+    }
+});
+
+router.post('/discounts', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
+    const vendorId = parseInt(req.body?.vendor_id, 10);
+    const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
+    const startTime = new Date(req.body?.start_time ?? '');
+    const endTime = new Date(req.body?.end_time ?? '');
+
+    if (!Number.isInteger(vendorId) || vendorId <= 0) {
+        return res.status(400).json({ success: false, message: 'Vendor ID must be a positive integer' });
+    }
+    if (!description) {
+        return res.status(400).json({ success: false, message: 'Description is required' });
+    }
+    if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
+        return res.status(400).json({ success: false, message: 'Start time and end time must be valid dates' });
+    }
+    if (endTime <= startTime) {
+        return res.status(400).json({ success: false, message: 'End time must be after start time' });
+    }
+
+    try {
+        const result = await db.query(
+            `INSERT INTO discounts (vendor_id, description, start_time, end_time)
+             VALUES ($1, $2, $3, $4)
+             RETURNING discount_id, vendor_id, description, start_time, end_time, created_at`,
+            [vendorId, description, startTime.toISOString(), endTime.toISOString()]
+        );
+
+        res.status(201).json({ success: true, data: result.rows[0] });
+    } catch (error: any) {
+        console.error('Error creating discount:', error);
+        if (error.code === '23503') {
+            return res.status(400).json({ success: false, message: 'Vendor ID does not exist' });
+        }
+        if (error.code === '23514') {
+            return res.status(400).json({ success: false, message: 'End time must be after start time' });
+        }
+        res.status(500).json({ success: false, message: 'Internal server error while creating discount' });
+    }
+});
+
 /* DELETE VENDOR
  * Deletes a vendor by vendor_id.
  */

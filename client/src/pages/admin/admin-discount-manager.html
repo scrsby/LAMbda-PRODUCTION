@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <link rel="icon" type="image/svg+xml" href="../../assets/lambda.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Management - Lawrence Antique Mall</title>
+    <title>Discount Manager - Lawrence Antique Mall</title>
     <script>
         if (localStorage.getItem('daynight-theme') === 'carbon') {
             document.documentElement.classList.add('carbon');
@@ -16,23 +16,17 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.dataTables.min.css">
 </head>
 <body>
-    <!-- Mobile Menu Overlay -->
     <div class="mobile-menu-overlay"></div>
-    
-    <!-- Mobile Menu -->
     <div class="mobile-menu">
         <div class="mobile-menu-header">
-            <a href="admin-index.html" class="logo">
-                <div class="logo-icon"><img src="../../assets/lambda.svg" alt="LAM logo"></div>
-                LAMbda
-            </a>
+            <a href="admin-index.html" class="logo"><div class="logo-icon"><img src="../../assets/lambda.svg" alt="LAM logo"></div>LAMbda</a>
             <button class="mobile-menu-close" onclick="closeMobileMenu()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <nav class="mobile-menu-nav">
             <a href="admin-index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
-            <a href="admin-user-settings.html" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Users</a>
+            <a href="admin-user-settings.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Users</a>
             <a href="admin-inventory-settings.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>Inventory</a>
-            <a href="admin-discount-manager.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 11 3.83a2 2 0 0 0-2.83 0L3.83 8.17a2 2 0 0 0 0 2.83l9.59 9.58a2 2 0 0 0 2.83 0l4.34-4.34a2 2 0 0 0 0-2.83Z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Discounts</a>
+            <a href="admin-discount-manager.html" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 11 3.83a2 2 0 0 0-2.83 0L3.83 8.17a2 2 0 0 0 0 2.83l9.59 9.58a2 2 0 0 0 2.83 0l4.34-4.34a2 2 0 0 0 0-2.83Z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Discounts</a>
             <a href="admin-sales-manager.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Sales</a>
             <a href="admin-system-settings.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>System</a>
             <a href="../POS/register.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>POS</a>
@@ -46,16 +40,15 @@
     </div>
 
     <div class="app-container">
-        <!-- Top Navigation -->
         <nav class="top-nav">
             <div class="nav-container">
                 <div class="nav-left">
                     <a href="admin-index.html" class="logo"><div class="logo-icon"><img src="../../assets/lambda.svg" alt="LAM logo"></div>Lawrence Antique Mall</a>
                     <div class="nav-menu">
                         <div class="nav-item"><a href="admin-index.html" class="nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a></div>
-                        <div class="nav-item"><a href="admin-user-settings.html" class="nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Users</a></div>
+                        <div class="nav-item"><a href="admin-user-settings.html" class="nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Users</a></div>
                         <div class="nav-item"><a href="admin-inventory-settings.html" class="nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>Inventory</a></div>
-                        <div class="nav-item"><a href="admin-discount-manager.html" class="nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 11 3.83a2 2 0 0 0-2.83 0L3.83 8.17a2 2 0 0 0 0 2.83l9.59 9.58a2 2 0 0 0 2.83 0l4.34-4.34a2 2 0 0 0 0-2.83Z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Discounts</a></div>
+                        <div class="nav-item"><a href="admin-discount-manager.html" class="nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 11 3.83a2 2 0 0 0-2.83 0L3.83 8.17a2 2 0 0 0 0 2.83l9.59 9.58a2 2 0 0 0 2.83 0l4.34-4.34a2 2 0 0 0 0-2.83Z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Discounts</a></div>
                         <div class="nav-item"><a href="admin-sales-manager.html" class="nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Sales</a></div>
                         <div class="nav-item"><a href="admin-system-settings.html" class="nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>System</a></div>
                         <div class="nav-item"><a href="../POS/register.html" class="nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>POS</a></div>
@@ -72,52 +65,47 @@
             </div>
         </nav>
 
-        <!-- Main Content -->
         <main class="main-content">
             <div class="page-header">
                 <div class="card" style="display: flex; flex-direction: row; align-items: stretch; padding: 0; overflow: hidden;">
                     <div style="flex: 1; padding: 1.25rem 1.5rem; display: flex; align-items: center;">
-                        <h1 class="greeting" style="margin: 0;">Invite Management</h1>
+                        <h1 class="greeting" style="margin: 0;">Discount Manager</h1>
                     </div>
                     <div style="width: 1px; background: var(--border-color); box-shadow: 2px 0 6px rgba(0,0,0,0.12); flex-shrink: 0;"></div>
                     <div style="padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <button class="btn btn-primary" disabled style="opacity: 0.5; cursor: not-allowed;">Invites</button>
+                        <a class="btn btn-primary" href="admin-invite-settings.html">Invites</a>
                         <a class="btn btn-primary" href="admin-user-settings.html">Users</a>
                         <a class="btn btn-primary" href="admin-vendor-settings.html">Vendors</a>
-                        <a class="btn btn-primary" href="admin-discount-manager.html">Discounts</a>
+                        <button class="btn btn-primary" disabled style="opacity: 0.5; cursor: not-allowed;">Discounts</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Add Users Section -->
             <section class="settings-section">
                 <div class="card">
-                    <h2 class="settings-title">Add Users</h2>
-                    <p class="settings-desc">Create new user accounts and send access tokens</p>
+                    <h2 class="settings-title">Create Discount</h2>
+                    <p class="settings-desc">Add a vendor discount notice with a scheduled start and end time.</p>
 
-                    <form id="add-user-form" style="margin-bottom: 1.5rem;">
+                    <form id="discount-form" style="margin-bottom: 1.5rem;">
                         <div class="form-group">
-                            <label class="form-label">Email Address</label>
-                            <input type="email" id="email-field" class="form-input" placeholder="Enter user email" required>
+                            <label class="form-label">Vendor ID</label>
+                            <input type="number" id="discount-vendor-id" class="form-input" min="1" placeholder="Enter vendor ID" required>
                         </div>
-
+                        <div class="form-group">
+                            <label class="form-label">Description</label>
+                            <input type="text" id="discount-description" class="form-input" placeholder="Enter discount description" required>
+                        </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                             <div class="form-group" style="margin-bottom: 0;">
-                                <label class="form-label">Role</label>
-                                <select id="role" class="form-input" required>
-                                    <option value="" disabled selected>Select Role</option>
-                                    <option value="admin">Admin</option>
-                                    <option value="employee">Employee</option>
-                                    <option value="vendor">Vendor</option>
-                                </select>
+                                <label class="form-label">Start Time</label>
+                                <input type="datetime-local" id="discount-start-time" class="form-input" required>
                             </div>
                             <div class="form-group" style="margin-bottom: 0;">
-                                <label class="form-label">Booth Number (Vendor only)</label>
-                                <input type="number" id="vendorId" class="form-input" placeholder="Enter booth number">
+                                <label class="form-label">End Time</label>
+                                <input type="datetime-local" id="discount-end-time" class="form-input" required>
                             </div>
                         </div>
-
-                        <button type="submit" class="btn btn-primary">Create User</button>
+                        <button type="submit" class="btn btn-primary">Create Discount</button>
                     </form>
 
                     <div class="error-message" id="error-message" style="display: none; padding: 12px; background-color: #fee; border: 1px solid #fcc; border-radius: 6px; color: #c33; margin-bottom: 1rem;"></div>
@@ -125,29 +113,22 @@
                 </div>
             </section>
 
-            <!-- User View Section -->
             <section class="settings-section">
                 <div class="card">
-                    <h2 class="settings-title">User Management</h2>
-                    <p class="settings-desc">View and manage all users with access tokens</p>
-
+                    <h2 class="settings-title">All Discounts</h2>
+                    <p class="settings-desc">View every saved discount window.</p>
                     <div style="overflow-x: auto; margin-top: 1.5rem;">
-                        <table id="invites-table" class="display responsive nowrap" style="width: 100%;">
+                        <table id="discounts-table" class="display responsive nowrap" style="width: 100%;">
                             <thead>
                                 <tr>
-                                    <th>Email</th>
-                                    <th>Access Token</th>
-                                    <th>Status</th>
-                                    <th>Created By</th>
-                                    <th>Created At</th>
-                                    <th>Expires At</th>
-                                    <th>Actions</th>
+                                    <th>Vendor ID</th>
+                                    <th>Description</th>
+                                    <th>Start Time</th>
+                                    <th>End Time</th>
                                 </tr>
                             </thead>
-                            <tbody id="users-table-body">
-                                <tr>
-                                    <td colspan="7" style="text-align: center; padding: 20px; color: #9ca3af;">Loading users...</td>
-                                </tr>
+                            <tbody id="discounts-table-body">
+                                <tr><td colspan="4" style="text-align: center; padding: 20px; color: #9ca3af;">Loading discounts...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -161,6 +142,6 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
-    <script src="/dist/admin/admin-invite-settings.bundle.js"></script>
+    <script src="/dist/admin/admin-discount-manager.bundle.js"></script>
 </body>
 </html>
