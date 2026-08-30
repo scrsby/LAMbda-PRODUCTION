@@ -463,6 +463,9 @@ router.post('/discounts', requireAuth, requireUserType('admin'), adminRouteRateL
     if (!description) {
         return res.status(400).json({ success: false, message: 'Description is required' });
     }
+    if (description.length > 500) {
+        return res.status(400).json({ success: false, message: 'Description must be 500 characters or fewer' });
+    }
     if (!startTimeValue || !endTimeValue) {
         return res.status(400).json({ success: false, message: 'Start time and end time are required' });
     }

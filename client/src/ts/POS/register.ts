@@ -125,9 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         const runningDiscountData = Array.isArray(runningDiscountResponse?.data)
             ? runningDiscountResponse.data
-            : Array.isArray(runningDiscountResponse?.discounts)
-                ? runningDiscountResponse.discounts
-                : [];
+            : [];
         if (Array.isArray(runningDiscountData)) {
             runningDiscounts = (runningDiscountData as RunningDiscount[])
                 .map((discount) => ({
