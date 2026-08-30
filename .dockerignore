@@ -11,7 +11,6 @@ client/dist
 .env.*
 
 # Development / tooling files
-.git
 .gitignore
 README.md
 tasks.md
