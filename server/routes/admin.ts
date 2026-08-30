@@ -454,14 +454,19 @@ router.get('/discounts', requireAuth, requireUserType('admin'), adminRouteRateLi
 router.post('/discounts', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
     const vendorId = parseInt(req.body?.vendor_id, 10);
     const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
-    const startTime = new Date(req.body?.start_time ?? '');
-    const endTime = new Date(req.body?.end_time ?? '');
+    const startTimeValue = typeof req.body?.start_time === 'string' ? req.body.start_time : '';
+    const endTimeValue = typeof req.body?.end_time === 'string' ? req.body.end_time : '';
+    const startTime = new Date(startTimeValue);
+    const endTime = new Date(endTimeValue);
 
     if (!Number.isInteger(vendorId) || vendorId <= 0) {
         return res.status(400).json({ success: false, message: 'Vendor ID must be a positive integer' });
     }
     if (!description) {
         return res.status(400).json({ success: false, message: 'Description is required' });
+    }
+    if (!startTimeValue || !endTimeValue) {
+        return res.status(400).json({ success: false, message: 'Start time and end time are required' });
     }
     if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
         return res.status(400).json({ success: false, message: 'Start time and end time must be valid dates' });

@@ -74,6 +74,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '../auth/login.html';
     });
 
+    if (user.userType === 'admin') {
+        isAdminUser = true;
+        const btn = document.getElementById('admin-controls-btn');
+        const btnMobile = document.getElementById('admin-controls-btn-mobile');
+        if (btn) btn.style.display = '';
+        if (btnMobile) btnMobile.style.display = '';
+    }
+
     updateProfileCard(user);
 
     try {
@@ -418,16 +426,6 @@ dealsToggleBtn?.addEventListener('click', () => {
 });
 
 // Show Admin Controls button if the logged-in user is an admin
-getCurrentUser().then(user => {
-    if (user?.userType === 'admin') {
-        isAdminUser = true;
-        const btn = document.getElementById('admin-controls-btn');
-        const btnMobile = document.getElementById('admin-controls-btn-mobile');
-        if (btn) btn.style.display = '';
-        if (btnMobile) btnMobile.style.display = '';
-    }
-});
-
 /*  CREATE TICKET
 * This function sends a request to the backend to create a new ticket and returns the generated ticket ID. It also handles any errors that may occur during the process.
 * Params: None
