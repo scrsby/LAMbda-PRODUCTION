@@ -816,7 +816,7 @@ function renderDiscountList(discounts: RunningDiscount[]) {
 
         const vendor = document.createElement('span');
         vendor.className = 'deal-vendor';
-        vendor.textContent = `Vendor ID: ${discount.vendor_id}`;
+        vendor.textContent = `#${discount.vendor_id}`;
 
         const description = document.createElement('span');
         description.className = 'deal-description';
