@@ -52,33 +52,6 @@ let validVendorIds: Set<number> = new Set();
 let runningDiscounts: RunningDiscount[] = [];
 let showAllRunningDiscounts = false;
 
-function disableRegisterSetup() {
-    const controlsToDisable = [
-        ticketIdField,
-        primaryBtn,
-        secondaryBtn,
-        createItemBtn,
-        searchItemBtn,
-        checkoutBtn,
-        createReceiptBtn,
-        vendorIdInput,
-        vendorInventoryIdInput,
-        itemQtyInput,
-        itemNameInput,
-        vendorPriceInput,
-        taxExemptCheckbox,
-        taxExemptForm,
-        cashPaymentCheckbox,
-        dealsToggleBtn
-    ];
-
-    controlsToDisable.forEach((control) => {
-        if (control instanceof HTMLInputElement || control instanceof HTMLButtonElement) {
-            control.disabled = true;
-        }
-    });
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await getCurrentUser();
     if (!user) {
@@ -178,6 +151,33 @@ const cashPaymentCheckbox = document.getElementById('cash-payment-checkbox') as 
 const dealsList = document.getElementById('deals_list') as HTMLUListElement | null;
 const dealsStatus = document.getElementById('deals-status') as HTMLParagraphElement | null;
 const dealsToggleBtn = document.getElementById('deals_toggle_btn') as HTMLButtonElement | null;
+
+function disableRegisterSetup() {
+    const controlsToDisable = [
+        ticketIdField,
+        primaryBtn,
+        secondaryBtn,
+        createItemBtn,
+        searchItemBtn,
+        checkoutBtn,
+        createReceiptBtn,
+        vendorIdInput,
+        vendorInventoryIdInput,
+        itemQtyInput,
+        itemNameInput,
+        vendorPriceInput,
+        taxExemptCheckbox,
+        taxExemptForm,
+        cashPaymentCheckbox,
+        dealsToggleBtn
+    ];
+
+    controlsToDisable.forEach((control) => {
+        if (control instanceof HTMLInputElement || control instanceof HTMLButtonElement) {
+            control.disabled = true;
+        }
+    });
+}
 
 function setTicketActionButtons(enabled: boolean) {
     if (createItemBtn) {
