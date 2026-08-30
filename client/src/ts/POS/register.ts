@@ -34,7 +34,6 @@ type TicketItem = {
 };
 
 type RunningDiscount = {
-    discount_id: number;
     vendor_id: number;
     description: string;
 };
@@ -99,16 +98,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const runningDiscountData = Array.isArray(runningDiscountResponse?.data)
             ? runningDiscountResponse.data
             : [];
+        console.log('Loaded running discounts:', runningDiscountData);
         runningDiscounts = (runningDiscountData as RunningDiscount[])
             .map((discount) => ({
-                discount_id: Number(discount.discount_id),
                 vendor_id: Number(discount.vendor_id),
                 description: String(discount.description ?? '').trim()
             }))
             .filter((discount) =>
-                Number.isInteger(discount.discount_id)
-                && discount.discount_id > 0
-                && Number.isInteger(discount.vendor_id)
+                Number.isInteger(discount.vendor_id)
                 && discount.vendor_id > 0
                 && discount.description
             );
