@@ -7,6 +7,7 @@ import {
     escapeHtml,
     calculateReceiptSummary,
     calculateSalesReportSummary,
+    QUANTITY_SUFFIX_PATTERN,
     getDisplayItemName,
     getLineBasePrice,
     getLineFinalPrice
@@ -673,7 +674,7 @@ function saveEditedItem(index: number, row: HTMLTableRowElement) {
         final_price
     };
 
-    setCombinedItem(index, updatedItem);
+    setCombinedItem(index, normalizeRegisterItem(updatedItem));
     ticketDirty = true;
     editingItemIndex = null;
     updateItemTable();
@@ -889,7 +890,7 @@ function parseItemQuantity(): number | null {
 }
 
 function formatItemDescription(name: string, quantity: number): string {
-    const normalizedName = name.trim().replace(/\s+x\s+\d+$/i, '');
+    const normalizedName = name.trim().replace(QUANTITY_SUFFIX_PATTERN, '');
     if (quantity <= 1) {
         return normalizedName;
     }

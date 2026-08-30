@@ -644,13 +644,12 @@ function createItemLocally(vendor_id, vendor_inventory_id, name, vendor_price) {
     updateItemTable();
 }
 function normalizeRegisterItem(item) {
-    const vendor_price = getLineBasePrice(item);
     return {
         ...item,
         name: getDisplayItemName(item),
         quantity: 1,
-        vendor_price,
-        final_price: roundCurrency(vendor_price - Number(item.discount_amount ?? 0))
+        vendor_price: getLineBasePrice(item),
+        final_price: getLineFinalPrice(item)
     };
 }
 function initializeSearchResultsPagination() {

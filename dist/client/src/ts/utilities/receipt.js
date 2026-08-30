@@ -67,7 +67,7 @@ export function getLineBasePrice(item) {
 }
 export function getLineFinalPrice(item) {
     const providedFinalPrice = Number(item.final_price);
-    if (Number.isFinite(providedFinalPrice)) {
+    if (item.final_price != null && item.final_price !== '' && Number.isFinite(providedFinalPrice)) {
         return roundCurrency(providedFinalPrice);
     }
     return roundCurrency(getLineBasePrice(item) - Number(item.discount_amount ?? 0));

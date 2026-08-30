@@ -80,7 +80,7 @@ export function normalizeVendorId(value: number | string | null | undefined): st
     return normalized === '' ? UNKNOWN_VENDOR_ID : normalized;
 }
 
-const QUANTITY_SUFFIX_PATTERN = /\s+x\s+\d+$/i;
+export const QUANTITY_SUFFIX_PATTERN = /\s+x\s+\d+$/i;
 
 export function normalizeItemQuantity(value: number | string | null | undefined): number {
     const parsedQuantity = Number(value ?? 1);
@@ -91,11 +91,15 @@ export function getDisplayItemName(item: { name?: string | null; quantity?: numb
     const name = String(item.name ?? '').trim();
     const quantity = normalizeItemQuantity(item.quantity);
 
-    if (!name || quantity <= 1 || QUANTITY_SUFFIX_PATTERN.test(name)) {
+    if (!name) {
         return name;
     }
 
-    return `${name} x ${quantity}`;
+    if (quantity <= 1) {
+        return name;
+    }
+
+    return `${name.replace(QUANTITY_SUFFIX_PATTERN, '').trim()} x ${quantity}`;
 }
 
 export function getLineBasePrice(item: { vendor_price?: number | string | null; quantity?: number | string | null }): number {
