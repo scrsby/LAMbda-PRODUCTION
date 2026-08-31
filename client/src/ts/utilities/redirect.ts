@@ -44,12 +44,14 @@ export async function requireUserType(group: string, user: any) {
 
         if (group === 'employee' && !EMPLOYEE_LIKE_USER_TYPES.includes(user.userType)) {
 
+            // Only redirect plain vendors away — vendor-admin is intentionally excluded
+            // here since it inherits admin's ability to access employee-side pages.
             if (user.userType === 'vendor') {
                 window.location.href = '/vendor/vendor-index.html';
                 return;
             }
 
-            // Admin-like accounts are okay to access all employee-side pages
+            // Admin-like accounts (including vendor-admin) are okay to access all employee-side pages
         }
 
     }
