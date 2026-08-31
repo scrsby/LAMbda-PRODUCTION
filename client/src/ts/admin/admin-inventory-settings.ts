@@ -1,6 +1,7 @@
 import { apiAxios, requireAuth, logout } from '../utilities/api.js';
 import { showErrorMessage, showSuccessMessage } from '../utilities/messages.js';
 import { updateProfileCard, getDisplayName } from '../utilities/ui.js';
+import { ADMIN_LIKE_USER_TYPES } from '../utilities/redirect.js';
 
 declare global {
     interface Window {
@@ -26,7 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     updateProfileCard(user);
     
-    if (user.userType !== 'admin') {
+    if (!ADMIN_LIKE_USER_TYPES.includes(user.userType)) {
         window.location.href = '/auth/login.html';
         return;
     }

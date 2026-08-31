@@ -70,9 +70,11 @@ async function submitProfile() {
 function redirectUser(userType: string | null) {
     switch (userType) {
         case 'admin':
+        case 'vendor-admin':
             window.location.href = '../admin/admin-index.html';
             break;
         case 'employee':
+        case 'vendor-employee':
             window.location.href = '../POS/register.html';
             break;
         case 'vendor':

@@ -1,6 +1,7 @@
 import { apiAxios, requireAuth, logout } from '../utilities/api.js';
 import { showErrorMessage, showSuccessMessage } from '../utilities/messages.js';
 import { updateProfileCard } from '../utilities/ui.js';
+import { ADMIN_LIKE_USER_TYPES } from '../utilities/redirect.js';
 
 interface Discount {
     discount_id: number;
@@ -174,7 +175,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAuth();
     if (!user) return;
 
-    if (user.userType !== 'admin') {
+    if (!ADMIN_LIKE_USER_TYPES.includes(user.userType)) {
         window.location.href = '/auth/login.html';
         return;
     }

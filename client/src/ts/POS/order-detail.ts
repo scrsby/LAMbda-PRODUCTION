@@ -1,6 +1,7 @@
 import { apiAxios, getCurrentUser, logout } from '../utilities/api.js';
 import { escapeHtml, getDisplayItemName, getLineBasePrice, getLineFinalPrice, openItemizedReceipt, type ReceiptTicketItem } from '../utilities/receipt.js';
 import { updateProfileCard } from "../utilities/ui.js";
+import { ADMIN_LIKE_USER_TYPES, POS_ACCESS_USER_TYPES, VENDOR_LIKE_USER_TYPES } from "../utilities/redirect.js";
 
 interface TicketDetail {
     ticket_id: number;
@@ -42,18 +43,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const user = await getCurrentUser();
-    isAdminUser = user?.userType === 'admin';
+    isAdminUser = !!user && ADMIN_LIKE_USER_TYPES.includes(user.userType);
 
     if (!user) {
         window.location.href = '/auth/login.html';
         return;
     }
-    if (user.userType !== 'employee' && user.userType !== 'admin' ) {
+    if (!POS_ACCESS_USER_TYPES.includes(user.userType)) {
         window.location.href = '/auth/login.html';
         return;
     }
     if (isAdminUser) {
         showAdminControls();
+    }
+    if (VENDOR_LIKE_USER_TYPES.includes(user.userType)) {
+        showVendorControls();
     }
 
     document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
@@ -342,6 +346,13 @@ function formatDateTime(value: string) {
 function showAdminControls() {
     const btn = document.getElementById('admin-controls-btn');
     const btnMobile = document.getElementById('admin-controls-btn-mobile');
+    if (btn) btn.style.display = '';
+    if (btnMobile) btnMobile.style.display = '';
+}
+
+function showVendorControls() {
+    const btn = document.getElementById('vendor-controls-btn');
+    const btnMobile = document.getElementById('vendor-controls-btn-mobile');
     if (btn) btn.style.display = '';
     if (btnMobile) btnMobile.style.display = '';
 }

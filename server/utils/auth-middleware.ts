@@ -15,6 +15,13 @@
 import type { Request, Response, NextFunction } from 'express';
 
 /**
+ * User types that carry vendor-booth access (in addition to any other role
+ * they may hold). Used to decide when a `vendorId` should be associated with
+ * an account.
+ */
+export const VENDOR_LIKE_USER_TYPES = ['vendor', 'vendor-employee', 'vendor-admin'];
+
+/**
  * Middleware to require authentication for a route
  * Returns 401 if user is not logged in
  */

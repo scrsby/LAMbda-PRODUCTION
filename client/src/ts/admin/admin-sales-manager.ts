@@ -1,6 +1,7 @@
 import { apiAxios, requireAuth, logout } from '../utilities/api.js';
 import { calculateSalesReportSummary, escapeHtml, getDisplayItemName, getLineBasePrice, getLineFinalPrice, normalizeVendorId, COMMISSION_RATE, roundCurrency } from '../utilities/receipt.js';
 import { updateProfileCard } from '../utilities/ui.js';
+import { ADMIN_LIKE_USER_TYPES } from '../utilities/redirect.js';
 
 declare global {
     interface Window {
@@ -60,7 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAuth('../auth/login.html');
     if (!user) return;
 
-    if (user.userType !== 'admin') {
+    if (!ADMIN_LIKE_USER_TYPES.includes(user.userType)) {
         window.location.href = '../auth/login.html';
         return;
     }
