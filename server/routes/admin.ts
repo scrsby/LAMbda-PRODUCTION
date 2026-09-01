@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { randomInt } from 'crypto';
 import db from '../config/db.js';
 import { sendEmail } from '../services/mailer.js'
-import { requireAuth, requireUserType } from '../utils/auth-middleware.js';
+import { requireAuth, requireUserType, VENDOR_LIKE_USER_TYPES } from '../utils/auth-middleware.js';
 
 const router = express.Router();
 
@@ -124,7 +124,7 @@ router.get('/getAllAccessTokens', async (req: any, res: any) => {
     }
 });
 
-router.post('/createNewUser', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
+router.post('/createNewUser', requireAuth, requireUserType('admin', 'vendor-admin'), adminRouteRateLimit, async (req: any, res: any) => {
     const { email, baseUrl, user_type, vendor_id } = req.body;
     console.log('Received request to create new user with email:', email, 'user_type:', user_type, 'vendor_id:', vendor_id);
 
@@ -172,7 +172,7 @@ router.post('/createNewUser', requireAuth, requireUserType('admin'), adminRouteR
                     INSERT INTO access_tokens(created_by, email, user_type, expires_at, access_token, vendor_id)
                     VALUES ($1, $2, $3, NOW() + INTERVAL '7 days', $4, $5)
                 `;
-                const vendorIdValue = (user_type === 'vendor' && vendor_id != null) ? parseInt(vendor_id, 10) : null;
+                const vendorIdValue = (VENDOR_LIKE_USER_TYPES.includes(user_type) && vendor_id != null) ? parseInt(vendor_id, 10) : null;
                 let accessToken: number = 0;
                 const maxRetries = 5;
                 for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -233,7 +233,7 @@ router.post('/createNewUser', requireAuth, requireUserType('admin'), adminRouteR
     }
 });
 
-router.post('/regenerateAccessToken', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
+router.post('/regenerateAccessToken', requireAuth, requireUserType('admin', 'vendor-admin'), adminRouteRateLimit, async (req: any, res: any) => {
     const { email, baseUrl } = req.body;
 
     if (!email) {
@@ -344,7 +344,7 @@ router.post('/regenerateAccessToken', requireAuth, requireUserType('admin'), adm
 /* GET ALL USERS
  * Returns all existing users from the users table.
  */
-router.get('/getUsers', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (_req, res) => {
+router.get('/getUsers', requireAuth, requireUserType('admin', 'vendor-admin'), adminRouteRateLimit, async (_req, res) => {
     try {
         const result = await db.query(`
             SELECT user_id, last_name, first_name, vendor_id, email, phone, user_type
@@ -361,7 +361,7 @@ router.get('/getUsers', requireAuth, requireUserType('admin'), adminRouteRateLim
 /* DELETE USER
  * Deletes a user by user_id. Prevents an admin from deleting their own account.
  */
-router.delete('/deleteUser/:userId', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
+router.delete('/deleteUser/:userId', requireAuth, requireUserType('admin', 'vendor-admin'), adminRouteRateLimit, async (req: any, res: any) => {
     const { userId } = req.params;
 
     if (!userId) {
@@ -389,7 +389,7 @@ router.delete('/deleteUser/:userId', requireAuth, requireUserType('admin'), admi
 /* GET ALL VENDORS
  * Returns all vendors from the vendors table.
  */
-router.get('/getVendors', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (_req, res) => {
+router.get('/getVendors', requireAuth, requireUserType('admin', 'vendor-admin'), adminRouteRateLimit, async (_req, res) => {
     try {
         const result = await db.query(`
             SELECT vendor_id, created_at
@@ -407,7 +407,7 @@ router.get('/getVendors', requireAuth, requireUserType('admin'), adminRouteRateL
  * Creates a new vendor entry. Optionally accepts a specific vendor_id;
  * if omitted the SERIAL default is used.
  */
-router.post('/createVendor', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
+router.post('/createVendor', requireAuth, requireUserType('admin', 'vendor-admin'), adminRouteRateLimit, async (req: any, res: any) => {
     const { vendor_id } = req.body;
 
     try {
@@ -436,7 +436,7 @@ router.post('/createVendor', requireAuth, requireUserType('admin'), adminRouteRa
     }
 });
 
-router.get('/discounts', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (_req, res) => {
+router.get('/discounts', requireAuth, requireUserType('admin', 'vendor-admin'), adminRouteRateLimit, async (_req, res) => {
     try {
         const result = await db.query(`
             SELECT discount_id, vendor_id, description, start_time, end_time, created_at
@@ -451,7 +451,7 @@ router.get('/discounts', requireAuth, requireUserType('admin'), adminRouteRateLi
     }
 });
 
-router.post('/discounts', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
+router.post('/discounts', requireAuth, requireUserType('admin', 'vendor-admin'), adminRouteRateLimit, async (req: any, res: any) => {
     const vendorId = Number.parseInt(req.body?.vendor_id, 10);
     const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
     const startTimeValue = typeof req.body?.start_time === 'string' ? req.body.start_time.trim() : '';
@@ -501,7 +501,7 @@ router.post('/discounts', requireAuth, requireUserType('admin'), adminRouteRateL
     }
 });
 
-router.delete('/discounts/:discountId', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
+router.delete('/discounts/:discountId', requireAuth, requireUserType('admin', 'vendor-admin'), adminRouteRateLimit, async (req: any, res: any) => {
     const discountId = parseInt(req.params?.discountId, 10);
 
     if (!Number.isInteger(discountId) || discountId <= 0) {
@@ -528,7 +528,7 @@ router.delete('/discounts/:discountId', requireAuth, requireUserType('admin'), a
 /* DELETE VENDOR
  * Deletes a vendor by vendor_id.
  */
-router.delete('/deleteVendor/:vendorId', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req: any, res: any) => {
+router.delete('/deleteVendor/:vendorId', requireAuth, requireUserType('admin', 'vendor-admin'), adminRouteRateLimit, async (req: any, res: any) => {
     const { vendorId } = req.params;
 
     if (!vendorId) {
@@ -559,7 +559,7 @@ router.delete('/deleteVendor/:vendorId', requireAuth, requireUserType('admin'), 
  * Returns all closed tickets for the admin sales report, with optional filters.
  * Also returns today's daily sales total and commission.
  */
-router.get('/sales', requireAuth, requireUserType('admin'), adminRouteRateLimit, async (req, res) => {
+router.get('/sales', requireAuth, requireUserType('admin', 'vendor-admin'), adminRouteRateLimit, async (req, res) => {
     const orderId = req.query.orderId?.toString().trim();
     const itemSearch = req.query.itemSearch?.toString().trim();
     const startDate = req.query.startDate?.toString().trim();

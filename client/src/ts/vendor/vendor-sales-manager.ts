@@ -1,6 +1,7 @@
 import { apiAxios, requireAuth, logout } from '../utilities/api.js';
 import { escapeHtml, getDisplayItemName, getLineBasePrice, getLineFinalPrice, roundCurrency, COMMISSION_RATE } from '../utilities/receipt.js';
 import { updateProfileCard } from '../utilities/ui.js';
+import { VENDOR_LIKE_USER_TYPES } from '../utilities/redirect.js';
 
 declare global {
     interface Window {
@@ -48,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAuth('../auth/login.html');
     if (!user) return;
 
-    if (user.userType !== 'vendor') {
+    if (!VENDOR_LIKE_USER_TYPES.includes(user.userType)) {
         window.location.href = '../auth/login.html';
         return;
     }

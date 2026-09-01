@@ -147,7 +147,7 @@ async function getTicketSummaries(filters: {
     return result.rows;
 }
 
-router.use(requireAuth, requireUserType('employee', 'admin'), posRouteRateLimit);
+router.use(requireAuth, requireUserType('employee', 'admin', 'vendor-employee', 'vendor-admin'), posRouteRateLimit);
 
 router.post('/create-ticket', posWriteRateLimit, async (req: any, res) => {
     try {
@@ -381,7 +381,7 @@ router.get('/ticket/:id', async (req, res) => {
     }
 });
 
-router.delete('/ticket/:id', requireAuth, requireUserType('admin'), async (req, res) => {
+router.delete('/ticket/:id', requireAuth, requireUserType('admin', 'vendor-admin'), async (req, res) => {
     const ticketId = req.params.id;
     const client = await db.connect();
 
@@ -562,7 +562,7 @@ router.get('/receipt/:id', async (req, res) => {
  * Toggles cash_payment on a ticket regardless of its current status.
  * Body: { cashPayment: boolean }
  */
-router.patch('/ticket/:id/payment-type', requireUserType('admin'), posWriteRateLimit, async (req, res) => {
+router.patch('/ticket/:id/payment-type', requireUserType('admin', 'vendor-admin'), posWriteRateLimit, async (req, res) => {
     const ticketId = req.params.id;
     const cashPayment = req.body?.cashPayment === true;
 
@@ -585,7 +585,7 @@ router.patch('/ticket/:id/payment-type', requireUserType('admin'), posWriteRateL
  * Changes ticket_status to one of: open, closed, partially refunded, refunded.
  * Body: { status: string }
  */
-router.patch('/ticket/:id/status', requireUserType('admin'), posWriteRateLimit, async (req, res) => {
+router.patch('/ticket/:id/status', requireUserType('admin', 'vendor-admin'), posWriteRateLimit, async (req, res) => {
     const ticketId = req.params.id;
     const status = typeof req.body?.status === 'string' ? req.body.status.trim() : '';
     const allowed = ['open', 'closed', 'partially_refunded', 'refunded'];
@@ -612,7 +612,7 @@ router.patch('/ticket/:id/status', requireUserType('admin'), posWriteRateLimit, 
 /* PATCH TICKET ITEM REFUND (admin only)
  * Marks a ticket item as refunded and recalculates the ticket total.
  */
-router.patch('/ticket-item/:id/refund', requireUserType('admin'), posWriteRateLimit, async (req, res) => {
+router.patch('/ticket-item/:id/refund', requireUserType('admin', 'vendor-admin'), posWriteRateLimit, async (req, res) => {
     const itemId = req.params.id;
     const client = await db.connect();
 
@@ -661,7 +661,7 @@ router.patch('/ticket-item/:id/refund', requireUserType('admin'), posWriteRateLi
 });
 
 
-router.get('/running-discounts', requireAuth, requireUserType('employee', 'admin'), async (_req, res) => {
+router.get('/running-discounts', requireAuth, requireUserType('employee', 'admin', 'vendor-employee', 'vendor-admin'), async (_req, res) => {
     try {
         const result = await db.query(`
             SELECT discount_id, vendor_id, description

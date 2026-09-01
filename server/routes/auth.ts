@@ -4,6 +4,7 @@ import { sendEmail } from '../services/mailer.js'
 import db from '../config/db.js';
 import bcrypt from 'bcrypt';
 import rateLimit from 'express-rate-limit';
+import { VENDOR_LIKE_USER_TYPES } from '../utils/auth-middleware.js';
 
 const router = Router();
 const SESSION_COOKIE_NAME = 'connect.sid';
@@ -211,7 +212,7 @@ router.post('/createAccount', async (req: any, res: any) => {
 
             const hashedPassword = await bcrypt.hash(password, 10);
 
-            const vendorId = tokenData.user_type === 'vendor' ? (tokenData.vendor_id ?? null) : null;
+            const vendorId = VENDOR_LIKE_USER_TYPES.includes(tokenData.user_type) ? (tokenData.vendor_id ?? null) : null;
 
             const createUserQuery = `
                 INSERT INTO users (email, password_hash, user_type, vendor_id)
@@ -304,7 +305,7 @@ router.post('/login', async (req: any, res: any) => {
                 });
             }
 
-            const sessionVendorId = user.user_type === 'vendor' ? (user.vendor_id ?? null) : undefined;
+            const sessionVendorId = VENDOR_LIKE_USER_TYPES.includes(user.user_type) ? (user.vendor_id ?? null) : undefined;
             req.session.user = {
                 id: user.user_id,
                 email: user.email,

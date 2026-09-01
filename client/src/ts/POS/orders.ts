@@ -1,6 +1,6 @@
 import { apiAxios, logoutHandler, requireAuth, getCurrentUser } from '../utilities/api.js';
 import { updateProfileCard } from "../utilities/ui.js";
-import { requireUserType } from "../utilities/redirect.js";
+import { ADMIN_LIKE_USER_TYPES, requireUserType, VENDOR_LIKE_USER_TYPES } from "../utilities/redirect.js";
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAuth();
@@ -60,11 +60,18 @@ clearBtn?.addEventListener('click', async () => {
 });
 
 getCurrentUser().then(user => {
-    if (user?.userType === 'admin') {
+    if (user && ADMIN_LIKE_USER_TYPES.includes(user.userType)) {
         const btn = document.getElementById('admin-controls-btn');
         const btnMobile = document.getElementById('admin-controls-btn-mobile');
         if (btn) btn.style.display = '';
         if (btnMobile) btnMobile.style.display = '';
+    }
+
+    if (user && VENDOR_LIKE_USER_TYPES.includes(user.userType)) {
+        const vendorBtn = document.getElementById('vendor-controls-btn');
+        const vendorBtnMobile = document.getElementById('vendor-controls-btn-mobile');
+        if (vendorBtn) vendorBtn.style.display = '';
+        if (vendorBtnMobile) vendorBtnMobile.style.display = '';
     }
 });
 

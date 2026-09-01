@@ -1,12 +1,13 @@
 import type { SessionUser } from "../utilities/api.js";
 import { getCurrentUser, logout, requireAuth } from "../utilities/api.js";
 import { getDisplayName, updateProfileCard } from "../utilities/ui.js";
+import { ADMIN_LIKE_USER_TYPES } from '../utilities/redirect.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await requireAuth();
     if (!user) return;
       
-    if (user.userType !== 'admin') {
+    if (!ADMIN_LIKE_USER_TYPES.includes(user.userType)) {
         window.location.href = '/auth/login.html';
         return;
     }

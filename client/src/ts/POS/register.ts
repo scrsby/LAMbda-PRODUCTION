@@ -2,6 +2,7 @@ import { apiAxios } from '../utilities/api.js';
 import { getCurrentUser, logout } from '../utilities/api.js';
 import { showSuccessMessage, showErrorMessage } from '../utilities/messages.js';
 import { updateProfileCard } from "../utilities/ui.js";
+import { ADMIN_LIKE_USER_TYPES, POS_ACCESS_USER_TYPES, VENDOR_LIKE_USER_TYPES } from '../utilities/redirect.js';
 import {
     openItemizedReceipt,
     escapeHtml,
@@ -57,7 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '/auth/login.html';
         return;
     }
-    if (user.userType !== 'employee' && user.userType !== 'admin' ) {
+    if (!POS_ACCESS_USER_TYPES.includes(user.userType)) {
         window.location.href = '/auth/login.html';
         return;
     }
@@ -73,12 +74,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '../auth/login.html';
     });
 
-    if (user.userType === 'admin') {
+    if (ADMIN_LIKE_USER_TYPES.includes(user.userType)) {
         isAdminUser = true;
         const btn = document.getElementById('admin-controls-btn');
         const btnMobile = document.getElementById('admin-controls-btn-mobile');
         if (btn) btn.style.display = '';
         if (btnMobile) btnMobile.style.display = '';
+    }
+
+    if (VENDOR_LIKE_USER_TYPES.includes(user.userType)) {
+        const vendorBtn = document.getElementById('vendor-controls-btn');
+        const vendorBtnMobile = document.getElementById('vendor-controls-btn-mobile');
+        if (vendorBtn) vendorBtn.style.display = '';
+        if (vendorBtnMobile) vendorBtnMobile.style.display = '';
     }
 
     updateProfileCard(user);

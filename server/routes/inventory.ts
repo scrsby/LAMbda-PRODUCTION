@@ -31,7 +31,7 @@ const inventorySelectQuery = `
 /* GET ALL INVENTORY ITEMS
 * Returns all inventory items for authenticated admin/vendor users.
 */
-router.get('/all', requireAuth, requireUserType('admin', 'vendor'), async (_req, res) => {
+router.get('/all', requireAuth, requireUserType('admin', 'vendor', 'vendor-employee', 'vendor-admin'), async (_req, res) => {
     try {
         const db = (await import('../config/db.js')).default;
         const result = await db.query(`${inventorySelectQuery} ORDER BY item_id DESC`);
@@ -54,7 +54,7 @@ router.get('/all', requireAuth, requireUserType('admin', 'vendor'), async (_req,
 * Searches inventory using any combination of item fields as optional query parameters.
 * Supported params: itemId, itemName, vendorId, inventoryNumber, price, quantity
 */
-router.get('/search', requireAuth, requireUserType('admin', 'vendor'), async (req, res) => {
+router.get('/search', requireAuth, requireUserType('admin', 'vendor', 'vendor-employee', 'vendor-admin'), async (req, res) => {
     const { itemId, itemName, vendorId, inventoryCode, price, quantity } = req.query;
 
     const conditions: string[] = [];
@@ -147,7 +147,7 @@ router.get('/search', requireAuth, requireUserType('admin', 'vendor'), async (re
 *  Security: Only admin users can access this route. Admins can specify any vendorId.
 */
 
-router.post('/add', requireAuth, requireUserType('admin'), async (req, res) => {
+router.post('/add', requireAuth, requireUserType('admin', 'vendor-admin'), async (req, res) => {
     const { itemName, vendorId, inventoryCode, price, quantity } = req.body;
 
     // Validate required fields
@@ -248,7 +248,7 @@ router.post('/add', requireAuth, requireUserType('admin'), async (req, res) => {
 * Returns all inventory items belonging to the authenticated vendor.
 * Vendor ID is always read from the session — vendors can only see their own items.
 */
-router.get('/vendor/items', requireAuth, requireUserType('vendor'), async (req, res) => {
+router.get('/vendor/items', requireAuth, requireUserType('vendor', 'vendor-employee', 'vendor-admin'), async (req, res) => {
     const sessionVendorId = req.session.user!.vendorId ?? req.session.user!.id;
 
     if (!sessionVendorId) {
@@ -284,7 +284,7 @@ router.get('/vendor/items', requireAuth, requireUserType('vendor'), async (req, 
 * Vendor ID is always read from the session — vendorId query param is ignored.
 * Supported params: itemName, inventoryCode, price, quantity
 */
-router.get('/vendor/search', requireAuth, requireUserType('vendor'), async (req, res) => {
+router.get('/vendor/search', requireAuth, requireUserType('vendor', 'vendor-employee', 'vendor-admin'), async (req, res) => {
     const sessionVendorId = req.session.user!.vendorId ?? req.session.user!.id;
 
     if (!sessionVendorId) {
@@ -367,7 +367,7 @@ router.get('/vendor/search', requireAuth, requireUserType('vendor'), async (req,
 * Vendor ID is always read from the session — vendors can only add items for themselves.
 * Security: Rejects requests that include vendorId in the body to prevent ID spoofing.
 */
-router.post('/vendor/add', requireAuth, requireUserType('vendor'), async (req, res) => {
+router.post('/vendor/add', requireAuth, requireUserType('vendor', 'vendor-employee', 'vendor-admin'), async (req, res) => {
     const { itemName, inventoryCode, price, quantity, vendorId } = req.body;
 
     // SECURITY: Reject if vendorId is provided in the request body
@@ -473,7 +473,7 @@ router.post('/vendor/add', requireAuth, requireUserType('vendor'), async (req, r
 * Removes an inventory item that belongs to the authenticated vendor.
 * Verifies item ownership before deleting to prevent cross-vendor deletions.
 */
-router.post('/vendor/remove-item', requireAuth, requireUserType('vendor'), async (req, res) => {
+router.post('/vendor/remove-item', requireAuth, requireUserType('vendor', 'vendor-employee', 'vendor-admin'), async (req, res) => {
     const { itemId } = req.body;
 
     if (!itemId) {
@@ -523,7 +523,7 @@ router.post('/vendor/remove-item', requireAuth, requireUserType('vendor'), async
 * Removes an item from a ticket. Admins can remove any item from any ticket.
 * Security: Only admin users can access this route. Admins can specify any ticketId and itemId.
 */
-router.post('/remove-item', requireAuth, requireUserType('admin'), async (req, res) => {
+router.post('/remove-item', requireAuth, requireUserType('admin', 'vendor-admin'), async (req, res) => {
     const { itemId } = req.body;
     if (!itemId) {
         return res.status(400).json({ error: 'Missing required fields: itemId' });

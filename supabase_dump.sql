@@ -538,7 +538,9 @@ CREATE TYPE public.receipt_status AS ENUM (
 CREATE TYPE public.user_type AS ENUM (
     'admin',
     'vendor',
-    'employee'
+    'employee',
+    'vendor-employee',
+    'vendor-admin'
 );
 
 

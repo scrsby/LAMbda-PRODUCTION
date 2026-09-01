@@ -23,7 +23,7 @@ const EARNINGS_RATE = 0.90;
  * The vendor_id is taken exclusively from the authenticated session — never from
  * the request — so a vendor can only ever see their own sales data.
  */
-router.get('/sales', requireAuth, requireUserType('vendor'), vendorRouteRateLimit, async (req: any, res: any) => {
+router.get('/sales', requireAuth, requireUserType('vendor', 'vendor-employee', 'vendor-admin'), vendorRouteRateLimit, async (req: any, res: any) => {
     const vendorId = req.session?.user?.vendorId;
 
     if (!vendorId) {

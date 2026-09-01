@@ -1,6 +1,7 @@
 import { apiAxios, getCurrentUser, logout } from '../utilities/api.js';
 import { escapeHtml, getDisplayItemName, getLineBasePrice, getLineFinalPrice, openItemizedReceipt, type ReceiptTicketItem } from '../utilities/receipt.js';
 import { updateProfileCard } from "../utilities/ui.js";
+import { ADMIN_LIKE_USER_TYPES } from '../utilities/redirect.js';
 
 interface TicketDetail {
     ticket_id: number;
@@ -46,7 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '/auth/login.html';
         return;
     }
-    if (user.userType !== 'admin') {
+    if (!ADMIN_LIKE_USER_TYPES.includes(user.userType)) {
         window.location.href = '/auth/login.html';
         return;
     }
