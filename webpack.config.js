@@ -27,7 +27,8 @@ export default {
         'vendor/vendor-index': './client/src/ts/vendor/vendor-index.ts',
         'vendor/vendor-inventory': './client/src/ts/vendor/vendor-inventory.ts',
         'vendor/vendor-sales-manager': './client/src/ts/vendor/vendor-sales-manager.ts',
-        'vendor/vendor-settings': './client/src/ts/vendor/vendor-settings.ts'
+        'vendor/vendor-settings': './client/src/ts/vendor/vendor-settings.ts',
+        'user-settings': './client/src/ts/user-settings.ts'
 
     },
     output: {
