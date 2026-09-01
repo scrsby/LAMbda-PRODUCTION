@@ -6,7 +6,7 @@ import { showErrorMessage, showSuccessMessage } from './utilities/messages.js';
 let selectedColor: string | null = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const user = await requireAuth('../auth/login.html');
+    const user = await requireAuth();
     if (!user) return;
 
     updateProfileCard(user);
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
         await logout();
-        window.location.href = '../auth/login.html';
+        window.location.href = '/auth/login.html';
     });
 });
 
@@ -134,14 +134,14 @@ function dashboardUrlFor(userType: string): string {
     switch (userType) {
         case 'admin':
         case 'vendor-admin':
-            return 'admin/admin-index.html';
+            return '/admin/admin-index.html';
         case 'employee':
         case 'vendor-employee':
-            return 'POS/register.html';
+            return '/POS/register.html';
         case 'vendor':
-            return 'vendor/vendor-index.html';
+            return '/vendor/vendor-index.html';
         default:
-            return 'auth/login.html';
+            return '/auth/login.html';
     }
 }
 

@@ -40,10 +40,11 @@ export function updateProfileCard(user: SessionUser) {
     }
 
     const userMenuEl = document.querySelector<HTMLElement>('.user-menu');
-    if (userMenuEl && !window.location.pathname.endsWith('/user-settings.html')) {
+    if (userMenuEl && !window.location.pathname.endsWith('/user-settings.html') && !userMenuEl.dataset.navBound) {
+        userMenuEl.dataset.navBound = 'true';
         userMenuEl.style.cursor = 'pointer';
         userMenuEl.addEventListener('click', () => {
-            window.location.href = '../user-settings.html';
+            window.location.href = '/user-settings.html';
         });
     }
 }
