@@ -1,4 +1,5 @@
 import type { SessionUser } from "./api.js";
+import { VENDOR_POS_ACCESS_USER_TYPES } from "./redirect.js";
 
 /**
  * Fixed palette of colors a user may choose from to personalize their
@@ -47,6 +48,25 @@ export function updateProfileCard(user: SessionUser) {
             window.location.href = '/user-settings.html';
         });
     }
+
+    updateNavVisibility(user);
+}
+
+/**
+ * Shows or hides nav links that should only be visible to certain user types:
+ * - The "Vendor" tab in the admin nav is only relevant to vendor-admins, who
+ *   manage both an admin account and a vendor account.
+ * - The "POS" tab in the vendor nav is only relevant to vendor-admins and
+ *   vendor-employees, since plain 'vendor' accounts have no POS access.
+ */
+export function updateNavVisibility(user: SessionUser) {
+    document.querySelectorAll<HTMLElement>('.nav-vendor-tab').forEach((el) => {
+        el.style.display = user.userType === 'vendor-admin' ? '' : 'none';
+    });
+
+    document.querySelectorAll<HTMLElement>('.nav-pos-tab').forEach((el) => {
+        el.style.display = VENDOR_POS_ACCESS_USER_TYPES.includes(user.userType) ? '' : 'none';
+    });
 }
 
 export function getDisplayName(user: SessionUser): string {

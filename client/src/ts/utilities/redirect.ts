@@ -16,6 +16,10 @@ export const VENDOR_LIKE_USER_TYPES = ['vendor', 'vendor-employee', 'vendor-admi
 // employee/admin abilities).
 export const POS_ACCESS_USER_TYPES = [...EMPLOYEE_LIKE_USER_TYPES, ...ADMIN_LIKE_USER_TYPES];
 
+// Vendor-side user types that should see the POS nav link on vendor pages.
+// Plain 'vendor' accounts don't inherit employee/admin abilities, so they're excluded.
+export const VENDOR_POS_ACCESS_USER_TYPES = ['vendor-admin', 'vendor-employee'];
+
 export async function requireUserType(group: string, user: any) {
     if (REDIRECTS_ENABLED) {
         if (group === 'admin' && !ADMIN_LIKE_USER_TYPES.includes(user.userType)) {
