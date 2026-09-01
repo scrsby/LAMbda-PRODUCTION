@@ -1738,6 +1738,51 @@ tr:hover td {
     }
 }
 
+/* ===== Profile Color Picker ===== */
+.color-swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 0.75rem;
+}
+
+@media (max-width: 576px) {
+    .color-swatch-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.color-swatch {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    transition: var(--transition);
+}
+
+.color-swatch:hover {
+    transform: scale(1.08);
+}
+
+.color-swatch.selected {
+    border-color: var(--text-primary);
+    box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--text-primary);
+}
+
+.color-swatch.selected::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 10px;
+    height: 6px;
+    border-left: 2px solid white;
+    border-bottom: 2px solid white;
+    transform: translateY(-1px) rotate(-45deg);
+}
+
 /* ===== Mobile Menu ===== */
 .mobile-menu-btn {
     display: none;

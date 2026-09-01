@@ -4,7 +4,7 @@ import { sendEmail } from '../services/mailer.js'
 import db from '../config/db.js';
 import bcrypt from 'bcrypt';
 import rateLimit from 'express-rate-limit';
-import { VENDOR_LIKE_USER_TYPES } from '../utils/auth-middleware.js';
+import { VENDOR_LIKE_USER_TYPES, PROFILE_COLORS } from '../utils/auth-middleware.js';
 
 const router = Router();
 const SESSION_COOKIE_NAME = 'connect.sid';
@@ -274,7 +274,7 @@ router.post('/login', async (req: any, res: any) => {
 
         try {
             const loginQuery = `
-                SELECT user_id, email, password_hash, user_type, first_name, last_name, phone, vendor_id
+                SELECT user_id, email, password_hash, user_type, first_name, last_name, phone, vendor_id, color
                 FROM users
                 WHERE email = $1
             `;
@@ -313,6 +313,7 @@ router.post('/login', async (req: any, res: any) => {
                 firstName: user.first_name,
                 lastName: user.last_name,
                 phone: user.phone,
+                color: user.color,
                 ...(sessionVendorId != null ? { vendorId: sessionVendorId } : {})
             };
 
@@ -326,6 +327,7 @@ router.post('/login', async (req: any, res: any) => {
                     first_name: user.first_name,
                     last_name: user.last_name,
                     phone: user.phone,
+                    color: user.color,
                     vendor_id: user.vendor_id ?? null
                 }
             });
@@ -385,13 +387,20 @@ router.post('/update-profile', async (req: any, res: any) => {
         });
     }
 
-    const { firstName, lastName, phone } = req.body;
+    const { firstName, lastName, phone, color } = req.body;
     const userId = req.session.user.id;
 
-    if (!firstName && !lastName && !phone) {
+    if (!firstName && !lastName && !phone && !color) {
         return res.status(400).json({
             success: false,
-            message: 'At least one field (firstName, lastName, or phone) is required'
+            message: 'At least one field (firstName, lastName, phone, or color) is required'
+        });
+    }
+
+    if (color !== undefined && color !== null && !PROFILE_COLORS.includes(color)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid color selection'
         });
     }
 
@@ -421,13 +430,19 @@ router.post('/update-profile', async (req: any, res: any) => {
                 paramIndex++;
             }
 
+            if (color !== undefined && color !== null) {
+                updates.push(`color = $${paramIndex}`);
+                values.push(color);
+                paramIndex++;
+            }
+
             values.push(userId);
 
             const updateQuery = `
                 UPDATE users
                 SET ${updates.join(', ')}
                 WHERE user_id = $${paramIndex}
-                RETURNING user_id, email, first_name, last_name, phone
+                RETURNING user_id, email, first_name, last_name, phone, color
             `;
 
             const result = await client.query(updateQuery, values);
@@ -445,7 +460,8 @@ router.post('/update-profile', async (req: any, res: any) => {
                 ...req.session.user,
                 firstName: updatedUser.first_name,
                 lastName: updatedUser.last_name,
-                phone: updatedUser.phone
+                phone: updatedUser.phone,
+                color: updatedUser.color
             };
 
             res.status(200).json({
@@ -456,7 +472,8 @@ router.post('/update-profile', async (req: any, res: any) => {
                     email: updatedUser.email,
                     firstName: updatedUser.first_name,
                     lastName: updatedUser.last_name,
-                    phone: updatedUser.phone
+                    phone: updatedUser.phone,
+                    color: updatedUser.color
                 }
             });
 
