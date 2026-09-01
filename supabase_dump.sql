@@ -540,7 +540,8 @@ CREATE TYPE public.user_type AS ENUM (
     'vendor',
     'employee',
     'vendor-employee',
-    'vendor-admin'
+    'vendor-admin',
+    'system-admin'
 );
 
 

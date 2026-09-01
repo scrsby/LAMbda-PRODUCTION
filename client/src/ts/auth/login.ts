@@ -168,6 +168,7 @@ function redirectUser(userType: string) {
     switch (userType) {
         case 'admin':
         case 'vendor-admin':
+        case 'system-admin':
             window.location.href = '../admin/admin-index.html';
             break;
         case 'employee':

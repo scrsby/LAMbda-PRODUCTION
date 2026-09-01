@@ -134,6 +134,7 @@ function dashboardUrlFor(userType: string): string {
     switch (userType) {
         case 'admin':
         case 'vendor-admin':
+        case 'system-admin':
             return '/admin/admin-index.html';
         case 'employee':
         case 'vendor-employee':

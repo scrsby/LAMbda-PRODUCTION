@@ -1,5 +1,5 @@
 import type { SessionUser } from "./api.js";
-import { VENDOR_POS_ACCESS_USER_TYPES } from "./redirect.js";
+import { VENDOR_POS_ACCESS_USER_TYPES, SETTINGS_ACCESS_USER_TYPES } from "./redirect.js";
 
 /**
  * Fixed palette of colors a user may choose from to personalize their
@@ -58,6 +58,9 @@ export function updateProfileCard(user: SessionUser) {
  *   manage both an admin account and a vendor account.
  * - The "POS" tab in the vendor nav is only relevant to vendor-admins and
  *   vendor-employees, since plain 'vendor' accounts have no POS access.
+ * - The "Users" tab in the admin nav (Invites/Users/Vendors settings) is only
+ *   relevant to system-admins and vendor-admins; plain 'admin' accounts no
+ *   longer have access to those pages.
  */
 export function updateNavVisibility(user: SessionUser) {
     document.querySelectorAll<HTMLElement>('.nav-vendor-tab').forEach((el) => {
@@ -66,6 +69,10 @@ export function updateNavVisibility(user: SessionUser) {
 
     document.querySelectorAll<HTMLElement>('.nav-pos-tab').forEach((el) => {
         el.style.display = VENDOR_POS_ACCESS_USER_TYPES.includes(user.userType) ? '' : 'none';
+    });
+
+    document.querySelectorAll<HTMLElement>('.nav-settings-tab').forEach((el) => {
+        el.style.display = SETTINGS_ACCESS_USER_TYPES.includes(user.userType) ? '' : 'none';
     });
 }
 

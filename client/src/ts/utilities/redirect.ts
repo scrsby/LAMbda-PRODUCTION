@@ -2,7 +2,15 @@ const REDIRECTS_ENABLED = false;
 
 // User types that should be treated as having "admin" abilities (POS + admin pages).
 // vendor-admin inherits every ability of admin, plus vendor page access.
-export const ADMIN_LIKE_USER_TYPES = ['admin', 'vendor-admin'];
+// system-admin inherits every ability of admin, plus access to the admin
+// user-settings pages (Invites, Users, Vendors).
+export const ADMIN_LIKE_USER_TYPES = ['admin', 'vendor-admin', 'system-admin'];
+
+// User types allowed to access the admin user-settings pages (Invites, Users,
+// Vendors). Plain 'admin' accounts are intentionally excluded — only
+// system-admin and vendor-admin (which already had access to these pages
+// prior to system-admin's introduction) may access these pages.
+export const SETTINGS_ACCESS_USER_TYPES = ['vendor-admin', 'system-admin'];
 
 // User types that should be treated as having "employee" abilities (POS pages only).
 // vendor-employee inherits every ability of employee, plus vendor page access.

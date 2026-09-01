@@ -31,7 +31,7 @@ const inventorySelectQuery = `
 /* GET ALL INVENTORY ITEMS
 * Returns all inventory items for authenticated admin/vendor users.
 */
-router.get('/all', requireAuth, requireUserType('admin', 'vendor', 'vendor-employee', 'vendor-admin'), async (_req, res) => {
+router.get('/all', requireAuth, requireUserType('admin', 'system-admin', 'vendor', 'vendor-employee', 'vendor-admin'), async (_req, res) => {
     try {
         const db = (await import('../config/db.js')).default;
         const result = await db.query(`${inventorySelectQuery} ORDER BY item_id DESC`);
@@ -54,7 +54,7 @@ router.get('/all', requireAuth, requireUserType('admin', 'vendor', 'vendor-emplo
 * Searches inventory using any combination of item fields as optional query parameters.
 * Supported params: itemId, itemName, vendorId, inventoryNumber, price, quantity
 */
-router.get('/search', requireAuth, requireUserType('admin', 'vendor', 'vendor-employee', 'vendor-admin'), async (req, res) => {
+router.get('/search', requireAuth, requireUserType('admin', 'system-admin', 'vendor', 'vendor-employee', 'vendor-admin'), async (req, res) => {
     const { itemId, itemName, vendorId, inventoryCode, price, quantity } = req.query;
 
     const conditions: string[] = [];
@@ -147,7 +147,7 @@ router.get('/search', requireAuth, requireUserType('admin', 'vendor', 'vendor-em
 *  Security: Only admin users can access this route. Admins can specify any vendorId.
 */
 
-router.post('/add', requireAuth, requireUserType('admin', 'vendor-admin'), async (req, res) => {
+router.post('/add', requireAuth, requireUserType('admin', 'system-admin', 'vendor-admin'), async (req, res) => {
     const { itemName, vendorId, inventoryCode, price, quantity } = req.body;
 
     // Validate required fields
@@ -523,7 +523,7 @@ router.post('/vendor/remove-item', requireAuth, requireUserType('vendor', 'vendo
 * Removes an item from a ticket. Admins can remove any item from any ticket.
 * Security: Only admin users can access this route. Admins can specify any ticketId and itemId.
 */
-router.post('/remove-item', requireAuth, requireUserType('admin', 'vendor-admin'), async (req, res) => {
+router.post('/remove-item', requireAuth, requireUserType('admin', 'system-admin', 'vendor-admin'), async (req, res) => {
     const { itemId } = req.body;
     if (!itemId) {
         return res.status(400).json({ error: 'Missing required fields: itemId' });
