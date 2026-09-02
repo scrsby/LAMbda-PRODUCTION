@@ -31,6 +31,7 @@ interface TicketItem {
 
 const deleteTicketButton = document.getElementById('delete-ticket-btn') as HTMLButtonElement | null;
 const generateReceiptButton = document.getElementById('generate-receipt-btn') as HTMLButtonElement | null;
+const openInRegisterButton = document.getElementById('open-in-register-btn') as HTMLAnchorElement | null;
 let activeTicket: TicketDetail | null = null;
 let isAdminUser = false;
 
@@ -40,6 +41,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!ticketId) {
         showOrderError('No ticket ID was provided.');
         return;
+    }
+
+    if (openInRegisterButton) {
+        openInRegisterButton.href = `register.html?ticketId=${encodeURIComponent(ticketId)}`;
+        openInRegisterButton.style.display = '';
     }
 
     const user = await getCurrentUser();

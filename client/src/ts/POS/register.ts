@@ -123,6 +123,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         showErrorMessage('Failed to load register setup data. Please refresh the page and verify the backend is available.');
         return;
     }
+
+    // Magic link support: if a ticketId is present in the URL (e.g. from the "Open in Register"
+    // button on the order detail page), automatically load that ticket.
+    const ticketIdFromUrl = new URLSearchParams(window.location.search).get('ticketId');
+    if (ticketIdFromUrl) {
+        // Strip the query param from the URL so a page refresh doesn't reload the ticket again.
+        window.history.replaceState({}, document.title, window.location.pathname);
+        if (ticketIdField) {
+            ticketIdField.value = ticketIdFromUrl;
+        }
+        await searchTicket();
+    }
 });
 
 let ticket_items: TicketItem[] = [];
