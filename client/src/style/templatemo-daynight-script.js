@@ -58,7 +58,7 @@ function getGreeting() {
 function setGreeting() {
     const greetingEl = document.getElementById('greeting');
     if (greetingEl) {
-        greetingEl.textContent = getGreeting() + ', Alex';
+        greetingEl.textContent = getGreeting() + ',';
     }
 }
 

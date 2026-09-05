@@ -34,14 +34,18 @@ function calculateSummary(
     includeFeesInTaxBase: boolean
 ): ReceiptSummary {
     const normalizedSubtotal = roundCurrency(subtotal);
-    const feesCollected = options.cashPayment ? 0 : roundCurrency(normalizedSubtotal * CREDIT_CARD_FEE_RATE);
-    const taxableSubtotal = includeFeesInTaxBase
-        ? roundCurrency(normalizedSubtotal + feesCollected)
-        : normalizedSubtotal;
+    const taxableSubtotal = normalizedSubtotal;
     const taxCollected = options.taxExempt ? 0 : roundCurrency(taxableSubtotal * TAX_RATE);
-    const totalCollected = roundCurrency(normalizedSubtotal + taxCollected + feesCollected);
+    const totalCollectedRegister = options.cashPayment
+        ? 0
+        : roundCurrency((normalizedSubtotal + taxCollected) / (1 - CREDIT_CARD_FEE_RATE));
+    const feesCollected = options.cashPayment
+        ? 0
+        : roundCurrency(totalCollectedRegister * CREDIT_CARD_FEE_RATE);
+    const totalCollected = options.cashPayment
+        ? roundCurrency(normalizedSubtotal + taxCollected)
+        : totalCollectedRegister;
     const totalCollectedCash = options.cashPayment ? totalCollected : 0;
-    const totalCollectedRegister = options.cashPayment ? 0 : totalCollected;
     const totalCommission = roundCurrency(normalizedSubtotal * COMMISSION_RATE);
 
     return {
