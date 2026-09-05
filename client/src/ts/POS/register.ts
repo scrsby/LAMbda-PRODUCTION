@@ -175,6 +175,77 @@ const dealsList = document.getElementById('deals_list') as HTMLUListElement | nu
 const dealsStatus = document.getElementById('deals-status') as HTMLParagraphElement | null;
 const dealsToggleBtn = document.getElementById('deals_toggle_btn') as HTMLButtonElement | null;
 
+/// TAG PRICE CURRENCY MASK
+// Tracks the digits the user has entered so the Tag Price field can always display
+// as currency (e.g. "$76.50") while still letting the user type naturally.
+let vendorPriceDollars = '';
+let vendorPriceCents = '';
+let vendorPriceHasDecimal = false;
+
+function resetVendorPriceInput(): void {
+    vendorPriceDollars = '';
+    vendorPriceCents = '';
+    vendorPriceHasDecimal = false;
+    if (vendorPriceInput) {
+        vendorPriceInput.value = '';
+    }
+}
+
+function renderVendorPriceInput(): void {
+    if (!vendorPriceInput) {
+        return;
+    }
+    if (!vendorPriceDollars && !vendorPriceHasDecimal) {
+        vendorPriceInput.value = '';
+        return;
+    }
+    const dollars = vendorPriceDollars || '0';
+    const cents = vendorPriceCents.padEnd(2, '0');
+    vendorPriceInput.value = `$${dollars}.${cents}`;
+}
+
+vendorPriceInput?.addEventListener('keydown', (event) => {
+    const key = event.key;
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+    }
+    if (key.length === 1 && key >= '0' && key <= '9') {
+        event.preventDefault();
+        if (vendorPriceHasDecimal) {
+            if (vendorPriceCents.length < 2) {
+                vendorPriceCents += key;
+            }
+        } else {
+            vendorPriceDollars = vendorPriceDollars === '0' ? key : vendorPriceDollars + key;
+        }
+        renderVendorPriceInput();
+    } else if (key === '.') {
+        event.preventDefault();
+        vendorPriceHasDecimal = true;
+        renderVendorPriceInput();
+    } else if (key === 'Backspace') {
+        event.preventDefault();
+        if (vendorPriceHasDecimal) {
+            if (vendorPriceCents.length > 0) {
+                vendorPriceCents = vendorPriceCents.slice(0, -1);
+            } else {
+                vendorPriceHasDecimal = false;
+            }
+        } else {
+            vendorPriceDollars = vendorPriceDollars.slice(0, -1);
+        }
+        renderVendorPriceInput();
+    } else if (
+        key === 'Tab' || key === 'Enter' || key === 'ArrowLeft' || key === 'ArrowRight' ||
+        key === 'Home' || key === 'End' || key === 'Delete' || key === 'Shift'
+    ) {
+        // Allow navigation/submission keys through untouched.
+        return;
+    } else {
+        event.preventDefault();
+    }
+});
+
 function disableRegisterSetup() {
     const controlsToDisable = [
         ticketIdField,
@@ -377,7 +448,7 @@ createItemBtn?.addEventListener('click', () => {
         const vendor_id = parseInt(vendorIdInput.value, 10);
         const vendor_inventory_id = vendorInventoryIdInput?.value?.trim() || '';
         const baseName = itemNameInput.value.trim();
-        const tagPrice = parseFloat(vendorPriceInput.value);
+        const tagPrice = parseFloat(vendorPriceInput.value.replace(/[^0-9.]/g, ''));
         if (isNaN(vendor_id) || !baseName || isNaN(tagPrice)) {
             alert('Please provide valid values for all item fields.');
             return;
@@ -400,7 +471,7 @@ createItemBtn?.addEventListener('click', () => {
         vendorIdInput.value = '';
         if (vendorInventoryIdInput) vendorInventoryIdInput.value = '';
         itemNameInput.value = '';
-        vendorPriceInput.value = '';
+        resetVendorPriceInput();
         if (itemQtyInput) itemQtyInput.value = '';
     }
 });
@@ -1014,6 +1085,7 @@ function clearItemEntryFields(): void {
     if (searchForm) {
         searchForm.reset();
     }
+    resetVendorPriceInput();
 }
 
 function parseItemQuantity(): number | null {
