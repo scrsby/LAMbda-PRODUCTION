@@ -1,21 +1,22 @@
-/*
-  _               __  __ _         _
- | |        /\   |  \/  | |       | |
- | |       /  \  | \  / | |__   __| | __ _
- | |      / /\ \ | |\/| | '_ \ / _` |/ _` |
- | |____ / ____ \| |  | | |_) | (_| | (_| |
- |______/_/    \_\_|  |_|_.__/ \__,_|\__,_|
-
- Name: Inventory Routes
- File: inventory.ts
- Description: Defines API routes for inventory management, including adding and updating inventory items. Protected by authentication and admin user type checks.
- Last Edited: 26 February 2026
-*/
-
 import { Router } from 'express';
+import type { Request } from 'express';
 import { requireAuth, requireUserType } from '../utils/auth-middleware.js';
 
 const router = Router();
+
+type SessionUser = {
+    id: string | number;
+    vendorId?: string | number;
+};
+
+type SessionRequest = Request & {
+    session?: {
+        user?: SessionUser;
+    };
+};
+
+const getSessionUser = (req: Request): SessionUser | undefined =>
+    (req as SessionRequest).session?.user;
 
 const inventorySelectQuery = `
     SELECT
@@ -28,9 +29,6 @@ const inventorySelectQuery = `
     FROM inventory
 `;
 
-/* GET ALL INVENTORY ITEMS
-* Returns all inventory items for authenticated admin/vendor users.
-*/
 router.get('/all', requireAuth, requireUserType('admin', 'system-admin', 'vendor', 'vendor-employee', 'vendor-admin'), async (_req, res) => {
     try {
         const db = (await import('../config/db.js')).default;
@@ -50,10 +48,6 @@ router.get('/all', requireAuth, requireUserType('admin', 'system-admin', 'vendor
     }
 });
 
-/* SEARCH INVENTORY ITEMS
-* Searches inventory using any combination of item fields as optional query parameters.
-* Supported params: itemId, itemName, vendorId, inventoryNumber, price, quantity
-*/
 router.get('/search', requireAuth, requireUserType('admin', 'system-admin', 'vendor', 'vendor-employee', 'vendor-admin'), async (req, res) => {
     const { itemId, itemName, vendorId, inventoryCode, price, quantity } = req.query;
 
@@ -141,11 +135,6 @@ router.get('/search', requireAuth, requireUserType('admin', 'system-admin', 'ven
         });
     }
 });
-
-/* ADMIN ADD INVENTORY ITEM 
-*  Price, Quantity, Vendor ID, Vendor Inventory Number, and Item Name are required fields. Admins can add inventory items for any vendor.
-*  Security: Only admin users can access this route. Admins can specify any vendorId.
-*/
 
 router.post('/add', requireAuth, requireUserType('admin', 'system-admin', 'vendor-admin'), async (req, res) => {
     const { itemName, vendorId, inventoryCode, price, quantity } = req.body;
@@ -244,12 +233,9 @@ router.post('/add', requireAuth, requireUserType('admin', 'system-admin', 'vendo
     }
 });
 
-/* VENDOR GET OWN INVENTORY ITEMS
-* Returns all inventory items belonging to the authenticated vendor.
-* Vendor ID is always read from the session — vendors can only see their own items.
-*/
 router.get('/vendor/items', requireAuth, requireUserType('vendor', 'vendor-employee', 'vendor-admin'), async (req, res) => {
-    const sessionVendorId = req.session.user!.vendorId ?? req.session.user!.id;
+    const sessionUser = getSessionUser(req);
+    const sessionVendorId = sessionUser?.vendorId ?? sessionUser?.id;
 
     if (!sessionVendorId) {
         return res.status(403).json({
@@ -279,13 +265,9 @@ router.get('/vendor/items', requireAuth, requireUserType('vendor', 'vendor-emplo
     }
 });
 
-/* VENDOR SEARCH OWN INVENTORY ITEMS
-* Searches inventory items belonging to the authenticated vendor.
-* Vendor ID is always read from the session — vendorId query param is ignored.
-* Supported params: itemName, inventoryCode, price, quantity
-*/
 router.get('/vendor/search', requireAuth, requireUserType('vendor', 'vendor-employee', 'vendor-admin'), async (req, res) => {
-    const sessionVendorId = req.session.user!.vendorId ?? req.session.user!.id;
+    const sessionUser = getSessionUser(req);
+    const sessionVendorId = sessionUser?.vendorId;
 
     if (!sessionVendorId) {
         return res.status(403).json({
@@ -362,15 +344,9 @@ router.get('/vendor/search', requireAuth, requireUserType('vendor', 'vendor-empl
     }
 });
 
-/* VENDOR ADD INVENTORY ITEM
-* Adds an inventory item for the authenticated vendor.
-* Vendor ID is always read from the session — vendors can only add items for themselves.
-* Security: Rejects requests that include vendorId in the body to prevent ID spoofing.
-*/
 router.post('/vendor/add', requireAuth, requireUserType('vendor', 'vendor-employee', 'vendor-admin'), async (req, res) => {
     const { itemName, inventoryCode, price, quantity, vendorId } = req.body;
 
-    // SECURITY: Reject if vendorId is provided in the request body
     if (vendorId !== undefined) {
         return res.status(403).json({
             success: false,
@@ -378,7 +354,8 @@ router.post('/vendor/add', requireAuth, requireUserType('vendor', 'vendor-employ
         });
     }
 
-    const sessionVendorId = req.session.user!.vendorId ?? req.session.user!.id;
+    const sessionUser = getSessionUser(req);
+    const sessionVendorId = sessionUser?.vendorId ?? sessionUser?.id;
 
     if (!sessionVendorId) {
         return res.status(403).json({
@@ -387,7 +364,6 @@ router.post('/vendor/add', requireAuth, requireUserType('vendor', 'vendor-employ
         });
     }
 
-    // Validate required fields
     if (!itemName || price === undefined || quantity === undefined) {
         return res.status(400).json({
             success: false,
@@ -469,10 +445,6 @@ router.post('/vendor/add', requireAuth, requireUserType('vendor', 'vendor-employ
     }
 });
 
-/* VENDOR REMOVE OWN INVENTORY ITEM
-* Removes an inventory item that belongs to the authenticated vendor.
-* Verifies item ownership before deleting to prevent cross-vendor deletions.
-*/
 router.post('/vendor/remove-item', requireAuth, requireUserType('vendor', 'vendor-employee', 'vendor-admin'), async (req, res) => {
     const { itemId } = req.body;
 
@@ -480,7 +452,8 @@ router.post('/vendor/remove-item', requireAuth, requireUserType('vendor', 'vendo
         return res.status(400).json({ success: false, message: 'Missing required field: itemId' });
     }
 
-    const sessionVendorId = req.session.user!.vendorId ?? req.session.user!.id;
+    const sessionUser = getSessionUser(req);
+    const sessionVendorId = sessionUser?.vendorId ?? sessionUser?.id;
 
     if (!sessionVendorId) {
         return res.status(403).json({
@@ -492,7 +465,6 @@ router.post('/vendor/remove-item', requireAuth, requireUserType('vendor', 'vendo
     try {
         const db = (await import('../config/db.js')).default;
 
-        // Delete only if the item belongs to this vendor
         const removeQuery = `
             DELETE FROM inventory
             WHERE item_id = $1 AND vendor_id = $2

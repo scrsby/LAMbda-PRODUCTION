@@ -91,7 +91,7 @@ async function sendAccessTokenEmail(email: string, accessToken: number, baseUrl:
 
 }
 
-router.get('/getAllAccessTokens', async (req: any, res: any) => {
+router.get('/getAllAccessTokens', requireAuth, requireUserType('system-admin'), async (req: any, res: any) => {
     try {
         const query = `
             SELECT
